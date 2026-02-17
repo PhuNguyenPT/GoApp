@@ -3,15 +3,23 @@
 # Build the application
 all: build test
 
-build:
-	@echo "Building..."
+# Generate templ files
+templ-generate:
+	@echo "Generating templ files..."
 	@go run github.com/a-h/templ/cmd/templ@latest generate
+
+# Build Tailwind CSS
+tailwind-build:
+	@echo "Building Tailwind CSS..."
 	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css
+
+# Build the application
+build: templ-generate tailwind-build
+	@echo "Building Go binary..."
 	@go build -o main cmd/api/main.go
 
 # Run SSR server + SPA frontend
-run:
-	@go run github.com/a-h/templ/cmd/templ@latest generate
+run: templ-generate
 	@go run cmd/api/main.go &
 	@npm install --prefer-offline --no-fund --prefix ./frontend
 	@npm run dev --prefix ./frontend
@@ -35,7 +43,7 @@ docker-down:
 	fi
 
 # Test the application
-test:
+test: templ-generate
 	@echo "Testing..."
 	@go test ./... -v
 
@@ -44,13 +52,14 @@ itest:
 	@echo "Running integration tests..."
 	@go test ./internal/database -v
 
-# Clean the binary
+# Clean the binary and generated files
 clean:
 	@echo "Cleaning..."
 	@rm -f main
+	@find internal/views -name "*_templ.go" -delete
 
 # Development with hot reload
 watch:
 	@go run github.com/air-verse/air@latest
 
-.PHONY: all build run test clean watch docker-run docker-down itest
+.PHONY: all build run test clean watch docker-run docker-down itest templ-generate tailwind-build
