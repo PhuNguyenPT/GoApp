@@ -23,7 +23,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 		AllowCredentials: true,
 	}))
 	{
-		apiGroup.GET("/", s.HelloWorldHandler)
+		apiGroup.GET("/", s.apiInfoHandler)
 		apiGroup.GET("/health", s.healthHandler)
 		apiGroup.GET("/websocket", s.websocketHandler)
 	}
@@ -32,25 +32,28 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.File("./frontend-template/public/favicon.ico")
-	})	
-	
-	ssrGroup := r.Group("/app")
-	{
-		ssrGroup.GET("/contact", s.contactPageHandler)
-		ssrGroup.POST("/contact", s.contactFormHandler)
-	}
+	})
 
-	r.GET("/", s.rootHandler)
+	r.GET("/", s.homePageHandler)
+	r.GET("/contact", s.contactPageHandler)
+	r.POST("/contact", s.contactFormHandler)
 
 	return r
 }
 
-func (s *Server) rootHandler(c *gin.Context) {
+func (s *Server) apiInfoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Go Server",
-		"ssr":     "/app/contact",
-		"api":     "/api/*",
+		"message": "Go Server API",
+		"version": "0.0",
+		"endpoints": gin.H{
+			"health": "/api/health",
+			"websocket": "/api/websocket",
+		},
 	})
+}
+
+func (s *Server) homePageHandler(c *gin.Context) {
+	views.HomePage().Render(c.Request.Context(), c.Writer)
 }
 
 func (s *Server) contactPageHandler(c *gin.Context) {

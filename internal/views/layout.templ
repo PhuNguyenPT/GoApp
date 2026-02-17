@@ -1,0 +1,68 @@
+package views
+
+templ Header(currentPage string) {
+	<header class="bg-white shadow-sm">
+		<div class="max-w-4xl mx-auto px-8 py-4">
+			<nav class="flex items-center justify-between">
+				<h1 class="text-2xl font-bold text-gray-900">GoApp</h1>
+				<div class="space-x-6">
+					if currentPage == "home" {
+						<a href="/" class="text-blue-600 font-semibold">Home</a>
+						<a href="/contact" class="text-gray-600 hover:text-blue-600">Contact</a>
+					} else {
+						<a href="/" class="text-gray-600 hover:text-blue-600">Home</a>
+						<a href="/contact" class="text-blue-600 font-semibold">Contact</a>
+					}
+				</div>
+			</nav>
+		</div>
+	</header>
+}
+
+templ Footer() {
+	<footer class="bg-gray-800 text-white py-8">
+		<div class="max-w-4xl mx-auto px-8">
+			<div class="grid md:grid-cols-3 gap-8">
+				<div>
+					<h3 class="text-lg font-semibold mb-3">GoApp</h3>
+					<p class="text-gray-400">A modern web application built with Go, Templ, and HTMX.</p>
+				</div>
+				
+				<div>
+					<h3 class="text-lg font-semibold mb-3">Quick Links</h3>
+					<ul class="space-y-2">
+						<li><a href="/" class="text-gray-400 hover:text-white">Home</a></li>
+						<li><a href="/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+						<li><a href="/api/" class="text-gray-400 hover:text-white">API</a></li>
+					</ul>
+				</div>
+				
+				<div>
+					<h3 class="text-lg font-semibold mb-3">Contact</h3>
+					<ul class="space-y-2 text-gray-400">
+						<li>Email: info@goapp.com</li>
+						<li>Phone: +1 234 567 890</li>
+					</ul>
+				</div>
+			</div>
+			
+			<div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+				<p>&copy; 2026 GoApp. All rights reserved.</p>
+			</div>
+		</div>
+	</footer>
+}
+
+templ Head(title string) {
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title }</title>
+		<link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png"/>
+		<link rel="icon" type="image/png" sizes="32x32" href="/public/favicon-32x32.png"/>
+		<link rel="icon" type="image/png" sizes="16x16" href="/public/favicon-16x16.png"/>
+		<link rel="manifest" href="/public/site.webmanifest"/>
+		<link href="/public/output.css" rel="stylesheet"/>
+		<script src="/public/htmx.min.js"></script>
+	</head>
+}
