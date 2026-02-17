@@ -66,6 +66,9 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 	subject := c.PostForm("subject")
 	message := c.PostForm("message")
 	
+	// Simulate processing delay (e.g., sending email, database operation)
+	time.Sleep(1 * time.Second)
+	
 	log.Printf("Contact form: %s (%s) - %s: %s", name, email, subject, message)
 	
 	views.ContactSuccess(name).Render(c.Request.Context(), c.Writer)
