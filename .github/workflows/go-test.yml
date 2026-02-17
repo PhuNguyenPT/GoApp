@@ -18,5 +18,8 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install dependencies
+        run: npm ci --prefix ./frontend-template          
+
       - name: Build and Test
         run: make all
