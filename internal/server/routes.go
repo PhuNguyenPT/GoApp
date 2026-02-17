@@ -2,40 +2,81 @@ package server
 
 import (
 	"net/http"
-
 	"fmt"
 	"log"
 	"time"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
 	"github.com/coder/websocket"
+	
+	"GoApp/internal/views"
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
 	r := gin.Default()
 
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // Add your frontend URL
+	apiGroup := r.Group("/api")
+	apiGroup.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: true, // Enable cookies/auth
+		AllowCredentials: true,
 	}))
+	{
+		apiGroup.GET("/", s.apiInfoHandler)
+		apiGroup.GET("/health", s.healthHandler)
+		apiGroup.GET("/websocket", s.websocketHandler)
+	}
 
-	r.GET("/", s.HelloWorldHandler)
+	r.Static("/public", "./frontend-template/public")
 
-	r.GET("/health", s.healthHandler)
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.File("./frontend-template/public/favicon.ico")
+	})
 
-	r.GET("/websocket", s.websocketHandler)
+	r.GET("/", s.homePageHandler)
+	r.GET("/contact", s.contactPageHandler)
+	r.POST("/contact", s.contactFormHandler)
 
 	return r
+}
+
+func (s *Server) apiInfoHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Go Server API",
+		"version": "0.0",
+		"endpoints": gin.H{
+			"health": "/api/health",
+			"websocket": "/api/websocket",
+		},
+	})
+}
+
+func (s *Server) homePageHandler(c *gin.Context) {
+	views.HomePage().Render(c.Request.Context(), c.Writer)
+}
+
+func (s *Server) contactPageHandler(c *gin.Context) {
+	views.ContactPage().Render(c.Request.Context(), c.Writer)
+}
+
+func (s *Server) contactFormHandler(c *gin.Context) {
+	name := c.PostForm("name")
+	email := c.PostForm("email")
+	subject := c.PostForm("subject")
+	message := c.PostForm("message")
+	
+	// Simulate processing delay (e.g., sending email, database operation)
+	time.Sleep(1 * time.Second)
+	
+	log.Printf("Contact form: %s (%s) - %s: %s", name, email, subject, message)
+	
+	views.ContactSuccess(name).Render(c.Request.Context(), c.Writer)
 }
 
 func (s *Server) HelloWorldHandler(c *gin.Context) {
 	resp := make(map[string]string)
 	resp["message"] = "Hello World"
-
 	c.JSON(http.StatusOK, resp)
 }
 

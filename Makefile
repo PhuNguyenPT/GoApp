@@ -3,17 +3,27 @@
 # Build the application
 all: build test
 
-build:
-	@echo "Building..."
-	
-	
+# Generate templ files
+templ-generate:
+	@echo "Generating templ files..."
+	@go run github.com/a-h/templ/cmd/templ@latest generate
+
+# Build Tailwind CSS
+tailwind-build:
+	@echo "Building Tailwind CSS..."
+	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css
+
+# Build the application
+build: templ-generate tailwind-build
+	@echo "Building Go binary..."
 	@go build -o main cmd/api/main.go
 
-# Run the application
-run:
+# Run SSR server + SPA frontend
+run: templ-generate
 	@go run cmd/api/main.go &
 	@npm install --prefer-offline --no-fund --prefix ./frontend
 	@npm run dev --prefix ./frontend
+
 # Create DB container
 docker-run:
 	@if docker compose up --build 2>/dev/null; then \
@@ -33,34 +43,23 @@ docker-down:
 	fi
 
 # Test the application
-test:
+test: templ-generate
 	@echo "Testing..."
 	@go test ./... -v
-# Integrations Tests for the application
+
+# Integration tests
 itest:
 	@echo "Running integration tests..."
 	@go test ./internal/database -v
 
-# Clean the binary
+# Clean the binary and generated files
 clean:
 	@echo "Cleaning..."
 	@rm -f main
+	@find internal/views -name "*_templ.go" -delete
 
-# Live Reload
+# Development with hot reload
 watch:
-	@if command -v air > /dev/null; then \
-            air; \
-            echo "Watching...";\
-        else \
-            read -p "Go's 'air' is not installed on your machine. Do you want to install it? [Y/n] " choice; \
-            if [ "$$choice" != "n" ] && [ "$$choice" != "N" ]; then \
-                go install github.com/air-verse/air@latest; \
-                air; \
-                echo "Watching...";\
-            else \
-                echo "You chose not to install air. Exiting..."; \
-                exit 1; \
-            fi; \
-        fi
+	@go run github.com/air-verse/air@latest
 
-.PHONY: all build run test clean watch docker-run docker-down itest
+.PHONY: all build run test clean watch docker-run docker-down itest templ-generate tailwind-build

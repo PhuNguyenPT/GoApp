@@ -1,0 +1,16 @@
+@source "../../../internal/views";
+
+/* HTMX loading indicator - hidden by default */
+.htmx-indicator {
+	display: none;
+}
+
+/* Show indicator when HTMX request is in flight */
+.htmx-request .htmx-indicator {
+	display: inline-block;
+}
+
+/* Show indicator when element has htmx-indicator class during request */
+.htmx-request.htmx-indicator {
+	display: inline-block;
+}
