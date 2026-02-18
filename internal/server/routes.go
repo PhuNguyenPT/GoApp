@@ -38,6 +38,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.GET("/contact", s.contactPageHandler)
 	r.POST("/contact", s.contactFormHandler)
 	r.GET("/sitemap.xml", s.sitemapHandler)
+	r.GET("/robots.txt", func (c *gin.Context)  {
+		c.File("./frontend-template/public/robots.txt")
+	})
 	return r
 }
 
