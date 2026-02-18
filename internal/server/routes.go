@@ -53,6 +53,8 @@ func (s *Server) apiInfoHandler(c *gin.Context) {
 }
 
 func (s *Server) homePageHandler(c *gin.Context) {
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
 	views.HomePage().Render(c.Request.Context(), c.Writer)
 }
 
