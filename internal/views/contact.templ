@@ -3,7 +3,13 @@ package views
 templ ContactPage() {
 	<!DOCTYPE html>
 	<html lang="en">
-	@Head("Contact Us - GoApp")
+	@Head(SEOMeta{
+		Title: "Contact Us - GoApp",
+		Description: "Get in touch with GoApp team",
+		Keywords: "go, golang, htmx, templ, web app",
+		CanonicalURL: "https://yourdomain.com/contact",
+		OGImage: "https://yourdomain.com/public/og-image.png",
+	})
 	<body class="min-h-screen bg-gray-50 flex flex-col">
 		@Header("contact")
 

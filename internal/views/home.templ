@@ -3,7 +3,13 @@ package views
 templ HomePage() {
 	<!DOCTYPE html>
 	<html lang="en">
-	@Head("Home - GoApp")
+	@Head(SEOMeta{
+		Title: "Home - GoApp",
+		Description: "A high performance web app built with Go, Templ, and HTMX",
+		Keywords: "go, golang, htmx, templ, web app",
+		CanonicalURL: "https://yourdomain.com/",
+		OGImage: "https://yourdomain.com/public/og-image.png",
+	})
 	<body class="min-h-screen bg-gray-50 flex flex-col">
 		@Header("home")
 
