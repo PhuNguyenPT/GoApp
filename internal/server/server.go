@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -19,17 +19,33 @@ type Server struct {
 }
 
 func NewServer() *http.Server {
-	port, _ := strconv.Atoi(os.Getenv("PORT"))
+	cfg, err := LoadConfig()
+	if err != nil {
+		log.Fatalf("invalid config %v", err)
+	}
+
+	port, err := strconv.Atoi(cfg.Port)
+	if err != nil {
+		log.Fatalf("invalid PORT value %v", err)
+	}
+
 	NewServer := &Server{
 		port: port,
 
-		db: database.New(),
+		db: database.New(&database.DBConfig{
+			Host:     cfg.DBHost,
+			Port:     cfg.DBPort,
+			Database: cfg.DBDatabase,
+			Username: cfg.DBUsername,
+			Password: cfg.DBPassword,
+			Schema:   cfg.DBSchema,
+		}),
 	}
 
 	// Declare Server config
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", NewServer.port),
-		Handler:      NewServer.RegisterRoutes(),
+		Handler:      NewServer.RegisterRoutes(cfg),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,

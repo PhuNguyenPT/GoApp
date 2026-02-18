@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/coder/websocket"
@@ -14,8 +13,8 @@ import (
 	"GoApp/internal/views"
 )
 
-func (s *Server) RegisterRoutes() http.Handler {
-	gin.SetMode(os.Getenv("GIN_MODE"))
+func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
+	gin.SetMode(cfg.GinMode)
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
