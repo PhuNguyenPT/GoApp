@@ -37,8 +37,13 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.GET("/", s.homePageHandler)
 	r.GET("/contact", s.contactPageHandler)
 	r.POST("/contact", s.contactFormHandler)
-
+	r.GET("/sitemap.xml", s.sitemapHandler)
 	return r
+}
+
+func (s *Server) sitemapHandler(c *gin.Context) {
+	c.Header("Content-Type", "application/xml")
+	c.File("./frontend-template/public/sitemap.xml")
 }
 
 func (s *Server) apiInfoHandler(c *gin.Context) {
