@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
       target: prod
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - ${PORT}:${PORT}
     environment:
@@ -27,6 +29,8 @@ services:
       dockerfile: Dockerfile
       target: frontend
     restart: unless-stopped
+    env_file:
+      - .env    
     depends_on:
       - app
     ports:
@@ -36,6 +40,8 @@ services:
   psql:
     image: postgres:${POSTGRES_VERSION}
     restart: unless-stopped
+    env_file:
+      - .env    
     environment:
       POSTGRES_DB: ${POSTGRES_DATABASE}
       POSTGRES_USER: ${POSTGRES_USERNAME}

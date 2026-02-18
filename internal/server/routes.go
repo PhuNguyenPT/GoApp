@@ -1,20 +1,24 @@
 package server
 
 import (
-	"net/http"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
+
+	"github.com/coder/websocket"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/coder/websocket"
-	
+
 	"GoApp/internal/views"
 )
 
-func (s *Server) RegisterRoutes() http.Handler {
-	r := gin.Default()
-
+func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
+	gin.SetMode(cfg.GinMode)
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+	
 	apiGroup := r.Group("/api")
 	apiGroup.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
