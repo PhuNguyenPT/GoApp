@@ -16,6 +16,10 @@ RUN apk add --no-cache nodejs npm
 
 COPY go.mod go.sum ./
 RUN go mod download
+
+COPY frontend-template/package*.json ./frontend-template/
+RUN cd frontend-template && npm ci 
+
 RUN go install github.com/air-verse/air@latest
 CMD ["air", "-c", ".air.docker.toml"]
 
@@ -26,12 +30,11 @@ COPY --from=build /app/frontend-template /app/frontend-template
 EXPOSE ${PORT}
 CMD ["./main"]
 
-
 FROM node:24 AS frontend_builder
 WORKDIR /frontend
 
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci
 COPY frontend/. .
 RUN npm run build
 

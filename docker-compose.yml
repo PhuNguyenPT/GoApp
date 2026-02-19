@@ -46,6 +46,7 @@ services:
     volumes:
       - .:/app
       - /app/tmp
+      - /app/frontend-template/node_modules
     depends_on:
       psql:
         condition: service_healthy
