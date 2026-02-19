@@ -1,32 +1,110 @@
 package server
 
 import (
-	"github.com/gin-gonic/gin"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
-func TestHelloWorldHandler(t *testing.T) {
-	s := &Server{}
-	r := gin.New()
-	r.GET("/", s.HelloWorldHandler)
-	// Create a test HTTP request
-	req, err := http.NewRequest("GET", "/", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Create a ResponseRecorder to record the response
+type mockDB struct {}
+
+func (m *mockDB) Health() map[string]string {
+	return map[string]string{ "status": "up", "message": "It's healthy" }
+}
+
+func (m *mockDB) Close() error  {
+	return nil
+}
+
+var testHandler http.Handler
+func TestMain(m *testing.M)  {
+	s := &Server{db: &mockDB{}}
+	testHandler = s.RegisterRoutes(&Config{GinMode: gin.TestMode})
+	m.Run()
+}
+
+func TestApiInfoHandler(t *testing.T)  {
+	req, _ := http.NewRequest(http.MethodGet, "/api/", nil)
 	rr := httptest.NewRecorder()
-	// Serve the HTTP request
-	r.ServeHTTP(rr, req)
-	// Check the status code
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 	}
-	// Check the response body
-	expected := "{\"message\":\"Hello World\"}"
-	if rr.Body.String() != expected {
-		t.Errorf("Handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("response is not valid JSON %v", err)
+	}
+
+	if body["message"] != "Go Server API" {
+		t.Errorf("unexpected message: %v", body["message"])
+	}
+
+	if body["version"] != "0.0" {
+		t.Errorf("unexpected version: %v", body["version"])
+	}
+}
+
+func TestHealthHandler(t *testing.T)  {
+	req, _ := http.NewRequest(http.MethodGet, "/api/health", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+
+	var body map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Errorf("response is not valid JSON: %v", err)
+	}
+
+	if body["status"] != "up" {
+		t.Errorf("expected status up, got %v", body["status"])
+	}
+
+	if body["message"] != "It's healthy" {
+		t.Errorf("expected healthy message, got %v", body["message"])
+	}
+}
+
+func TestHomePageHandler(t *testing.T)  {
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Errorf("expected HTML content type, got %v", ct)
+	}
+}
+
+func TestContactFormHandler(t *testing.T) {
+	form := url.Values{}
+	form.Set("name", "Test Name")
+	form.Set("email", "test@example.com")
+	form.Set("subject", "Test Subject")
+	form.Set("message", "Test message")
+
+	req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+
+	if !strings.Contains(rr.Body.String(), "Test Nam") {
+		t.Errorf("expected response body to contain 'Test Name'")
 	}
 }
