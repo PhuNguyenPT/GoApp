@@ -1,6 +1,6 @@
 package views
 
-templ ContactPage() {
+templ ContactPage(userName string) {
 	<!DOCTYPE html>
 	<html lang="en">
 	@Head(SEOMeta{
@@ -11,7 +11,7 @@ templ ContactPage() {
 		OGImage: "https://yourdomain.com/public/og-image.png",
 	})
 	<body class="min-h-screen bg-gray-50 flex flex-col">
-		@Header("contact", false)
+		@Header("contact", userName)
 
 		<main class="flex-1">
 			<div class="max-w-2xl mx-auto px-8 py-12">

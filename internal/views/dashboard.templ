@@ -8,7 +8,7 @@ templ DashboardPage(name string) {
         Description: "Your dashboard",
     })
     <body class="min-h-screen bg-gray-50 flex flex-col">
-        @Header("dashboard", true)
+        @Header("dashboard", name)
 
         <main class="flex-1">
             <div class="max-w-4xl mx-auto px-8 py-12">

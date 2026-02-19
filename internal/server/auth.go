@@ -24,7 +24,7 @@ type RegisterInput struct {
 func (s *Server) registerPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.RegisterPage().Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.RegisterPage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering register page: %v", err)
 	}
 }
@@ -103,7 +103,7 @@ type LoginInput struct {
 func (s *Server) loginPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.LoginPage().Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.LoginPage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering login page: %v", err)
 	}
 }

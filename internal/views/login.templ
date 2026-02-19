@@ -1,6 +1,6 @@
 package views
 
-templ LoginPage() {
+templ LoginPage(userName string) {
     <!DOCTYPE html>
     <html lang="en">
     @Head(SEOMeta{
@@ -8,7 +8,7 @@ templ LoginPage() {
         Description: "Sign in to your account",
     })
     <body class="min-h-screen bg-gray-50 flex flex-col">
-        @Header("login", false)
+        @Header("login", userName)
 
         <main class="flex-1 flex items-center justify-center py-12">
             <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
