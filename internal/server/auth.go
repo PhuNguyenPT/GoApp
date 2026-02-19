@@ -5,9 +5,11 @@ import (
 	"GoApp/internal/views"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -67,7 +69,7 @@ func (s *Server) registerHandler(c *gin.Context) {
 		return
 	}
 
-	_, err = s.db.CreateUser(c.Request.Context(), database.CreateUserParams{
+	user, err := s.db.CreateUser(c.Request.Context(), database.CreateUserParams{
 		Name:         input.Name,
 		Email:        input.Email,
 		PasswordHash: string(hash),
@@ -77,11 +79,20 @@ func (s *Server) registerHandler(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.RegisterSuccess(input.Name).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering register success: %v", err)
+	token := uuid.New().String()
+	_, err = s.db.CreateSession(c.Request.Context(), database.CreateSessionParams{
+		UserID:    user.ID,
+		Token:     token,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	})
+	if err != nil {
+		renderError("Something went wrong, please try again.")
+		return
 	}
+	secure := s.cfg.AppEnv == EnvProduction
+	c.SetCookie("session_token", token, 86400, "/", "", secure, true)
+	c.Header("HX-Redirect", "/dashboard")
+	c.Status(http.StatusOK)
 }
 
 type LoginInput struct {
@@ -127,9 +138,31 @@ func (s *Server) loginHandler(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.LoginSuccess(user.Name).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering login success: %v", err)
+	token := uuid.New().String()
+	_, err = s.db.CreateSession(c.Request.Context(), database.CreateSessionParams{
+		UserID:    user.ID,
+		Token:     token,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	})
+	if err != nil {
+		renderError("Something went wrong, please try again.")
+		return
 	}
+	secure := s.cfg.AppEnv == EnvProduction
+
+	c.SetCookie("session_token", token, 86400, "/", "", secure, true)
+	c.Header("HX-Redirect", "/dashboard")
+	c.Status(http.StatusOK)
+}
+
+func (s *Server) logoutHandler(c *gin.Context) {
+	token, err := c.Cookie("session_token")
+	if err == nil {
+		if err := s.db.DeleteSession(c.Request.Context(), token); err != nil {
+			log.Printf("error deleting session: %v", err)
+		}
+	}
+	secure := s.cfg.AppEnv == EnvProduction
+	c.SetCookie("session_token", "", -1, "/", "", secure, true)
+	c.Redirect(http.StatusFound, "/login")
 }

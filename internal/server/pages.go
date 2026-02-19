@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func (s *Server) contactPageHandler(c *gin.Context) {
@@ -43,5 +44,21 @@ func (s *Server) homePageHandler(c *gin.Context) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	if err := views.HomePage().Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering home page: %v", err)
+	}
+}
+
+func (s *Server) dashboardPageHandler(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+
+	user, err := s.db.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.DashboardPage(user.Name).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering dashboard: %v", err)
 	}
 }

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"GoApp/internal/database"
+
+	"github.com/google/uuid"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -17,8 +19,11 @@ type DB interface {
 	Health() map[string]string
 	CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error)
 	GetUserByEmail(ctx context.Context, email string) (database.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error)
+	CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error)
+	GetSessionByToken(ctx context.Context, token string) (database.Session, error)
+	DeleteSession(ctx context.Context, token string) error
 }
-
 type sqlDB struct {
 	raw     *sql.DB
 	queries *database.Queries
@@ -36,9 +41,26 @@ func (s *sqlDB) GetUserByEmail(ctx context.Context, email string) (database.User
 	return s.queries.GetUserByEmail(ctx, email)
 }
 
+func (s *sqlDB) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {
+	return s.queries.GetUserByID(ctx, id)
+}
+
+func (s *sqlDB) CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error) {
+	return s.queries.CreateSession(ctx, arg)
+}
+
+func (s *sqlDB) GetSessionByToken(ctx context.Context, token string) (database.Session, error) {
+	return s.queries.GetSessionByToken(ctx, token)
+}
+
+func (s *sqlDB) DeleteSession(ctx context.Context, token string) error {
+	return s.queries.DeleteSession(ctx, token)
+}
+
 type Server struct {
 	port int
 	db   DB
+	cfg  *Config
 }
 
 func NewServer() *http.Server {
@@ -73,6 +95,7 @@ func NewServer() *http.Server {
 			raw:     raw,
 			queries: database.New(raw),
 		},
+		cfg: cfg,
 	}
 
 	return &http.Server{

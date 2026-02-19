@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -33,11 +34,30 @@ func (m *mockDB) GetUserByEmail(ctx context.Context, email string) (database.Use
 	}, nil
 }
 
+func (m *mockDB) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {
+	return database.User{Name: "Test User", Email: "test@example.com"}, nil
+}
+
+func (m *mockDB) CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error) {
+	return database.Session{Token: arg.Token}, nil
+}
+
+func (m *mockDB) GetSessionByToken(ctx context.Context, token string) (database.Session, error) {
+	return database.Session{}, nil
+}
+
+func (m *mockDB) DeleteSession(ctx context.Context, token string) error {
+	return nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {
-	s := &Server{db: &mockDB{}}
-	testHandler = s.RegisterRoutes(&Config{GinMode: gin.TestMode})
+	s := &Server{
+		db:  &mockDB{},
+		cfg: &Config{AppEnv: EnvTest, GinMode: gin.TestMode},
+	}
+	testHandler = s.RegisterRoutes(s.cfg)
 	m.Run()
 }
 
@@ -162,19 +182,33 @@ func TestRegisterHandler(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		form := url.Values{}
 		form.Set("name", "Test User")
-		form.Set("email", "test@example.com")
+		form.Set("email", "newuser@example.com")
 		form.Set("password", "password123")
 
 		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
-		if !strings.Contains(rr.Body.String(), "Test User") {
-			t.Errorf("expected response to contain user name")
+
+		if rr.Header().Get("HX-Redirect") != "/dashboard" {
+			t.Errorf("expected HX-Redirect to /dashboard, got %v", rr.Header().Get("HX-Redirect"))
+		}
+
+		cookies := rr.Result().Cookies()
+		found := false
+		for _, c := range cookies {
+			if c.Name == "session_token" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected session_token cookie to be set")
 		}
 	})
 
@@ -272,6 +306,22 @@ func TestLoginHandler(t *testing.T) {
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
+
+		if got := rr.Header().Get("HX-Redirect"); got != "/dashboard" {
+			t.Errorf("expected HX-Redirect to /dashboard, got %q", got)
+		}
+
+		cookies := rr.Result().Cookies()
+		var found bool
+		for _, c := range cookies {
+			if c.Name == "session_token" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected session_token cookie to be set")
+		}
 	})
 
 	t.Run("missing fields", func(t *testing.T) {
@@ -284,7 +334,11 @@ func TestLoginHandler(t *testing.T) {
 		testHandler.ServeHTTP(rr, req)
 
 		if !strings.Contains(rr.Body.String(), "Invalid email or password") {
-			t.Errorf("expected error message")
+			t.Errorf("expected error message in body")
+		}
+
+		if rr.Header().Get("HX-Redirect") != "" {
+			t.Errorf("unexpected redirect on failed login")
 		}
 	})
 
@@ -300,6 +354,51 @@ func TestLoginHandler(t *testing.T) {
 
 		if !strings.Contains(rr.Body.String(), "Invalid email or password") {
 			t.Errorf("expected error message")
+		}
+	})
+}
+
+func TestDashboardPageHandler(t *testing.T) {
+	t.Run("unauthenticated redirects to login", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/dashboard", nil)
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusFound {
+			t.Errorf("expected redirect 302, got %v", rr.Code)
+		}
+		if rr.Header().Get("Location") != "/login" {
+			t.Errorf("expected redirect to /login, got %v", rr.Header().Get("Location"))
+		}
+	})
+
+	t.Run("authenticated shows dashboard", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/dashboard", nil)
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+			t.Errorf("expected HTML content type, got %v", ct)
+		}
+	})
+}
+
+func TestLogoutHandler(t *testing.T) {
+	t.Run("clears cookie and redirects", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/logout", nil)
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusFound {
+			t.Errorf("expected redirect 302, got %v", rr.Code)
+		}
+		if rr.Header().Get("Location") != "/login" {
+			t.Errorf("expected redirect to /login, got %v", rr.Header().Get("Location"))
 		}
 	})
 }
