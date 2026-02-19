@@ -108,3 +108,26 @@ func TestContactFormHandler(t *testing.T) {
 		t.Errorf("expected response body to contain 'Test Name'")
 	}
 }
+
+func TestContactPageHandler(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/contact", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Errorf("expected HTML content type, got %v", ct)
+	}
+}
+
+func TestUnknownRoute(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/does-not-exist", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %v", rr.Code)
+	}
+}

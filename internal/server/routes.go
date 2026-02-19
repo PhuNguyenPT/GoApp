@@ -71,6 +71,8 @@ func (s *Server) homePageHandler(c *gin.Context) {
 }
 
 func (s *Server) contactPageHandler(c *gin.Context) {
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
 	views.ContactPage().Render(c.Request.Context(), c.Writer)
 }
 
