@@ -27,39 +27,19 @@ run: templ-generate
 
 # Create DB container
 docker-run:
-	@if docker compose up --build 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose up --build; \
-	fi
+	@docker compose up --build
 
 # Shutdown DB container
 docker-down:
-	@if docker compose down 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose down; \
-	fi
+	@docker compose down
 
 
 docker-watch:
-	@if docker compose up watch psql --build 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose up watch psql --build; \
-	fi
+	@docker compose up watch psql frontend --build
 
 # Shutdown watch container
 docker-watch-down:
-	@if docker compose down 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose down; \
-	fi
+	@docker compose down
 
 # Test the application
 test: templ-generate
