@@ -22,15 +22,15 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 	email := c.PostForm("email")
 	subject := c.PostForm("subject")
 	message := c.PostForm("message")
-	
+
 	// Simulate processing delay (e.g., sending email, database operation)
 	time.Sleep(1 * time.Second)
-	
+
 	log.Printf("Contact form: %s (%s) - %s: %s", name, email, subject, message)
-	
+
 	if err := views.ContactSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering contact success: %v", err)
-	}	
+	}
 }
 
 func (s *Server) sitemapHandler(c *gin.Context) {

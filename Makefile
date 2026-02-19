@@ -106,4 +106,8 @@ lint-fix:
 vet:
 	@go vet ./...
 
-.PHONY: all build run test clean watch docker-run docker-down docker-watch docker-watch-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet
+# Format code
+fmt:
+	@gofmt -w .	
+
+.PHONY: all build run test clean watch docker-run docker-down docker-watch docker-watch-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt

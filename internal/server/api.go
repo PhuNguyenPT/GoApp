@@ -15,7 +15,7 @@ func (s *Server) apiInfoHandler(c *gin.Context) {
 		"message": "Go Server API",
 		"version": "0.0",
 		"endpoints": gin.H{
-			"health": "/api/health",
+			"health":    "/api/health",
 			"websocket": "/api/websocket",
 		},
 	})
