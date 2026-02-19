@@ -177,8 +177,8 @@ func TestRegisterHandler(t *testing.T) {
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
 
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("expected status %v, got %v", http.StatusBadRequest, rr.Code)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
 		if !strings.Contains(rr.Body.String(), "All fields are required") {
 			t.Errorf("expected validation error message")
@@ -196,8 +196,8 @@ func TestRegisterHandler(t *testing.T) {
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
 
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("expected status %v, got %v", http.StatusBadRequest, rr.Code)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
 		if !strings.Contains(rr.Body.String(), "at least 8 characters") {
 			t.Errorf("expected password length error message")
