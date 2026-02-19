@@ -9,6 +9,13 @@ COPY . .
 
 RUN go build -o main cmd/api/main.go
 
+FROM golang:1.25.5-alpine AS watch
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+RUN go install github.com/air-verse/air@latest
+CMD ["air", "-c", ".air.docker.toml"]
+
 FROM alpine:3.20.1 AS prod
 WORKDIR /app
 COPY --from=build /app/main /app/main

@@ -43,6 +43,24 @@ docker-down:
 		docker-compose down; \
 	fi
 
+
+docker-watch:
+	@if docker compose up watch psql --build 2>/dev/null; then \
+		: ; \
+	else \
+		echo "Falling back to Docker Compose V1"; \
+		docker-compose up watch psql --build; \
+	fi
+
+# Shutdown watch container
+docker-watch-down:
+	@if docker compose down 2>/dev/null; then \
+		: ; \
+	else \
+		echo "Falling back to Docker Compose V1"; \
+		docker-compose down; \
+	fi
+
 # Test the application
 test: templ-generate
 	@echo "Testing..."
@@ -61,7 +79,7 @@ clean:
 
 # Development with hot reload
 watch:
-	@go run github.com/air-verse/air@latest
+	@go run github.com/air-verse/air@latest -c .air.toml
 
 # Generate sqlc files
 sqlc-generate:
@@ -88,4 +106,4 @@ lint-fix:
 vet:
 	@go vet ./...
 
-.PHONY: all build run test clean watch docker-run docker-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet
+.PHONY: all build run test clean watch docker-run docker-down docker-watch docker-watch-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet
