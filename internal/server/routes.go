@@ -12,7 +12,7 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	
+
 	apiGroup := r.Group("/api")
 	apiGroup.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
@@ -36,11 +36,10 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	r.GET("/contact", s.contactPageHandler)
 	r.POST("/contact", s.contactFormHandler)
 	r.GET("/sitemap.xml", s.sitemapHandler)
-	r.GET("/robots.txt", func (c *gin.Context)  {
+	r.GET("/robots.txt", func(c *gin.Context) {
 		c.File("./frontend-template/public/robots.txt")
 	})
 	r.GET("/register", s.registerPageHandler)
-	r.POST("/register", s.registerHandler)	
+	r.POST("/register", s.registerHandler)
 	return r
 }
-

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
 	"GoApp/internal/database"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type DB interface {

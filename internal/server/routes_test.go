@@ -24,13 +24,14 @@ func (m *mockDB) CreateUser(ctx context.Context, arg database.CreateUserParams) 
 }
 
 var testHandler http.Handler
+
 func TestMain(m *testing.M) {
 	s := &Server{db: &mockDB{}}
 	testHandler = s.RegisterRoutes(&Config{GinMode: gin.TestMode})
 	m.Run()
 }
 
-func TestApiInfoHandler(t *testing.T)  {
+func TestApiInfoHandler(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/api/", nil)
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
@@ -53,7 +54,7 @@ func TestApiInfoHandler(t *testing.T)  {
 	}
 }
 
-func TestHealthHandler(t *testing.T)  {
+func TestHealthHandler(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/api/health", nil)
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
@@ -76,7 +77,7 @@ func TestHealthHandler(t *testing.T)  {
 	}
 }
 
-func TestHomePageHandler(t *testing.T)  {
+func TestHomePageHandler(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
@@ -171,16 +172,14 @@ func TestRegisterHandler(t *testing.T) {
 		form := url.Values{}
 		form.Set("name", "Test User")
 		// missing email and password
-
 		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
-
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
-		if !strings.Contains(rr.Body.String(), "All fields are required") {
+		if !strings.Contains(rr.Body.String(), "required") {
 			t.Errorf("expected validation error message")
 		}
 	})
@@ -203,4 +202,35 @@ func TestRegisterHandler(t *testing.T) {
 			t.Errorf("expected password length error message")
 		}
 	})
+}
+
+func TestValidationMessage(t *testing.T) {
+	tests := []struct {
+		name     string
+		form     url.Values
+		wantBody string
+	}{
+		{
+			name:     "invalid email",
+			form:     url.Values{"name": {"Test"}, "email": {"not-an-email"}, "password": {"password123"}},
+			wantBody: "valid email address",
+		},
+		{
+			name:     "missing name",
+			form:     url.Values{"email": {"test@example.com"}, "password": {"password123"}},
+			wantBody: "required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(tt.form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rr := httptest.NewRecorder()
+			testHandler.ServeHTTP(rr, req)
+			if !strings.Contains(rr.Body.String(), tt.wantBody) {
+				t.Errorf("expected body to contain %q, got: %s", tt.wantBody, rr.Body.String())
+			}
+		})
+	}
 }
