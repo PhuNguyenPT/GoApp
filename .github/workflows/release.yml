@@ -32,6 +32,9 @@ jobs:
       - name: Generate templ files
         run: make templ-generate
 
+      - name: Generate sqlc files
+        run: make sqlc-generate
+
       - name: Build Tailwind CSS
         run: make tailwind-build
 

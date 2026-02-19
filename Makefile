@@ -1,4 +1,5 @@
 # Simple Makefile for a Go project
+-include .env
 
 # Build the application
 all: build test
@@ -14,7 +15,7 @@ tailwind-build:
 	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css
 
 # Build the application
-build: templ-generate tailwind-build
+build: templ-generate sqlc-generate tailwind-build
 	@echo "Building Go binary..."
 	@go build -o main cmd/api/main.go
 
@@ -42,6 +43,24 @@ docker-down:
 		docker-compose down; \
 	fi
 
+
+docker-watch:
+	@if docker compose up watch psql --build 2>/dev/null; then \
+		: ; \
+	else \
+		echo "Falling back to Docker Compose V1"; \
+		docker-compose up watch psql --build; \
+	fi
+
+# Shutdown watch container
+docker-watch-down:
+	@if docker compose down 2>/dev/null; then \
+		: ; \
+	else \
+		echo "Falling back to Docker Compose V1"; \
+		docker-compose down; \
+	fi
+
 # Test the application
 test: templ-generate
 	@echo "Testing..."
@@ -60,6 +79,31 @@ clean:
 
 # Development with hot reload
 watch:
-	@go run github.com/air-verse/air@latest
+	@go run github.com/air-verse/air@latest -c .air.toml
 
-.PHONY: all build run test clean watch docker-run docker-down itest templ-generate tailwind-build
+# Generate sqlc files
+sqlc-generate:
+	@echo "Generating sqlc files..."
+	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+
+# Run goose migrations
+migrate-up:
+	@echo "Running migrations..."
+	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" up
+
+migrate-down:
+	@echo "Rolling back migration..."
+	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" down
+
+# Lint
+lint:
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+
+lint-fix:
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --fix
+
+# Static analysis
+vet:
+	@go vet ./...
+
+.PHONY: all build run test clean watch docker-run docker-down docker-watch docker-watch-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet

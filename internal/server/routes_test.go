@@ -1,6 +1,8 @@
 package server
 
 import (
+	"GoApp/internal/database"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,18 +13,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type mockDB struct {}
+type mockDB struct{}
 
 func (m *mockDB) Health() map[string]string {
-	return map[string]string{ "status": "up", "message": "It's healthy" }
+	return map[string]string{"status": "up", "message": "It's healthy"}
 }
 
-func (m *mockDB) Close() error  {
-	return nil
+func (m *mockDB) CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
+	return database.User{Name: arg.Name, Email: arg.Email}, nil
 }
 
 var testHandler http.Handler
-func TestMain(m *testing.M)  {
+func TestMain(m *testing.M) {
 	s := &Server{db: &mockDB{}}
 	testHandler = s.RegisterRoutes(&Config{GinMode: gin.TestMode})
 	m.Run()
@@ -107,4 +109,98 @@ func TestContactFormHandler(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), "Test Nam") {
 		t.Errorf("expected response body to contain 'Test Name'")
 	}
+}
+
+func TestContactPageHandler(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/contact", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Errorf("expected HTML content type, got %v", ct)
+	}
+}
+
+func TestUnknownRoute(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/does-not-exist", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %v", rr.Code)
+	}
+}
+
+func TestRegisterPageHandler(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/register", nil)
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Errorf("expected HTML content type, got %v", ct)
+	}
+}
+
+func TestRegisterHandler(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test User")
+		form.Set("email", "test@example.com")
+		form.Set("password", "password123")
+
+		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "Test User") {
+			t.Errorf("expected response to contain user name")
+		}
+	})
+
+	t.Run("missing fields", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test User")
+		// missing email and password
+
+		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "All fields are required") {
+			t.Errorf("expected validation error message")
+		}
+	})
+
+	t.Run("password too short", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test User")
+		form.Set("email", "test@example.com")
+		form.Set("password", "short")
+
+		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "at least 8 characters") {
+			t.Errorf("expected password length error message")
+		}
+	})
 }
