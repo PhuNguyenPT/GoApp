@@ -41,5 +41,7 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	})
 	r.GET("/register", s.registerPageHandler)
 	r.POST("/register", s.registerHandler)
+	r.GET("/login", s.loginPageHandler)
+	r.POST("/login", s.loginHandler)
 	return r
 }

@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
   entrypoint = "./tmp/main"
-  cmd = "go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate && go run github.com/a-h/templ/cmd/templ@latest generate && cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css && cd .. && go build -o ./tmp/main ./cmd/api/main.go"
+  cmd = "go build -o ./tmp/main ./cmd/api/main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules", "frontend"]
   exclude_file = ["output.css"]

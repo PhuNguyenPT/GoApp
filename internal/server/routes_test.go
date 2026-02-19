@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type mockDB struct{}
@@ -21,6 +22,15 @@ func (m *mockDB) Health() map[string]string {
 
 func (m *mockDB) CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
 	return database.User{Name: arg.Name, Email: arg.Email}, nil
+}
+
+func (m *mockDB) GetUserByEmail(ctx context.Context, email string) (database.User, error) {
+    hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+    return database.User{
+        Name:         "Test User",
+        Email:        email,
+        PasswordHash: string(hash),
+    }, nil
 }
 
 var testHandler http.Handler
@@ -233,4 +243,63 @@ func TestValidationMessage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLoginPageHandler(t *testing.T) {
+    req, _ := http.NewRequest(http.MethodGet, "/login", nil)
+    rr := httptest.NewRecorder()
+    testHandler.ServeHTTP(rr, req)
+
+    if rr.Code != http.StatusOK {
+        t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+    }
+    if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+        t.Errorf("expected HTML content type, got %v", ct)
+    }
+}
+
+func TestLoginHandler(t *testing.T) {
+    t.Run("success", func(t *testing.T) {
+        form := url.Values{}
+        form.Set("email", "test@example.com")
+        form.Set("password", "password123")
+
+        req, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+        req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+        rr := httptest.NewRecorder()
+        testHandler.ServeHTTP(rr, req)
+
+        if rr.Code != http.StatusOK {
+            t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+        }
+    })
+
+    t.Run("missing fields", func(t *testing.T) {
+        form := url.Values{}
+        form.Set("email", "test@example.com")
+
+        req, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+        req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+        rr := httptest.NewRecorder()
+        testHandler.ServeHTTP(rr, req)
+
+        if !strings.Contains(rr.Body.String(), "Invalid email or password") {
+            t.Errorf("expected error message")
+        }
+    })
+
+    t.Run("invalid email", func(t *testing.T) {
+        form := url.Values{}
+        form.Set("email", "not-an-email")
+        form.Set("password", "password123")
+
+        req, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+        req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+        rr := httptest.NewRecorder()
+        testHandler.ServeHTTP(rr, req)
+
+        if !strings.Contains(rr.Body.String(), "Invalid email or password") {
+            t.Errorf("expected error message")
+        }
+    })
 }
