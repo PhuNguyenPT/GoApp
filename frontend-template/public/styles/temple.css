@@ -1,13 +1,5 @@
 @source "../../../internal/views";
 
-.hidden {
-    display: none;
-}
-
-.dropdown-item:hover {
-    background-color: #f9fafb;
-}
-
 /* HTMX loading indicator - hidden by default */
 .htmx-indicator {
 	display: none;
