@@ -9,7 +9,9 @@ import (
 	"github.com/coder/websocket"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 
+	"GoApp/internal/database"
 	"GoApp/internal/views"
 )
 
@@ -75,30 +77,45 @@ func (s *Server) registerPageHandler(c *gin.Context) {
 }
 
 func (s *Server) registerHandler(c *gin.Context) {
-	name := c.PostForm("name")
-	email := c.PostForm("email")
-	password := c.PostForm("password")
+    // helper to reduce repetition
+    renderError := func(msg string) {
+        c.Status(http.StatusOK)
+        c.Header("Content-Type", "text/html; charset=utf-8")
+        views.RegisterError(msg).Render(c.Request.Context(), c.Writer)
+    }
 
-	if name == "" || email == "" || password == "" {
-		c.Status(http.StatusBadRequest)
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		views.RegisterError("All fields are required.").Render(c.Request.Context(), c.Writer)
-		return
-	}
+    name := c.PostForm("name")
+    email := c.PostForm("email")
+    password := c.PostForm("password")
 
-	if len(password) < 8 {
-		c.Status(http.StatusBadRequest)
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		views.RegisterError("Password must be at least 8 characters.").Render(c.Request.Context(), c.Writer)
-		return
-	}
+    if name == "" || email == "" || password == "" {
+        renderError("All fields are required.")
+        return
+    }
+    if len(password) < 8 {
+        renderError("Password must be at least 8 characters.")
+        return
+    }
 
-	// TODO: hash password and save user via s.db
-	log.Printf("Register: %s (%s)", name, email)
+    hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    if err != nil {
+        renderError("Something went wrong, please try again.")
+        return
+    }
 
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	views.RegisterSuccess(name).Render(c.Request.Context(), c.Writer)
+    _, err = s.db.CreateUser(c.Request.Context(), database.CreateUserParams{
+        Name:         name,
+        Email:        email,
+        PasswordHash: string(hash),
+    })
+    if err != nil {
+        renderError("Email already in use.")
+        return
+    }
+
+    c.Status(http.StatusOK)
+    c.Header("Content-Type", "text/html; charset=utf-8")
+    views.RegisterSuccess(name).Render(c.Request.Context(), c.Writer)
 }
 
 func (s *Server) RegisterRoutes(cfg *Config) http.Handler {

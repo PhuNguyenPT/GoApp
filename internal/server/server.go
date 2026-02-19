@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -14,14 +15,20 @@ import (
 
 type DB interface {
 	Health() map[string]string
+	CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error)
 }
 
 type sqlDB struct {
-	raw *sql.DB
+	raw     *sql.DB
+	queries *database.Queries
 }
 
 func (s *sqlDB) Health() map[string]string {
 	return database.Health(s.raw)
+}
+
+func (s *sqlDB) CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
+	return s.queries.CreateUser(ctx, arg)
 }
 
 type Server struct {
@@ -57,7 +64,10 @@ func NewServer() *http.Server {
 
 	s := &Server{
 		port: port,
-		db:   &sqlDB{raw: raw},
+		db: &sqlDB{
+			raw:     raw,
+			queries: database.New(raw),
+		},
 	}
 
 	return &http.Server{

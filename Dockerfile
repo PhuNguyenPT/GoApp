@@ -11,6 +11,9 @@ RUN go build -o main cmd/api/main.go
 
 FROM golang:1.25.5-alpine AS watch
 WORKDIR /app
+
+RUN apk add --no-cache nodejs npm
+
 COPY go.mod go.sum ./
 RUN go mod download
 RUN go install github.com/air-verse/air@latest
