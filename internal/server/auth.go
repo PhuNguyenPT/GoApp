@@ -7,8 +7,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var validate = validator.New()
+
+type RegisterInput struct {
+    Name     string `form:"name"     validate:"required"`
+    Email    string `form:"email"    validate:"required,email"`
+    Password string `form:"password" validate:"required,min=8"`
+}
 
 func (s *Server) registerPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
@@ -18,6 +27,18 @@ func (s *Server) registerPageHandler(c *gin.Context) {
 	}
 }
 
+func validationMessage(e validator.FieldError) string {
+    switch e.Tag() {
+    case "required":
+        return e.Field() + " is required."
+    case "email":
+        return "Please enter a valid email address."
+    case "min":
+        return e.Field() + " must be at least " + e.Param() + " characters."
+    default:
+        return "Invalid input."
+    }
+}
 
 func (s *Server) registerHandler(c *gin.Context) {
     // helper to reduce repetition
@@ -29,28 +50,26 @@ func (s *Server) registerHandler(c *gin.Context) {
 		}
     }
 
-    name := c.PostForm("name")
-    email := c.PostForm("email")
-    password := c.PostForm("password")
-
-    if name == "" || email == "" || password == "" {
+    var input RegisterInput
+    if err := c.ShouldBind(&input); err != nil {
         renderError("All fields are required.")
         return
     }
-    if len(password) < 8 {
-        renderError("Password must be at least 8 characters.")
+    if err := validate.Struct(input); err != nil {
+        errs := err.(validator.ValidationErrors)
+        renderError(validationMessage(errs[0]))
         return
     }
 
-    hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
     if err != nil {
         renderError("Something went wrong, please try again.")
         return
     }
 
     _, err = s.db.CreateUser(c.Request.Context(), database.CreateUserParams{
-        Name:         name,
-        Email:        email,
+        Name:         input.Name,
+        Email:        input.Email,
         PasswordHash: string(hash),
     })
     if err != nil {
@@ -60,7 +79,7 @@ func (s *Server) registerHandler(c *gin.Context) {
 
     c.Status(http.StatusOK)
     c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.RegisterSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.RegisterSuccess(input.Name).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering register success: %v", err)
 	}
 }
