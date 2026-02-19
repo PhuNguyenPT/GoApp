@@ -1,126 +1,11 @@
 package server
 
 import (
-	"fmt"
-	"log"
 	"net/http"
-	"time"
 
-	"github.com/coder/websocket"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
-
-	"GoApp/internal/database"
-	"GoApp/internal/views"
 )
-
-
-func (s *Server) sitemapHandler(c *gin.Context) {
-	c.Header("Content-Type", "application/xml")
-	c.File("./frontend-template/public/sitemap.xml")
-}
-
-func (s *Server) apiInfoHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Go Server API",
-		"version": "0.0",
-		"endpoints": gin.H{
-			"health": "/api/health",
-			"websocket": "/api/websocket",
-		},
-	})
-}
-
-func (s *Server) homePageHandler(c *gin.Context) {
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.HomePage().Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering home page: %v", err)
-	}
-}
-
-func (s *Server) contactPageHandler(c *gin.Context) {
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.ContactPage().Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering contact page: %v", err)
-	}
-}
-
-func (s *Server) contactFormHandler(c *gin.Context) {
-	name := c.PostForm("name")
-	email := c.PostForm("email")
-	subject := c.PostForm("subject")
-	message := c.PostForm("message")
-	
-	// Simulate processing delay (e.g., sending email, database operation)
-	time.Sleep(1 * time.Second)
-	
-	log.Printf("Contact form: %s (%s) - %s: %s", name, email, subject, message)
-	
-	if err := views.ContactSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering contact success: %v", err)
-	}	
-}
-
-func (s *Server) healthHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, s.db.Health())
-}
-
-func (s *Server) registerPageHandler(c *gin.Context) {
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.RegisterPage().Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering register page: %v", err)
-	}
-}
-
-func (s *Server) registerHandler(c *gin.Context) {
-    // helper to reduce repetition
-    renderError := func(msg string) {
-        c.Status(http.StatusOK)
-        c.Header("Content-Type", "text/html; charset=utf-8")
-        if err := views.RegisterError(msg).Render(c.Request.Context(), c.Writer); err != nil {
-			log.Printf("error rendering register error: %v", err)
-		}
-    }
-
-    name := c.PostForm("name")
-    email := c.PostForm("email")
-    password := c.PostForm("password")
-
-    if name == "" || email == "" || password == "" {
-        renderError("All fields are required.")
-        return
-    }
-    if len(password) < 8 {
-        renderError("Password must be at least 8 characters.")
-        return
-    }
-
-    hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-    if err != nil {
-        renderError("Something went wrong, please try again.")
-        return
-    }
-
-    _, err = s.db.CreateUser(c.Request.Context(), database.CreateUserParams{
-        Name:         name,
-        Email:        email,
-        PasswordHash: string(hash),
-    })
-    if err != nil {
-        renderError("Email already in use.")
-        return
-    }
-
-    c.Status(http.StatusOK)
-    c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.RegisterSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering register success: %v", err)
-	}
-}
 
 func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	gin.SetMode(cfg.GinMode)
@@ -159,29 +44,3 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	return r
 }
 
-func (s *Server) websocketHandler(c *gin.Context) {
-	w := c.Writer
-	r := c.Request
-	socket, err := websocket.Accept(w, r, nil)
-
-	if err != nil {
-		log.Printf("could not open websocket: %v", err)
-		_, _ = w.Write([]byte("could not open websocket"))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	defer socket.Close(websocket.StatusGoingAway, "server closing websocket")
-
-	ctx := r.Context()
-	socketCtx := socket.CloseRead(ctx)
-
-	for {
-		payload := fmt.Sprintf("server timestamp: %d", time.Now().UnixNano())
-		err := socket.Write(socketCtx, websocket.MessageText, []byte(payload))
-		if err != nil {
-			break
-		}
-		time.Sleep(time.Second * 2)
-	}
-}
