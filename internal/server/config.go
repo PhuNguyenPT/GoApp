@@ -6,9 +6,15 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+const (
+	EnvDev        = "dev"
+	EnvProduction = "production"
+	EnvTest       = "test"
+)
+
 type Config struct {
 	Port       string `validate:"required"`
-	AppEnv     string `validate:"required"`
+	AppEnv     string `validate:"required,oneof=dev production test"`
 	GinMode    string `validate:"required,oneof=debug release test"`
 	DBHost     string `validate:"required"`
 	DBPort     string `validate:"required,numeric"`

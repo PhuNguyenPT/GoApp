@@ -20,7 +20,7 @@ func setEnv(t *testing.T, env map[string]string) {
 
 var validEnv = map[string]string{
 	"PORT":              "8080",
-	"APP_ENV":           "development",
+	"APP_ENV":           "test",
 	"GIN_MODE":          "debug",
 	"POSTGRES_HOST":     "localhost",
 	"POSTGRES_PORT":     "5432",
