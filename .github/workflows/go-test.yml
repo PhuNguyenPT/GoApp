@@ -18,6 +18,16 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+                        
       - name: Install dependencies
         run: npm ci --prefix ./frontend-template
 
@@ -25,7 +35,7 @@ jobs:
         run: |
           make sqlc-generate
           make templ-generate
-                  
+
       - name: Vet
         run: make vet
 
