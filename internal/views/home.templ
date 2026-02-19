@@ -1,6 +1,6 @@
 package views
 
-templ HomePage() {
+templ HomePage(userName string) {
 	<!DOCTYPE html>
 	<html lang="en">
 	@Head(SEOMeta{
@@ -11,7 +11,7 @@ templ HomePage() {
 		OGImage: "https://yourdomain.com/public/og-image.png",
 	})
 	<body class="min-h-screen bg-gray-50 flex flex-col">
-		@Header("home", false)
+		@Header("home", userName)
 
 		<main class="flex-1">
 			<div class="max-w-4xl mx-auto px-8 py-12">

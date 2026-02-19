@@ -1,7 +1,7 @@
 // internal/views/register.templ
 package views
 
-templ RegisterPage() {
+templ RegisterPage(userName string) {
 	<!DOCTYPE html>
 	<html lang="en">
 	@Head(SEOMeta{
@@ -9,7 +9,7 @@ templ RegisterPage() {
 		Description: "Create a new account",
 	})
 	<body class="min-h-screen bg-gray-50 flex flex-col">
-		@Header("register", false)
+		@Header("register", userName)
 
 		<main class="flex-1 flex items-center justify-center py-12">
 			<div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">

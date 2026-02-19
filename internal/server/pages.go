@@ -13,7 +13,7 @@ import (
 func (s *Server) contactPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.ContactPage().Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.ContactPage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering contact page: %v", err)
 	}
 }
@@ -42,7 +42,7 @@ func (s *Server) sitemapHandler(c *gin.Context) {
 func (s *Server) homePageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.HomePage().Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.HomePage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering home page: %v", err)
 	}
 }

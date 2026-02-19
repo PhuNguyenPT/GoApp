@@ -12,7 +12,7 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-
+	r.Use(s.resolveUserMiddleware())
 	apiGroup := r.Group("/api")
 	apiGroup.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},

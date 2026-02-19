@@ -1,17 +1,21 @@
 package views
 
-templ Header(currentPage string, loggedIn bool) {
+templ Header(currentPage string, userName string) {
     <header class="bg-white shadow-sm">
         <div class="max-w-4xl mx-auto px-8 py-4">
             <nav class="flex items-center justify-between">
                 <h1 class="text-2xl font-bold text-gray-900">GoApp</h1>
-                <div class="space-x-6">
+                <div class="flex items-center space-x-6">
                     <a href="/" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "home"), templ.KV("text-gray-600", currentPage != "home") }>Home</a>
                     <a href="/contact" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "contact"), templ.KV("text-gray-600", currentPage != "contact") }>Contact</a>
-                    if loggedIn {
-                        <a href="/dashboard" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "dashboard"), templ.KV("text-gray-600", currentPage != "dashboard") }>Dashboard</a>
-                        <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-semibold">Sign Out</a>
-                    } else {
+					if userName != "" {
+						<a href="/dashboard">
+							<div style="width:36px; height:36px; border-radius:50%; background:#2563eb; color:white; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; text-transform:uppercase; cursor:pointer;">
+								{ string([]rune(userName)[0:1]) }
+							</div>
+						</a>
+						<a href="/logout" class="text-sm text-red-600 hover:underline">Sign out</a>
+					} else {
                         <a href="/login" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "login"), templ.KV("text-gray-600", currentPage != "login") }>Sign In</a>
                         <a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Get Started</a>
                     }
