@@ -19,7 +19,13 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm ci --prefix ./frontend-template          
+        run: npm ci --prefix ./frontend-template
+
+      - name: Vet
+        run: make vet
+
+      - name: Lint
+        run: make lint
 
       - name: Build and Test
         run: make all

@@ -17,9 +17,9 @@ func (m *mockDB) Health() map[string]string {
 	return map[string]string{ "status": "up", "message": "It's healthy" }
 }
 
-func (m *mockDB) Close() error  {
-	return nil
-}
+func (m *mockDB) Close() error  { return nil }
+
+func (m *mockDB) Migrate() error { return nil }
 
 var testHandler http.Handler
 func TestMain(m *testing.M)  {

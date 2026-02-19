@@ -14,7 +14,6 @@ import (
 
 type Server struct {
 	port int
-
 	db database.Service
 }
 
@@ -51,5 +50,8 @@ func NewServer() *http.Server {
 		WriteTimeout: 30 * time.Second,
 	}
 
+	if err := NewServer.db.Migrate(); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}	
 	return server
 }

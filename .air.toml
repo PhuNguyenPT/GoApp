@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   entrypoint = "./main"
-  cmd = "go run github.com/a-h/templ/cmd/templ@latest generate && cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css && cd .. && go build -o ./main ./cmd/api/main.go"
+  cmd = "go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate && go run github.com/a-h/templ/cmd/templ@latest generate && cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css && cd .. && go build -o ./main ./cmd/api/main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules", "frontend"]
   exclude_file = ["output.css"]
@@ -14,7 +14,7 @@ tmp_dir = "tmp"
   follow_symlink = false
   full_bin = ""
   include_dir = ["internal", "cmd", "frontend-template/public/styles"]
-  include_ext = ["go", "templ", "css"]
+  include_ext = ["go", "templ", "css", "sql"]
   include_file = []
   kill_delay = "0s"
   log = "build-errors.log"

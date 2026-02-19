@@ -3,12 +3,14 @@ package database
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 type DBConfig struct {
@@ -21,13 +23,14 @@ type DBConfig struct {
 }
 // Service represents a service that interacts with a database.
 type Service interface {
+	// Close terminates the database connection.
+	// It returns an error if the connection cannot be closed.
+	Close() error	
 	// Health returns a map of health status information.
 	// The keys and values in the map are service-specific.
 	Health() map[string]string
 
-	// Close terminates the database connection.
-	// It returns an error if the connection cannot be closed.
-	Close() error
+	Migrate() error
 }
 
 type service struct {
@@ -112,4 +115,18 @@ func (s *service) Health() map[string]string {
 func (s *service) Close() error {
 	log.Printf("Disconnected from database: %s", s.cfg.Database)
 	return s.db.Close()
+}
+
+//go:embed migrations
+var migrations embed.FS
+
+func (s *service) Migrate() error {
+    if err := goose.SetDialect("postgres"); err != nil {
+        return fmt.Errorf("failed to set dialect: %w", err)
+    }
+    goose.SetBaseFS(migrations)
+    if err := goose.Up(s.db, "migrations"); err != nil {
+        return fmt.Errorf("failed to run migrations: %w", err)
+    }
+    return nil
 }
