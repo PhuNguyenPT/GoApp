@@ -7,7 +7,11 @@ all: build test
 # Generate templ files
 templ-generate:
 	@echo "Generating templ files..."
-	@go run github.com/a-h/templ/cmd/templ@latest generate
+	@if command -v templ > /dev/null 2>&1; then \
+		templ generate; \
+	else \
+		go run github.com/a-h/templ/cmd/templ@latest generate; \
+	fi
 
 # Build Tailwind CSS
 tailwind-build:
@@ -59,12 +63,20 @@ clean:
 
 # Development with hot reload
 watch:
-	@go run github.com/air-verse/air@latest -c .air.toml
+	@if command -v air > /dev/null 2>&1; then \
+		air -c .air.toml; \
+	else \
+		go run github.com/air-verse/air@latest -c .air.toml; \
+	fi
 
 # Generate sqlc files
 sqlc-generate:
 	@echo "Generating sqlc files..."
-	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	@if command -v sqlc > /dev/null 2>&1; then \
+		sqlc generate; \
+	else \
+		go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate; \
+	fi
 
 # Run goose migrations
 migrate-up:

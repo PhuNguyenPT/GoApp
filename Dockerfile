@@ -18,9 +18,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY frontend-template/package*.json ./frontend-template/
-RUN cd frontend-template && npm ci 
+RUN cd frontend-template && npm ci
 
 RUN go install github.com/air-verse/air@latest
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+RUN go install github.com/a-h/templ/cmd/templ@latest
+
 CMD ["air", "-c", ".air.docker.toml"]
 
 FROM alpine:3.20.1 AS prod
