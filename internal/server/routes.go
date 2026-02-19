@@ -67,13 +67,17 @@ func (s *Server) apiInfoHandler(c *gin.Context) {
 func (s *Server) homePageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	views.HomePage().Render(c.Request.Context(), c.Writer)
+	if err := views.HomePage().Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering home page: %v", err)
+	}
 }
 
 func (s *Server) contactPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	views.ContactPage().Render(c.Request.Context(), c.Writer)
+	if err := views.ContactPage().Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering contact page: %v", err)
+	}
 }
 
 func (s *Server) contactFormHandler(c *gin.Context) {
@@ -87,7 +91,9 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 	
 	log.Printf("Contact form: %s (%s) - %s: %s", name, email, subject, message)
 	
-	views.ContactSuccess(name).Render(c.Request.Context(), c.Writer)
+	if err := views.ContactSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering contact success: %v", err)
+	}	
 }
 
 func (s *Server) healthHandler(c *gin.Context) {

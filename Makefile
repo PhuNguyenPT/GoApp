@@ -1,4 +1,5 @@
 # Simple Makefile for a Go project
+-include .env
 
 # Build the application
 all: build test
@@ -14,7 +15,7 @@ tailwind-build:
 	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css
 
 # Build the application
-build: templ-generate tailwind-build
+build: templ-generate sqlc-generate tailwind-build
 	@echo "Building Go binary..."
 	@go build -o main cmd/api/main.go
 
@@ -62,4 +63,29 @@ clean:
 watch:
 	@go run github.com/air-verse/air@latest
 
-.PHONY: all build run test clean watch docker-run docker-down itest templ-generate tailwind-build
+# Generate sqlc files
+sqlc-generate:
+	@echo "Generating sqlc files..."
+	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+
+# Run goose migrations
+migrate-up:
+	@echo "Running migrations..."
+	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" up
+
+migrate-down:
+	@echo "Rolling back migration..."
+	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" down
+
+# Lint
+lint:
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+
+lint-fix:
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --fix
+
+# Static analysis
+vet:
+	@go vet ./...
+
+.PHONY: all build run test clean watch docker-run docker-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet
