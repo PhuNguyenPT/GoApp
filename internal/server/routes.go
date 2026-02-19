@@ -81,7 +81,9 @@ func (s *Server) registerHandler(c *gin.Context) {
     renderError := func(msg string) {
         c.Status(http.StatusOK)
         c.Header("Content-Type", "text/html; charset=utf-8")
-        views.RegisterError(msg).Render(c.Request.Context(), c.Writer)
+        if err := views.RegisterError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering register error: %v", err)
+		}
     }
 
     name := c.PostForm("name")
@@ -115,7 +117,9 @@ func (s *Server) registerHandler(c *gin.Context) {
 
     c.Status(http.StatusOK)
     c.Header("Content-Type", "text/html; charset=utf-8")
-    views.RegisterSuccess(name).Render(c.Request.Context(), c.Writer)
+	if err := views.RegisterSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering register success: %v", err)
+	}
 }
 
 func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
