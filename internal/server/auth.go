@@ -83,3 +83,53 @@ func (s *Server) registerHandler(c *gin.Context) {
 		log.Printf("error rendering register success: %v", err)
 	}
 }
+
+type LoginInput struct {
+	Email    string `form:"email"    validate:"required,email"`
+	Password string `form:"password" validate:"required"`
+}
+
+func (s *Server) loginPageHandler(c *gin.Context) {
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.LoginPage().Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering login page: %v", err)
+	}
+}
+
+func (s *Server) loginHandler(c *gin.Context) {
+	renderError := func(msg string) {
+		c.Status(http.StatusOK)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		if err := views.LoginError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering login error: %v", err)
+		}
+	}
+
+	var input LoginInput
+	if err := c.ShouldBind(&input); err != nil {
+		renderError("All fields are required.")
+		return
+	}
+	if err := validate.Struct(input); err != nil {
+		renderError("Invalid email or password.")
+		return
+	}
+
+	user, err := s.db.GetUserByEmail(c.Request.Context(), input.Email)
+	if err != nil {
+		renderError("Invalid email or password.")
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		renderError("Invalid email or password.")
+		return
+	}
+
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.LoginSuccess(user.Name).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering login success: %v", err)
+	}
+}

@@ -16,6 +16,7 @@ import (
 type DB interface {
 	Health() map[string]string
 	CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error)
+	GetUserByEmail(ctx context.Context, email string) (database.User, error)
 }
 
 type sqlDB struct {
@@ -29,6 +30,10 @@ func (s *sqlDB) Health() map[string]string {
 
 func (s *sqlDB) CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error) {
 	return s.queries.CreateUser(ctx, arg)
+}
+
+func (s *sqlDB) GetUserByEmail(ctx context.Context, email string) (database.User, error) {
+	return s.queries.GetUserByEmail(ctx, email)
 }
 
 type Server struct {
