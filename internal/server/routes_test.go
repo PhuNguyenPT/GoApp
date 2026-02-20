@@ -15,7 +15,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type mockDB struct{}
+type mockDB struct {
+	deleteExpiredSessionsCalled int
+}
 
 func (m *mockDB) Health() map[string]string {
 	return map[string]string{"status": "up", "message": "It's healthy"}
@@ -47,6 +49,11 @@ func (m *mockDB) GetSessionByToken(ctx context.Context, token string) (database.
 }
 
 func (m *mockDB) DeleteSession(ctx context.Context, token string) error {
+	return nil
+}
+
+func (m *mockDB) DeleteExpiredSessions(ctx context.Context) error {
+	m.deleteExpiredSessionsCalled++
 	return nil
 }
 

@@ -23,6 +23,7 @@ type DB interface {
 	CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error)
 	GetSessionByToken(ctx context.Context, token string) (database.Session, error)
 	DeleteSession(ctx context.Context, token string) error
+	DeleteExpiredSessions(ctx context.Context) error
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -55,6 +56,10 @@ func (s *sqlDB) GetSessionByToken(ctx context.Context, token string) (database.S
 
 func (s *sqlDB) DeleteSession(ctx context.Context, token string) error {
 	return s.queries.DeleteSession(ctx, token)
+}
+
+func (s *sqlDB) DeleteExpiredSessions(ctx context.Context) error {
+	return s.queries.DeleteExpiredSessions(ctx)
 }
 
 type Server struct {
@@ -98,6 +103,7 @@ func NewServer() *http.Server {
 		cfg: cfg,
 	}
 
+	s.StartSessionCleanup(context.Background(), 1*time.Hour)
 	return &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.port),
 		Handler:      s.RegisterRoutes(cfg),
