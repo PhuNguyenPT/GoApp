@@ -14,20 +14,26 @@ import (
 
 const createSession = `-- name: CreateSession :one
 
-INSERT INTO sessions (user_id, token, expires_at)
-VALUES ($1, $2, $3)
-RETURNING id, user_id, token, expires_at, created_at
+INSERT INTO sessions (user_id, token, expires_at, user_agent)
+VALUES ($1, $2, $3, $4)
+RETURNING id, user_id, token, expires_at, created_at, user_agent
 `
 
 type CreateSessionParams struct {
 	UserID    uuid.UUID
 	Token     string
 	ExpiresAt time.Time
+	UserAgent string
 }
 
 // internal/database/queries/sessions.sql
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
-	row := q.db.QueryRowContext(ctx, createSession, arg.UserID, arg.Token, arg.ExpiresAt)
+	row := q.db.QueryRowContext(ctx, createSession,
+		arg.UserID,
+		arg.Token,
+		arg.ExpiresAt,
+		arg.UserAgent,
+	)
 	var i Session
 	err := row.Scan(
 		&i.ID,
@@ -35,6 +41,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.Token,
 		&i.ExpiresAt,
 		&i.CreatedAt,
+		&i.UserAgent,
 	)
 	return i, err
 }
@@ -69,8 +76,43 @@ func (q *Queries) DeleteUserSessions(ctx context.Context, userID uuid.UUID) erro
 	return err
 }
 
+const getActiveSessionsByUserID = `-- name: GetActiveSessionsByUserID :many
+SELECT id, user_id, token, expires_at, created_at, user_agent FROM sessions
+WHERE user_id = $1 AND expires_at > NOW()
+`
+
+func (q *Queries) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]Session, error) {
+	rows, err := q.db.QueryContext(ctx, getActiveSessionsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Session
+	for rows.Next() {
+		var i Session
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Token,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.UserAgent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSessionByToken = `-- name: GetSessionByToken :one
-SELECT id, user_id, token, expires_at, created_at FROM sessions
+SELECT id, user_id, token, expires_at, created_at, user_agent FROM sessions
 WHERE token = $1 AND expires_at > NOW()
 `
 
@@ -83,6 +125,7 @@ func (q *Queries) GetSessionByToken(ctx context.Context, token string) (Session,
 		&i.Token,
 		&i.ExpiresAt,
 		&i.CreatedAt,
+		&i.UserAgent,
 	)
 	return i, err
 }

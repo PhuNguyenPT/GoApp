@@ -4,6 +4,7 @@ import (
 	"GoApp/internal/views"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -47,6 +48,14 @@ func (s *Server) homePageHandler(c *gin.Context) {
 	}
 }
 
+func maskEmail(email string) string {
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 || len(parts[0]) <= 1 {
+		return "***@" + parts[1]
+	}
+	return string(parts[0][0]) + "***@" + parts[1]
+}
+
 func (s *Server) dashboardPageHandler(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 
@@ -56,9 +65,14 @@ func (s *Server) dashboardPageHandler(c *gin.Context) {
 		return
 	}
 
+	sessions, err := s.db.GetActiveSessionsByUserID(c.Request.Context(), userID)
+	if err != nil {
+		sessions = nil
+	}
+
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardPage(user.Name).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.CreatedAt, len(sessions)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard: %v", err)
 	}
 }
