@@ -47,8 +47,8 @@ services:
       POSTGRES_SCHEMA: ${POSTGRES_SCHEMA}
     volumes:
       - .:/app
-      - /app/tmp
-      - /app/frontend-template/node_modules
+      - air_tmp:/tmp/air
+      - frontend_node_modules:/app/frontend-template/node_modules
     depends_on:
       psql:
         condition: service_healthy
@@ -98,5 +98,8 @@ services:
 
 volumes:
   psql_volume:
+  frontend_node_modules:
+  air_tmp:
+
 networks:
   app-network:
