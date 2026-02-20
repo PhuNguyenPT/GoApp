@@ -84,6 +84,7 @@ func (s *Server) registerHandler(c *gin.Context) {
 		UserID:    user.ID,
 		Token:     token,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
+		UserAgent: c.Request.UserAgent(),
 	})
 	if err != nil {
 		renderError("Something went wrong, please try again.")
@@ -143,6 +144,7 @@ func (s *Server) loginHandler(c *gin.Context) {
 		UserID:    user.ID,
 		Token:     token,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
+		UserAgent: c.Request.UserAgent(),
 	})
 	if err != nil {
 		renderError("Something went wrong, please try again.")

@@ -57,6 +57,12 @@ func (m *mockDB) DeleteExpiredSessions(ctx context.Context) error {
 	return nil
 }
 
+func (m *mockDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]database.Session, error) {
+	return []database.Session{
+		{UserAgent: "Mozilla/5.0 Test Browser"},
+	}, nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {
@@ -365,6 +371,26 @@ func TestLoginHandler(t *testing.T) {
 	})
 }
 
+func TestMaskEmail(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"user@example.com", "u***@example.com"},
+		{"a@example.com", "***@example.com"},   // single char local part
+		{"@example.com", "***@example.com"},    // empty local part
+		{"ab@example.com", "a***@example.com"}, // two char local part
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := maskEmail(tt.input)
+			if got != tt.want {
+				t.Errorf("maskEmail(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDashboardPageHandler(t *testing.T) {
 	t.Run("unauthenticated redirects to login", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/dashboard", nil)
@@ -390,6 +416,13 @@ func TestDashboardPageHandler(t *testing.T) {
 		}
 		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
 			t.Errorf("expected HTML content type, got %v", ct)
+		}
+		// mockDB returns "test@example.com" → masked to "t***@example.com"
+		if !strings.Contains(rr.Body.String(), "t***@example.com") {
+			t.Errorf("expected masked email in dashboard body")
+		}
+		if !strings.Contains(rr.Body.String(), "1") {
+			t.Errorf("expected active session count in dashboard body")
 		}
 	})
 }

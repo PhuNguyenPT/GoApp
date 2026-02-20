@@ -24,6 +24,7 @@ type DB interface {
 	GetSessionByToken(ctx context.Context, token string) (database.Session, error)
 	DeleteSession(ctx context.Context, token string) error
 	DeleteExpiredSessions(ctx context.Context) error
+	GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]database.Session, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -60,6 +61,10 @@ func (s *sqlDB) DeleteSession(ctx context.Context, token string) error {
 
 func (s *sqlDB) DeleteExpiredSessions(ctx context.Context) error {
 	return s.queries.DeleteExpiredSessions(ctx)
+}
+
+func (s *sqlDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]database.Session, error) {
+	return s.queries.GetActiveSessionsByUserID(ctx, userID)
 }
 
 type Server struct {

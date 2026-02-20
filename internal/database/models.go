@@ -16,6 +16,7 @@ type Session struct {
 	Token     string
 	ExpiresAt time.Time
 	CreatedAt time.Time
+	UserAgent string
 }
 
 type User struct {
