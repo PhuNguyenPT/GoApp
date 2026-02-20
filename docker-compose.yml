@@ -1,5 +1,6 @@
 services:
   app:
+    profiles: ["prod"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -25,6 +26,7 @@ services:
       - app-network
 
   watch:
+    profiles: ["dev"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -54,6 +56,7 @@ services:
       - app-network
 
   frontend:
+    profiles: ["prod", "dev"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -62,13 +65,15 @@ services:
     env_file:
       - .env
     depends_on:
-      - app
+      psql:
+        condition: service_healthy
     ports:
-      - 5173:5173
+      - 5173:80
     networks:
       - app-network
 
   psql:
+    profiles: ["prod", "dev"]
     image: postgres:${POSTGRES_VERSION}
     restart: unless-stopped
     env_file:

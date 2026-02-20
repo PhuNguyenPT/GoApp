@@ -29,21 +29,21 @@ run: templ-generate
 	@npm install --prefer-offline --no-fund --prefix ./frontend
 	@npm run dev --prefix ./frontend
 
-# Create DB container
-docker-run:
-	@docker compose up --build
-
-# Shutdown DB container
-docker-down:
-	@docker compose down
-
-
+# Run with watch profile (dev)
 docker-watch:
-	@docker compose up watch psql frontend --build
+	@docker compose --profile dev up --build
 
-# Shutdown watch container
+# Shutdown watch
 docker-watch-down:
-	@docker compose down
+	@docker compose --profile dev down
+
+# Run with prod profile
+docker-prod:
+	@docker compose --profile prod up --build
+
+# Shutdown prod
+docker-prod-down:
+	@docker compose --profile prod down
 
 # Test the application
 test: templ-generate
@@ -102,4 +102,4 @@ vet:
 fmt:
 	@gofmt -w .	
 
-.PHONY: all build run test clean watch docker-run docker-down docker-watch docker-watch-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
+.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
