@@ -7,7 +7,11 @@ all: build test
 # Generate templ files
 templ-generate:
 	@echo "Generating templ files..."
-	@go run github.com/a-h/templ/cmd/templ@latest generate
+	@if command -v templ > /dev/null 2>&1; then \
+		templ generate; \
+	else \
+		go run github.com/a-h/templ/cmd/templ@latest generate; \
+	fi
 
 # Build Tailwind CSS
 tailwind-build:
@@ -25,41 +29,21 @@ run: templ-generate
 	@npm install --prefer-offline --no-fund --prefix ./frontend
 	@npm run dev --prefix ./frontend
 
-# Create DB container
-docker-run:
-	@if docker compose up --build 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose up --build; \
-	fi
-
-# Shutdown DB container
-docker-down:
-	@if docker compose down 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose down; \
-	fi
-
-
+# Run with watch profile (dev)
 docker-watch:
-	@if docker compose up watch psql --build 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose up watch psql --build; \
-	fi
+	@docker compose --profile dev up --build
 
-# Shutdown watch container
+# Shutdown watch
 docker-watch-down:
-	@if docker compose down 2>/dev/null; then \
-		: ; \
-	else \
-		echo "Falling back to Docker Compose V1"; \
-		docker-compose down; \
-	fi
+	@docker compose --profile dev down
+
+# Run with prod profile
+docker-prod:
+	@docker compose --profile prod up --build
+
+# Shutdown prod
+docker-prod-down:
+	@docker compose --profile prod down
 
 # Test the application
 test: templ-generate
@@ -79,12 +63,20 @@ clean:
 
 # Development with hot reload
 watch:
-	@go run github.com/air-verse/air@latest -c .air.toml
+	@if command -v air > /dev/null 2>&1; then \
+		air -c .air.toml; \
+	else \
+		go run github.com/air-verse/air@latest -c .air.toml; \
+	fi
 
 # Generate sqlc files
 sqlc-generate:
 	@echo "Generating sqlc files..."
-	@go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	@if command -v sqlc > /dev/null 2>&1; then \
+		sqlc generate; \
+	else \
+		go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate; \
+	fi
 
 # Run goose migrations
 migrate-up:
@@ -110,4 +102,4 @@ vet:
 fmt:
 	@gofmt -w .	
 
-.PHONY: all build run test clean watch docker-run docker-down docker-watch docker-watch-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
+.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt

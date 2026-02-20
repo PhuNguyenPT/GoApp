@@ -1,42 +1,37 @@
 FROM golang:1.25.5-alpine AS build
-
 WORKDIR /app
-
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
-
-RUN go build -o main cmd/api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o main cmd/api/main.go
 
 FROM golang:1.25.5-alpine AS watch
 WORKDIR /app
-
-RUN apk add --no-cache nodejs npm
-
+RUN apk add --no-cache nodejs npm && \
+    go install github.com/air-verse/air@latest && \
+    go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest && \
+    go install github.com/a-h/templ/cmd/templ@latest && \
+    go clean -cache -modcache -testcache
 COPY go.mod go.sum ./
 RUN go mod download
-RUN go install github.com/air-verse/air@latest
+COPY frontend-template/package*.json ./frontend-template/
+RUN cd frontend-template && npm ci && npm cache clean --force
 CMD ["air", "-c", ".air.docker.toml"]
 
-FROM alpine:3.20.1 AS prod
-WORKDIR /app
+FROM scratch AS prod
 COPY --from=build /app/main /app/main
 COPY --from=build /app/frontend-template /app/frontend-template
 EXPOSE ${PORT}
-CMD ["./main"]
+CMD ["/app/main"]
 
-
-FROM node:24 AS frontend_builder
+FROM node:24-alpine AS frontend_builder
 WORKDIR /frontend
-
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci
 COPY frontend/. .
 RUN npm run build
 
-FROM node:24-slim AS frontend
-RUN npm install -g serve
-COPY --from=frontend_builder /frontend/dist /app/dist
-EXPOSE 5173
-CMD ["serve", "-s", "/app/dist", "-l", "5173"]
+FROM nginx:alpine AS frontend
+COPY --from=frontend_builder /frontend/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

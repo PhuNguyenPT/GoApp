@@ -4,7 +4,7 @@ templ Header(currentPage string, userName string) {
     <header class="bg-white shadow-sm">
         <div class="max-w-4xl mx-auto px-8 py-4">
             <nav class="flex items-center justify-between">
-                <h1 class="text-2xl font-bold text-gray-900">GoApp</h1>
+                <a href="/" class="text-2xl font-bold text-gray-900 hover:text-gray-700">GoApp</a>
                 <div class="flex items-center space-x-6">
                     <a href="/" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "home"), templ.KV("text-gray-600", currentPage != "home") }>Home</a>
                     <a href="/contact" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "contact"), templ.KV("text-gray-600", currentPage != "contact") }>Contact</a>
