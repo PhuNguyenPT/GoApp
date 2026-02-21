@@ -3,7 +3,7 @@ package views
 import "time"
 import "strconv"
 
-templ DashboardPage(name string, maskedEmail string, createdAt time.Time, activeSessions int) {
+templ DashboardPage(name string, maskedEmail string, fullEmail string, createdAt time.Time, activeSessions int) {
     <!DOCTYPE html>
     <html lang="en">
     @Head(SEOMeta{
@@ -22,10 +22,18 @@ templ DashboardPage(name string, maskedEmail string, createdAt time.Time, active
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">Account Info</h2>
                     <div class="space-y-3">
-                        <div class="flex items-center gap-3">
-                            <span class="text-sm text-gray-500 w-32">Email</span>
-                            <span class="text-sm text-gray-800">{ maskedEmail }</span>
-                        </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-500 w-32">Email</span>
+                        <span class="text-sm text-gray-800" id="email-display">{ maskedEmail }</span>
+                        <button
+                            type="button"
+                            id="email-toggle"
+                            data-masked={ maskedEmail }
+                            data-full={ fullEmail }
+                            class="text-xs text-blue-600 hover:underline ml-1">
+                            Show
+                        </button>
+                    </div>
                         <div class="flex items-center gap-3">
                             <span class="text-sm text-gray-500 w-32">Member since</span>
                             <span class="text-sm text-gray-800">{ createdAt.Format("January 2006") }</span>
@@ -47,6 +55,7 @@ templ DashboardPage(name string, maskedEmail string, createdAt time.Time, active
             </div>
         </main>
         @Footer()
+        <script src="/public/dashboard.js"></script>
     </body>
     </html>
 }
