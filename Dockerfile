@@ -18,7 +18,9 @@ COPY frontend-template/package*.json ./frontend-template/
 RUN cd frontend-template && npm ci && npm cache clean --force
 CMD ["air", "-c", ".air.docker.toml"]
 
-FROM scratch AS prod
+FROM alpine:3.23 AS prod
+RUN apk add --no-cache wget
+WORKDIR /app
 COPY --from=build /app/main /app/main
 COPY --from=build /app/frontend-template /app/frontend-template
 EXPOSE ${PORT}
