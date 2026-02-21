@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
 	"strconv"
 	"time"
@@ -71,6 +72,12 @@ type Server struct {
 	port int
 	db   DB
 	cfg  *Config
+}
+
+func init() {
+	if err := mime.AddExtensionType(".webmanifest", "application/manifest+json"); err != nil {
+		log.Fatalf("failed to register .webmanifest MIME type: %v", err)
+	}
 }
 
 func NewServer(cfg *Config) *http.Server {

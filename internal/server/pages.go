@@ -35,11 +35,6 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 	}
 }
 
-func (s *Server) sitemapHandler(c *gin.Context) {
-	c.Header("Content-Type", "application/xml")
-	c.File("./frontend-template/public/sitemap.xml")
-}
-
 func maskEmail(email string) string {
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
