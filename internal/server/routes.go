@@ -2,8 +2,10 @@ package server
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,6 +14,15 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{
+		"/api/websocket",
+	})))
+	r.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/public/") {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		c.Next()
+	})
 	r.Use(s.resolveUserMiddleware())
 	apiGroup := r.Group("/api")
 	apiGroup.Use(cors.New(cors.Config{
@@ -27,12 +38,12 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	}
 
 	r.Static("/public", "./frontend-template/public")
-
+	r.GET("/auth-header", s.authHeaderHandler)
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.File("./frontend-template/public/favicon.ico")
 	})
+	r.StaticFile("/", "./frontend-template/public/index.html")
 
-	r.GET("/", s.homePageHandler)
 	r.GET("/contact", s.contactPageHandler)
 	r.POST("/contact", s.contactFormHandler)
 	r.GET("/sitemap.xml", s.sitemapHandler)

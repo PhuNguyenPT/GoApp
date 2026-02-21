@@ -89,3 +89,21 @@ templ Head(seo SEOMeta) {
 		<script src="/public/htmx.min.js"></script>
 	</head>
 }
+
+templ AuthHeaderFragment(userName string) {
+    if userName != "" {
+        <div class="flex items-center space-x-4">
+            <a href="/dashboard">
+                <div style="width:36px; height:36px; border-radius:50%; background:#2563eb; color:white; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; text-transform:uppercase; cursor:pointer;">
+                    { string([]rune(userName)[0:1]) }
+                </div>
+            </a>
+            <a href="/logout" class="text-sm text-red-600 hover:underline">Sign out</a>
+        </div>
+    } else {
+        <div class="flex items-center space-x-4">
+            <a href="/login" class="text-gray-600 hover:text-blue-600">Sign In</a>
+            <a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Get Started</a>
+        </div>
+    }
+}
