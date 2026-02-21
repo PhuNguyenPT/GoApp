@@ -447,3 +447,42 @@ func TestLogoutHandler(t *testing.T) {
 		}
 	})
 }
+
+func TestAuthHeaderHandler(t *testing.T) {
+	t.Run("unauthenticated returns sign in fragment", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "/login") {
+			t.Errorf("expected sign in link in unauthenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "/register") {
+			t.Errorf("expected register link in unauthenticated fragment")
+		}
+	})
+
+	t.Run("authenticated returns user fragment", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		// mockDB returns "Test User" → first letter "T"
+		if !strings.Contains(rr.Body.String(), "T") {
+			t.Errorf("expected user initial in authenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "/logout") {
+			t.Errorf("expected logout link in authenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "/dashboard") {
+			t.Errorf("expected dashboard link in authenticated fragment")
+		}
+	})
+}
