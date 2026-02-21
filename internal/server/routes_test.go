@@ -4,9 +4,11 @@ import (
 	"GoApp/internal/database"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -66,12 +68,15 @@ func (m *mockDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {
+	if err := os.Chdir("../../"); err != nil {
+		log.Fatalf("failed to change directory: %v", err)
+	}
 	s := &Server{
 		db:  &mockDB{},
 		cfg: &Config{AppEnv: EnvTest, GinMode: gin.TestMode},
 	}
 	testHandler = s.RegisterRoutes(s.cfg)
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestApiInfoHandler(t *testing.T) {

@@ -70,3 +70,9 @@ build/
 coverage.txt
 coverage.html
 *.cover
+
+*.crt
+*.csr
+*.key
+*.srl
+*.pem

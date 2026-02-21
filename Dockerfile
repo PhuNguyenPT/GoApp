@@ -7,7 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o main cmd/api/main.go
 
 FROM golang:1.25.5-alpine AS watch
 WORKDIR /app
-RUN apk add --no-cache nodejs npm && \
+RUN apk add --no-cache nodejs npm wget && \
     go install github.com/air-verse/air@latest && \
     go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest && \
     go install github.com/a-h/templ/cmd/templ@latest && \
@@ -22,6 +22,7 @@ FROM scratch AS prod
 COPY --from=build /app/main /app/main
 COPY --from=build /app/frontend-template /app/frontend-template
 EXPOSE ${PORT}
+EXPOSE ${TLS_PORT}
 CMD ["/app/main"]
 
 FROM node:24-alpine AS frontend_builder
@@ -32,6 +33,7 @@ COPY frontend/. .
 RUN npm run build
 
 FROM nginx:alpine AS frontend
+RUN rm /etc/nginx/conf.d/default.conf
 COPY --from=frontend_builder /frontend/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
