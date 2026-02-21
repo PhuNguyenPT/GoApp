@@ -40,17 +40,12 @@ func (s *Server) sitemapHandler(c *gin.Context) {
 	c.File("./frontend-template/public/sitemap.xml")
 }
 
-func (s *Server) homePageHandler(c *gin.Context) {
-	c.Status(http.StatusOK)
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.HomePage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering home page: %v", err)
-	}
-}
-
 func maskEmail(email string) string {
 	parts := strings.Split(email, "@")
-	if len(parts) != 2 || len(parts[0]) <= 1 {
+	if len(parts) != 2 {
+		return "***"
+	}
+	if len(parts[0]) <= 1 {
 		return "***@" + parts[1]
 	}
 	return string(parts[0][0]) + "***@" + parts[1]
@@ -72,7 +67,14 @@ func (s *Server) dashboardPageHandler(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.CreatedAt, len(sessions)).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.Email, user.CreatedAt, len(sessions)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard: %v", err)
+	}
+}
+
+func (s *Server) authHeaderHandler(c *gin.Context) {
+	userName := getUserName(c)
+	if err := views.AuthHeaderFragment(userName).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering auth header: %v", err)
 	}
 }

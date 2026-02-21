@@ -4,9 +4,11 @@ import (
 	"GoApp/internal/database"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -66,12 +68,15 @@ func (m *mockDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {
+	if err := os.Chdir("../../"); err != nil {
+		log.Fatalf("failed to change directory: %v", err)
+	}
 	s := &Server{
 		db:  &mockDB{},
 		cfg: &Config{AppEnv: EnvTest, GinMode: gin.TestMode},
 	}
 	testHandler = s.RegisterRoutes(s.cfg)
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestApiInfoHandler(t *testing.T) {
@@ -439,6 +444,45 @@ func TestLogoutHandler(t *testing.T) {
 		}
 		if rr.Header().Get("Location") != "/login" {
 			t.Errorf("expected redirect to /login, got %v", rr.Header().Get("Location"))
+		}
+	})
+}
+
+func TestAuthHeaderHandler(t *testing.T) {
+	t.Run("unauthenticated returns sign in fragment", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "/login") {
+			t.Errorf("expected sign in link in unauthenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "/register") {
+			t.Errorf("expected register link in unauthenticated fragment")
+		}
+	})
+
+	t.Run("authenticated returns user fragment", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		// mockDB returns "Test User" → first letter "T"
+		if !strings.Contains(rr.Body.String(), "T") {
+			t.Errorf("expected user initial in authenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "/logout") {
+			t.Errorf("expected logout link in authenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "/dashboard") {
+			t.Errorf("expected dashboard link in authenticated fragment")
 		}
 	})
 }

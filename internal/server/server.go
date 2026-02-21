@@ -73,12 +73,7 @@ type Server struct {
 	cfg  *Config
 }
 
-func NewServer() *http.Server {
-	cfg, err := LoadConfig()
-	if err != nil {
-		log.Fatalf("invalid config %v", err)
-	}
-
+func NewServer(cfg *Config) *http.Server {
 	port, err := strconv.Atoi(cfg.Port)
 	if err != nil {
 		log.Fatalf("invalid PORT value %v", err)
@@ -109,8 +104,9 @@ func NewServer() *http.Server {
 	}
 
 	s.StartSessionCleanup(context.Background(), 1*time.Hour)
+
 	return &http.Server{
-		Addr:         fmt.Sprintf(":%d", s.port),
+		Addr:         fmt.Sprintf(":%s", cfg.TLSPort),
 		Handler:      s.RegisterRoutes(cfg),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,

@@ -16,7 +16,7 @@ templ-generate:
 # Build Tailwind CSS
 tailwind-build:
 	@echo "Building Tailwind CSS..."
-	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css
+	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css --minify
 
 # Build the application
 build: templ-generate sqlc-generate tailwind-build
