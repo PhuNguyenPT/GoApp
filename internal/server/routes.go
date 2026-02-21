@@ -25,6 +25,12 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 		apiGroup.GET("/health", s.healthHandler)
 		apiGroup.GET("/websocket", s.websocketHandler)
 	}
+	r.Use(func(c *gin.Context) {
+		if c.Request.URL.Path == "/public/site.webmanifest" {
+			c.Header("Content-Type", "application/manifest+json")
+		}
+		c.Next()
+	})
 
 	r.Static("/public", "./frontend-template/public")
 	r.GET("/auth-header", s.authHeaderHandler)
