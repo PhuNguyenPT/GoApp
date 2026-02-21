@@ -42,7 +42,10 @@ func (s *Server) sitemapHandler(c *gin.Context) {
 
 func maskEmail(email string) string {
 	parts := strings.Split(email, "@")
-	if len(parts) != 2 || len(parts[0]) <= 1 {
+	if len(parts) != 2 {
+		return "***"
+	}
+	if len(parts[0]) <= 1 {
 		return "***@" + parts[1]
 	}
 	return string(parts[0][0]) + "***@" + parts[1]
@@ -70,8 +73,13 @@ func (s *Server) dashboardPageHandler(c *gin.Context) {
 }
 
 func (s *Server) authHeaderHandler(c *gin.Context) {
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.AuthHeaderFragment(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering auth header fragment: %v", err)
-	}
+    userName := getUserName(c)
+    if userName != "" {
+        c.Header("HX-Redirect", "/dashboard")
+        c.Status(http.StatusOK)
+        return
+    }
+    if err := views.AuthHeaderFragment("").Render(c.Request.Context(), c.Writer); err != nil {
+        log.Printf("error rendering auth header: %v", err)
+    }
 }

@@ -8,8 +8,6 @@
     <link rel="canonical" href="https://yourdomain.com/"/>
     <link href="/public/output.css" rel="stylesheet"/>
     <script src="/public/htmx.min.js"></script>
-    <!-- Preload dashboard for logged-in users -->
-    <link rel="prefetch" href="/dashboard"/>
 </head>
 <body class="min-h-screen bg-gray-50 flex flex-col">
 
@@ -20,7 +18,7 @@
                 <div class="flex items-center space-x-6">
                     <a href="/" class="text-blue-600 font-semibold hover:text-blue-600">Home</a>
                     <a href="/contact" class="text-gray-600 hover:text-blue-600">Contact</a>
-                    <div hx-get="/auth-header" hx-trigger="load" hx-swap="outerHTML">
+                    <div hx-get="/auth-header" hx-trigger="load" hx-swap="outerHTML"></div>
                 </div>
             </nav>
         </div>
