@@ -74,12 +74,7 @@ func (s *Server) dashboardPageHandler(c *gin.Context) {
 
 func (s *Server) authHeaderHandler(c *gin.Context) {
 	userName := getUserName(c)
-	if userName != "" {
-		c.Header("HX-Redirect", "/dashboard")
-		c.Status(http.StatusOK)
-		return
-	}
-	if err := views.AuthHeaderFragment("").Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.AuthHeaderFragment(userName).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering auth header: %v", err)
 	}
 }
