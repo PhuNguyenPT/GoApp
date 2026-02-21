@@ -15,12 +15,6 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	}))
 	r.Use(gin.Recovery())
 	r.Use(s.resolveUserMiddleware())
-	r.Use(func(c *gin.Context) {
-		if c.Request.URL.Path == "/public/site.webmanifest" {
-			c.Header("Content-Type", "application/manifest+json")
-		}
-		c.Next()
-	})
 
 	apiGroup := r.Group("/api")
 	apiGroup.Use(cors.New(cors.Config{
