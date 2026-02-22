@@ -579,7 +579,25 @@ func TestUpdateUserNameHandler(t *testing.T) {
 			t.Errorf("expect redirect to /login, got %v", rr.Header().Get("Location"))
 		}
 	})
+	t.Run("missing name", func(t *testing.T) {
+		form := url.Values{}
 
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/name", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "required") {
+			t.Errorf("expected validation error in body")
+		}
+	})
 	t.Run("success", func(t *testing.T) {
 		form := url.Values{}
 		form.Set("name", "New Name")
@@ -599,25 +617,11 @@ func TestUpdateUserNameHandler(t *testing.T) {
 		if !strings.Contains(rr.Body.String(), "successfully") {
 			t.Errorf("expected success message in body")
 		}
-	})
-
-	t.Run("missing name", func(t *testing.T) {
-		form := url.Values{}
-
-		req, err := http.NewRequest(http.MethodPut, "/dashboard/name", strings.NewReader(form.Encode()))
-		if err != nil {
-			t.Fatalf("failed to create request: %v", err)
+		if !strings.Contains(rr.Body.String(), "Welcome, New Name!") {
+			t.Errorf("expected updated welcome heading in body")
 		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
-		rr := httptest.NewRecorder()
-		testHandler.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("expected status 200, got %v", rr.Code)
-		}
-		if !strings.Contains(rr.Body.String(), "required") {
-			t.Errorf("expected validation error in body")
+		if !strings.Contains(rr.Body.String(), "hx-swap-oob") {
+			t.Errorf("expected oob swap attributes in body")
 		}
 	})
 }

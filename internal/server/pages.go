@@ -119,7 +119,7 @@ func (s *Server) updateUserNameHandler(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardSuccess("Name update successfully.").Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardNameSuccess(input.Name).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard success: %v", err)
 	}
 }
