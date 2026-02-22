@@ -21,6 +21,6 @@ WHERE expires_at < NOW();
 SELECT * FROM sessions
 WHERE user_id = $1 AND expires_at > NOW();
 
--- name: DeleteSessionByUserAgentAndIP :exec
+-- name: DeleteSessionByID :exec
 DELETE FROM sessions
-WHERE user_id = $1 AND user_agent = $2 AND ip_address = $3;
+WHERE id = $1 AND user_id = $2;

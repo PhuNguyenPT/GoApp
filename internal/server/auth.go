@@ -193,3 +193,34 @@ func (s *Server) logoutHandler(c *gin.Context) {
 	c.SetCookie("session_token", "", -1, "/", "", secure, true)
 	c.Redirect(http.StatusFound, "/login")
 }
+
+func (s *Server) revokeSessionHandler(c *gin.Context) {
+	token, err := c.Cookie("session_token")
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+
+	session, err := s.db.GetSessionByToken(c.Request.Context(), token)
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.db.DeleteSessionByID(c.Request.Context(), database.DeleteSessionByIDParams{
+		ID:     sessionID,
+		UserID: session.UserID,
+	}); err != nil {
+		log.Printf("error revoking session: %v", err)
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}

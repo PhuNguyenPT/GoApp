@@ -69,19 +69,18 @@ func (q *Queries) DeleteSession(ctx context.Context, token string) error {
 	return err
 }
 
-const deleteSessionByUserAgentAndIP = `-- name: DeleteSessionByUserAgentAndIP :exec
+const deleteSessionByID = `-- name: DeleteSessionByID :exec
 DELETE FROM sessions
-WHERE user_id = $1 AND user_agent = $2 AND ip_address = $3
+WHERE id = $1 AND user_id = $2
 `
 
-type DeleteSessionByUserAgentAndIPParams struct {
-	UserID    uuid.UUID
-	UserAgent string
-	IpAddress string
+type DeleteSessionByIDParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
 }
 
-func (q *Queries) DeleteSessionByUserAgentAndIP(ctx context.Context, arg DeleteSessionByUserAgentAndIPParams) error {
-	_, err := q.db.ExecContext(ctx, deleteSessionByUserAgentAndIP, arg.UserID, arg.UserAgent, arg.IpAddress)
+func (q *Queries) DeleteSessionByID(ctx context.Context, arg DeleteSessionByIDParams) error {
+	_, err := q.db.ExecContext(ctx, deleteSessionByID, arg.ID, arg.UserID)
 	return err
 }
 

@@ -77,7 +77,7 @@ func (m *mockDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID
 	}, nil
 }
 
-func (m *mockDB) DeleteSessionByUserAgentAndIP(ctx context.Context, arg database.DeleteSessionByUserAgentAndIPParams) error {
+func (m *mockDB) DeleteSessionByID(ctx context.Context, arg database.DeleteSessionByIDParams) error {
 	return nil
 }
 
@@ -795,6 +795,60 @@ func TestUpdateUserPasswordHandler(t *testing.T) {
 		}
 		if !strings.Contains(rr.Body.String(), "successfully") {
 			t.Errorf("expected success message in body")
+		}
+	})
+}
+
+func TestRevokeSessionHandler(t *testing.T) {
+	t.Run("unauthenticated redirects to login", func(t *testing.T) {
+		token, err := uuid.NewV7()
+		if err != nil {
+			t.Fatalf("failed to generate uuid: %v", err)
+		}
+		req, err := http.NewRequest(http.MethodDelete, "/dashboard/session/"+token.String(), nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusFound {
+			t.Errorf("expected redirect 302, got %v", rr.Code)
+		}
+		if rr.Header().Get("Location") != "/login" {
+			t.Errorf("expected redirect to /login, got %v", rr.Header().Get("Location"))
+		}
+	})
+
+	t.Run("invalid session_id returns 400", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodDelete, "/dashboard/session/not-a-valid-uuid", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %v", rr.Code)
+		}
+	})
+
+	t.Run("valid session_id returns 200", func(t *testing.T) {
+		token, err := uuid.NewV7()
+		if err != nil {
+			t.Fatalf("failed to generate uuid: %v", err)
+		}
+		req, err := http.NewRequest(http.MethodDelete, "/dashboard/session/"+token.String(), nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
 		}
 	})
 }
