@@ -77,6 +77,10 @@ func (m *mockDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID
 	}, nil
 }
 
+func (m *mockDB) DeleteSessionByUserAgentAndIP(ctx context.Context, arg database.DeleteSessionByUserAgentAndIPParams) error {
+	return nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {
