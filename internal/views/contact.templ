@@ -77,3 +77,15 @@ templ ContactSuccess(name string) {
 		<p>Thank you, { name }! Your message has been sent.</p>
 	</div>
 }
+
+templ ContactFail() {
+	<div class="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+		<p>Something went wrong. Please try again later.</p>
+	</div>
+}
+
+templ ContactRateLimit() {
+	<div class="mt-6 p-4 bg-orange-100 border border-orange-400 text-orange-700 rounded-lg">
+		<p>You've reached the maximum number of messages for today. Please try again tomorrow.</p>
+	</div>
+}
