@@ -758,8 +758,6 @@ func TestUpdateUserPasswordHandler(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		// mockDB.GetUserByID returns a user with no password hash set,
-		// so we need a separate mockDB with a real hash for this test
 		hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 		s := &Server{
 			db:  &mockDBWithPassword{passwordHash: string(hash)},
