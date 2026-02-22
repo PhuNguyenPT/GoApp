@@ -17,6 +17,13 @@ import (
 
 var validate = validator.New()
 
+func (s *Server) authHeaderHandler(c *gin.Context) {
+	userName := getUserName(c)
+	if err := views.AuthHeaderFragment(userName).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering auth header: %v", err)
+	}
+}
+
 type RegisterInput struct {
 	Name     string `form:"name"     validate:"required"`
 	Email    string `form:"email"    validate:"required,email"`
