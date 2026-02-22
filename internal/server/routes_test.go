@@ -42,6 +42,14 @@ func (m *mockDB) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, 
 	return database.User{Name: "Test User", Email: "test@example.com"}, nil
 }
 
+func (m *mockDB) UpdateUser(ctx context.Context, arg database.UpdateUserParams) (database.User, error) {
+	return database.User{ID: arg.ID, Name: arg.Name}, nil
+}
+
+func (m *mockDB) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
 func (m *mockDB) CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error) {
 	return database.Session{Token: arg.Token}, nil
 }
@@ -457,11 +465,11 @@ func TestAuthHeaderHandler(t *testing.T) {
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status 200, got %v", rr.Code)
 		}
-		if !strings.Contains(rr.Body.String(), "/login") {
-			t.Errorf("expected sign in link in unauthenticated fragment")
-		}
 		if !strings.Contains(rr.Body.String(), "/register") {
 			t.Errorf("expected register link in unauthenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "Get Started") {
+			t.Errorf("expected Get Started button in unauthenticated fragment")
 		}
 	})
 
