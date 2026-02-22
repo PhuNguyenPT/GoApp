@@ -16,7 +16,6 @@ templ Header(currentPage string, userName string) {
 						</a>
 						<a href="/logout" class="text-sm text-red-600 hover:underline">Sign out</a>
 					} else {
-                        <a href="/login" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "login"), templ.KV("text-gray-600", currentPage != "login") }>Sign In</a>
                         <a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Get Started</a>
                     }
                 </div>
@@ -102,7 +101,6 @@ templ AuthHeaderFragment(userName string) {
         </div>
     } else {
         <div class="flex items-center space-x-4">
-            <a href="/login" class="text-gray-600 hover:text-blue-600">Sign In</a>
             <a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Get Started</a>
         </div>
     }
