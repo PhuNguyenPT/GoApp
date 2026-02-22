@@ -59,6 +59,8 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	protected.Use(s.authMiddleware())
 	{
 		protected.GET("/dashboard", s.dashboardPageHandler)
+		protected.PUT("/dashboard/name", s.updateUserNameHandler)
+		protected.PUT("/dashboard/password", s.updateUserPasswordHandler)
 	}
 	return r
 }
