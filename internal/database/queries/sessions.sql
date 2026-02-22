@@ -17,10 +17,6 @@ WHERE token = $1;
 DELETE FROM sessions
 WHERE expires_at < NOW();
 
--- name: DeleteUserSessions :exec
-DELETE FROM sessions
-WHERE user_id = $1;
-
 -- name: GetActiveSessionsByUserID :many
 SELECT * FROM sessions
 WHERE user_id = $1 AND expires_at > NOW();

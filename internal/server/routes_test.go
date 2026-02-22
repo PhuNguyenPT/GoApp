@@ -42,6 +42,18 @@ func (m *mockDB) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, 
 	return database.User{Name: "Test User", Email: "test@example.com"}, nil
 }
 
+func (m *mockDB) UpdateUserName(ctx context.Context, arg database.UpdateUserNameParams) (database.User, error) {
+	return database.User{ID: arg.ID, Name: arg.Name}, nil
+}
+
+func (m *mockDB) UpdateUserPassword(ctx context.Context, arg database.UpdateUserPasswordParams) error {
+	return nil
+}
+
+func (m *mockDB) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
 func (m *mockDB) CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error) {
 	return database.Session{Token: arg.Token}, nil
 }
@@ -80,7 +92,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestApiInfoHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/api/", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -103,7 +118,10 @@ func TestApiInfoHandler(t *testing.T) {
 }
 
 func TestHealthHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/api/health", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/health", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -126,7 +144,10 @@ func TestHealthHandler(t *testing.T) {
 }
 
 func TestHomePageHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	req, err := http.NewRequest(http.MethodGet, "/", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -146,7 +167,10 @@ func TestContactFormHandler(t *testing.T) {
 	form.Set("subject", "Test Subject")
 	form.Set("message", "Test message")
 
-	req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
@@ -161,7 +185,10 @@ func TestContactFormHandler(t *testing.T) {
 }
 
 func TestContactPageHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/contact", nil)
+	req, err := http.NewRequest(http.MethodGet, "/contact", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -174,7 +201,10 @@ func TestContactPageHandler(t *testing.T) {
 }
 
 func TestUnknownRoute(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/does-not-exist", nil)
+	req, err := http.NewRequest(http.MethodGet, "/does-not-exist", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -184,7 +214,10 @@ func TestUnknownRoute(t *testing.T) {
 }
 
 func TestRegisterPageHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/register", nil)
+	req, err := http.NewRequest(http.MethodGet, "/register", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -203,7 +236,10 @@ func TestRegisterHandler(t *testing.T) {
 		form.Set("email", "newuser@example.com")
 		form.Set("password", "password123")
 
-		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		rr := httptest.NewRecorder()
@@ -234,7 +270,10 @@ func TestRegisterHandler(t *testing.T) {
 		form := url.Values{}
 		form.Set("name", "Test User")
 		// missing email and password
-		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -252,7 +291,10 @@ func TestRegisterHandler(t *testing.T) {
 		form.Set("email", "test@example.com")
 		form.Set("password", "short")
 
-		req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -286,7 +328,10 @@ func TestValidationMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, _ := http.NewRequest(http.MethodPost, "/register", strings.NewReader(tt.form.Encode()))
+			req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(tt.form.Encode()))
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			rr := httptest.NewRecorder()
 			testHandler.ServeHTTP(rr, req)
@@ -298,7 +343,10 @@ func TestValidationMessage(t *testing.T) {
 }
 
 func TestLoginPageHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/login", nil)
+	req, err := http.NewRequest(http.MethodGet, "/login", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
 	rr := httptest.NewRecorder()
 	testHandler.ServeHTTP(rr, req)
 
@@ -316,7 +364,10 @@ func TestLoginHandler(t *testing.T) {
 		form.Set("email", "test@example.com")
 		form.Set("password", "password123")
 
-		req, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		req, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -346,7 +397,10 @@ func TestLoginHandler(t *testing.T) {
 		form := url.Values{}
 		form.Set("email", "test@example.com")
 
-		req, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		req, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -365,7 +419,10 @@ func TestLoginHandler(t *testing.T) {
 		form.Set("email", "not-an-email")
 		form.Set("password", "password123")
 
-		req, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		req, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -398,7 +455,10 @@ func TestMaskEmail(t *testing.T) {
 
 func TestDashboardPageHandler(t *testing.T) {
 	t.Run("unauthenticated redirects to login", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/dashboard", nil)
+		req, err := http.NewRequest(http.MethodGet, "/dashboard", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
 
@@ -411,7 +471,10 @@ func TestDashboardPageHandler(t *testing.T) {
 	})
 
 	t.Run("authenticated shows dashboard", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/dashboard", nil)
+		req, err := http.NewRequest(http.MethodGet, "/dashboard", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -434,7 +497,10 @@ func TestDashboardPageHandler(t *testing.T) {
 
 func TestLogoutHandler(t *testing.T) {
 	t.Run("clears cookie and redirects", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/logout", nil)
+		req, err := http.NewRequest(http.MethodGet, "/logout", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -450,23 +516,29 @@ func TestLogoutHandler(t *testing.T) {
 
 func TestAuthHeaderHandler(t *testing.T) {
 	t.Run("unauthenticated returns sign in fragment", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		req, err := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status 200, got %v", rr.Code)
 		}
-		if !strings.Contains(rr.Body.String(), "/login") {
-			t.Errorf("expected sign in link in unauthenticated fragment")
-		}
 		if !strings.Contains(rr.Body.String(), "/register") {
 			t.Errorf("expected register link in unauthenticated fragment")
+		}
+		if !strings.Contains(rr.Body.String(), "Get Started") {
+			t.Errorf("expected Get Started button in unauthenticated fragment")
 		}
 	})
 
 	t.Run("authenticated returns user fragment", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		req, err := http.NewRequest(http.MethodGet, "/auth-header", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
 		rr := httptest.NewRecorder()
 		testHandler.ServeHTTP(rr, req)
@@ -483,6 +555,239 @@ func TestAuthHeaderHandler(t *testing.T) {
 		}
 		if !strings.Contains(rr.Body.String(), "/dashboard") {
 			t.Errorf("expected dashboard link in authenticated fragment")
+		}
+	})
+}
+
+func TestUpdateUserNameHandler(t *testing.T) {
+	t.Run("unauthenticated redirects to login", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "New Name")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/name", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusFound {
+			t.Errorf("expected redirect 302, got %v", rr.Code)
+		}
+		if rr.Header().Get("Location") != "/login" {
+			t.Errorf("expect redirect to /login, got %v", rr.Header().Get("Location"))
+		}
+	})
+	t.Run("missing name", func(t *testing.T) {
+		form := url.Values{}
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/name", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "required") {
+			t.Errorf("expected validation error in body")
+		}
+	})
+	t.Run("success", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "New Name")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/name", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "successfully") {
+			t.Errorf("expected success message in body")
+		}
+		if !strings.Contains(rr.Body.String(), "Welcome, New Name!") {
+			t.Errorf("expected updated welcome heading in body")
+		}
+		if !strings.Contains(rr.Body.String(), "hx-swap-oob") {
+			t.Errorf("expected oob swap attributes in body")
+		}
+	})
+}
+
+type mockDBWithPassword struct {
+	mockDB
+	passwordHash string
+}
+
+func (m *mockDBWithPassword) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {
+	return database.User{
+		Name:         "Test User",
+		Email:        "test@example.com",
+		PasswordHash: m.passwordHash,
+	}, nil
+}
+
+func TestUpdateUserPasswordHandler(t *testing.T) {
+	t.Run("unauthenticated redirects to login", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("current_password", "password123")
+		form.Set("new_password", "newpassword123")
+		form.Set("confirm_password", "newpassword123")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/password", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusFound {
+			t.Errorf("expected redirect 302, got %v", rr.Code)
+		}
+		if rr.Header().Get("Location") != "/login" {
+			t.Errorf("expected redirect to /login, got %v", rr.Header().Get("Location"))
+		}
+	})
+	t.Run("missing fields", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("current_password", "password123")
+		// missing new_password and confirm_password
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/password", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "required") {
+			t.Errorf("expected required error in body")
+		}
+	})
+	t.Run("passwords do not match", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("current_password", "password123")
+		form.Set("new_password", "newpassword123")
+		form.Set("confirm_password", "differentpassword")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/password", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "do not match") {
+			t.Errorf("expected password mismatch error in body")
+		}
+	})
+
+	t.Run("new password too short", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("current_password", "password123")
+		form.Set("new_password", "short")
+		form.Set("confirm_password", "short")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/password", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "at least 8 characters") {
+			t.Errorf("expected password length error in body")
+		}
+	})
+
+	t.Run("wrong current password", func(t *testing.T) {
+		hash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		if err != nil {
+			t.Fatalf("failed to generate password hash: %v", err)
+		}
+		s := &Server{
+			db:  &mockDBWithPassword{passwordHash: string(hash)},
+			cfg: &Config{AppEnv: EnvTest, GinMode: gin.TestMode},
+		}
+		handler := s.RegisterRoutes(s.cfg)
+
+		form := url.Values{}
+		form.Set("current_password", "wrongpassword")
+		form.Set("new_password", "newpassword123")
+		form.Set("confirm_password", "newpassword123")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/password", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "incorrect") {
+			t.Errorf("expected incorrect password error in body")
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		s := &Server{
+			db:  &mockDBWithPassword{passwordHash: string(hash)},
+			cfg: &Config{AppEnv: EnvTest, GinMode: gin.TestMode},
+		}
+		handler := s.RegisterRoutes(s.cfg)
+
+		form := url.Values{}
+		form.Set("current_password", "password123")
+		form.Set("new_password", "newpassword123")
+		form.Set("confirm_password", "newpassword123")
+
+		req, err := http.NewRequest(http.MethodPut, "/dashboard/password", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %v", rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "successfully") {
+			t.Errorf("expected success message in body")
 		}
 	})
 }

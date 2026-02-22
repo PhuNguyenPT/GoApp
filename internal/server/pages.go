@@ -1,6 +1,7 @@
 package server
 
 import (
+	"GoApp/internal/database"
 	"GoApp/internal/views"
 	"log"
 	"net/http"
@@ -8,7 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (s *Server) contactPageHandler(c *gin.Context) {
@@ -71,5 +74,110 @@ func (s *Server) authHeaderHandler(c *gin.Context) {
 	userName := getUserName(c)
 	if err := views.AuthHeaderFragment(userName).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering auth header: %v", err)
+	}
+}
+
+type UpdateUserNameInput struct {
+	Name string `form:"name" validate:"required"`
+}
+
+type UpdateUserPasswordInput struct {
+	CurrentPassword string `form:"current_password" validate:"required"`
+	NewPassword     string `form:"new_password"     validate:"required,min=8"`
+	ConfirmPassword string `form:"confirm_password" validate:"required"`
+}
+
+func (s *Server) updateUserNameHandler(c *gin.Context) {
+	renderError := func(msg string) {
+		c.Status(http.StatusOK)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		if err := views.DashboardError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering dashboard error: %v", err)
+		}
+	}
+
+	userID := c.MustGet("userID").(uuid.UUID)
+
+	var input UpdateUserNameInput
+	if err := c.ShouldBind(&input); err != nil {
+		renderError("Name is required.")
+		return
+	}
+	if err := validate.Struct(input); err != nil {
+		renderError("Name is required.")
+		return
+	}
+
+	_, err := s.db.UpdateUserName(c.Request.Context(), database.UpdateUserNameParams{
+		ID:   userID,
+		Name: input.Name,
+	})
+	if err != nil {
+		renderError("Something went wrong, please try again.")
+		return
+	}
+
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.DashboardNameSuccess(input.Name).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering dashboard success: %v", err)
+	}
+}
+
+func (s *Server) updateUserPasswordHandler(c *gin.Context) {
+	renderError := func(msg string) {
+		c.Status(http.StatusOK)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		if err := views.DashboardError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering dashboard error: %v", err)
+		}
+	}
+
+	userID := c.MustGet("userID").(uuid.UUID)
+
+	var input UpdateUserPasswordInput
+	if err := c.ShouldBind(&input); err != nil {
+		renderError("All fields are required.")
+		return
+	}
+	if err := validate.Struct(input); err != nil {
+		errs := err.(validator.ValidationErrors)
+		renderError(validationMessage(errs[0]))
+		return
+	}
+	if input.NewPassword != input.ConfirmPassword {
+		renderError("Passwords do not match.")
+		return
+	}
+
+	user, err := s.db.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		renderError("Something went wrong, please try again.")
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.CurrentPassword)); err != nil {
+		renderError("Current password is incorrect.")
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		renderError("Something went wrong, please try again")
+		return
+	}
+
+	if err := s.db.UpdateUserPassword(c.Request.Context(), database.UpdateUserPasswordParams{
+		ID:           user.ID,
+		PasswordHash: string(hash),
+	}); err != nil {
+		renderError("Something went wrong, please try again.")
+		return
+	}
+
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.DashboardSuccess("Password updated successfully.").Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering dashboard success: %v", err)
 	}
 }

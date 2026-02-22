@@ -21,6 +21,10 @@ type DB interface {
 	CreateUser(ctx context.Context, arg database.CreateUserParams) (database.User, error)
 	GetUserByEmail(ctx context.Context, email string) (database.User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error)
+	UpdateUserName(ctx context.Context, arg database.UpdateUserNameParams) (database.User, error)
+	UpdateUserPassword(ctx context.Context, arg database.UpdateUserPasswordParams) error
+	DeleteUser(ctx context.Context, id uuid.UUID) error
+
 	CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error)
 	GetSessionByToken(ctx context.Context, token string) (database.Session, error)
 	DeleteSession(ctx context.Context, token string) error
@@ -46,6 +50,18 @@ func (s *sqlDB) GetUserByEmail(ctx context.Context, email string) (database.User
 
 func (s *sqlDB) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {
 	return s.queries.GetUserByID(ctx, id)
+}
+
+func (s *sqlDB) UpdateUserName(ctx context.Context, arg database.UpdateUserNameParams) (database.User, error) {
+	return s.queries.UpdateUserName(ctx, arg)
+}
+
+func (s *sqlDB) UpdateUserPassword(ctx context.Context, arg database.UpdateUserPasswordParams) error {
+	return s.queries.UpdateUserPassword(ctx, arg)
+}
+
+func (s *sqlDB) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return s.queries.DeleteUser(ctx, id)
 }
 
 func (s *sqlDB) CreateSession(ctx context.Context, arg database.CreateSessionParams) (database.Session, error) {

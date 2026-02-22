@@ -79,10 +79,14 @@ func (s *Server) registerHandler(c *gin.Context) {
 		return
 	}
 
-	token := uuid.New().String()
+	token, err := uuid.NewV7()
+	if err != nil {
+		renderError("Something went wrong, please try again.")
+		return
+	}
 	_, err = s.db.CreateSession(c.Request.Context(), database.CreateSessionParams{
 		UserID:    user.ID,
-		Token:     token,
+		Token:     token.String(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 		UserAgent: c.Request.UserAgent(),
 	})
@@ -91,7 +95,7 @@ func (s *Server) registerHandler(c *gin.Context) {
 		return
 	}
 	secure := s.cfg.AppEnv == EnvProduction
-	c.SetCookie("session_token", token, 86400, "/", "", secure, true)
+	c.SetCookie("session_token", token.String(), 86400, "/", "", secure, true)
 	c.Header("HX-Redirect", "/dashboard")
 	c.Status(http.StatusOK)
 }
