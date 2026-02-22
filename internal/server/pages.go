@@ -65,7 +65,7 @@ func (s *Server) dashboardPageHandler(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.Email, user.CreatedAt, len(sessions)).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.Email, user.CreatedAt, sessions).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard: %v", err)
 	}
 }

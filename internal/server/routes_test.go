@@ -493,8 +493,11 @@ func TestDashboardPageHandler(t *testing.T) {
 		if !strings.Contains(rr.Body.String(), "t***@example.com") {
 			t.Errorf("expected masked email in dashboard body")
 		}
-		if !strings.Contains(rr.Body.String(), "1") {
-			t.Errorf("expected active session count in dashboard body")
+		if !strings.Contains(rr.Body.String(), "Mozilla/5.0 Test Browser") {
+			t.Errorf("expected session user agent in dashboard body")
+		}
+		if !strings.Contains(rr.Body.String(), "active") {
+			t.Errorf("expected active sessions count in dashboard body")
 		}
 	})
 }
