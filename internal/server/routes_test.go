@@ -559,18 +559,6 @@ func TestAuthHeaderHandler(t *testing.T) {
 	})
 }
 
-type mockDBWithPassword struct {
-	mockDB
-	passwordHash string
-}
-
-func (m *mockDBWithPassword) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {
-	return database.User{
-		Name:         "Test User",
-		Email:        "test@example.com",
-		PasswordHash: m.passwordHash,
-	}, nil
-}
 func TestUpdateUserNameHandler(t *testing.T) {
 	t.Run("unauthenticated redirects to login", func(t *testing.T) {
 		form := url.Values{}
@@ -632,6 +620,19 @@ func TestUpdateUserNameHandler(t *testing.T) {
 			t.Errorf("expected validation error in body")
 		}
 	})
+}
+
+type mockDBWithPassword struct {
+	mockDB
+	passwordHash string
+}
+
+func (m *mockDBWithPassword) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {
+	return database.User{
+		Name:         "Test User",
+		Email:        "test@example.com",
+		PasswordHash: m.passwordHash,
+	}, nil
 }
 
 func TestUpdateUserPasswordHandler(t *testing.T) {
