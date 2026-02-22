@@ -4,7 +4,9 @@ import (
 	"GoApp/internal/database"
 	"GoApp/internal/views"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,6 +21,17 @@ type RegisterInput struct {
 	Name     string `form:"name"     validate:"required"`
 	Email    string `form:"email"    validate:"required,email"`
 	Password string `form:"password" validate:"required,min=8"`
+}
+
+func getClientIP(c *gin.Context) string {
+	if ip := c.GetHeader("X-Forwarded-For"); ip != "" {
+		return strings.Split(ip, ",")[0]
+	}
+	if ip := c.GetHeader("X-Real-Ip"); ip != "" {
+		return ip
+	}
+	ip, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
+	return ip
 }
 
 func (s *Server) registerPageHandler(c *gin.Context) {
@@ -84,11 +97,15 @@ func (s *Server) registerHandler(c *gin.Context) {
 		renderError("Something went wrong, please try again.")
 		return
 	}
+	ip := getClientIP(c)
+	userAgent := c.Request.UserAgent()
+
 	_, err = s.db.CreateSession(c.Request.Context(), database.CreateSessionParams{
 		UserID:    user.ID,
 		Token:     token.String(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
-		UserAgent: c.Request.UserAgent(),
+		UserAgent: userAgent,
+		IpAddress: ip,
 	})
 	if err != nil {
 		renderError("Something went wrong, please try again.")
@@ -144,11 +161,15 @@ func (s *Server) loginHandler(c *gin.Context) {
 	}
 
 	token := uuid.New().String()
+	ip := getClientIP(c)
+	userAgent := c.Request.UserAgent()
+
 	_, err = s.db.CreateSession(c.Request.Context(), database.CreateSessionParams{
 		UserID:    user.ID,
 		Token:     token,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
-		UserAgent: c.Request.UserAgent(),
+		UserAgent: userAgent,
+		IpAddress: ip,
 	})
 	if err != nil {
 		renderError("Something went wrong, please try again.")
@@ -171,4 +192,35 @@ func (s *Server) logoutHandler(c *gin.Context) {
 	secure := s.cfg.AppEnv == EnvProduction
 	c.SetCookie("session_token", "", -1, "/", "", secure, true)
 	c.Redirect(http.StatusFound, "/login")
+}
+
+func (s *Server) revokeSessionHandler(c *gin.Context) {
+	token, err := c.Cookie("session_token")
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+
+	session, err := s.db.GetSessionByToken(c.Request.Context(), token)
+	if err != nil {
+		c.Status(http.StatusUnauthorized)
+		return
+	}
+
+	sessionID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.db.DeleteSessionByID(c.Request.Context(), database.DeleteSessionByIDParams{
+		ID:     sessionID,
+		UserID: session.UserID,
+	}); err != nil {
+		log.Printf("error revoking session: %v", err)
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }

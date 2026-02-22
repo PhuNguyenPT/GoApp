@@ -15,8 +15,9 @@ type Session struct {
 	UserID    uuid.UUID
 	Token     string
 	ExpiresAt time.Time
-	CreatedAt time.Time
 	UserAgent string
+	IpAddress string
+	CreatedAt time.Time
 }
 
 type User struct {
