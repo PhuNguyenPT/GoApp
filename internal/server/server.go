@@ -31,6 +31,10 @@ type DB interface {
 	DeleteExpiredSessions(ctx context.Context) error
 	GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]database.Session, error)
 	DeleteSessionByID(ctx context.Context, arg database.DeleteSessionByIDParams) error
+
+	CreateContact(ctx context.Context, arg database.CreateContactParams) (database.Contact, error)
+	CountContactsByIPToday(ctx context.Context, ipAddress string) (int64, error)
+	CountContactsByEmailToday(ctx context.Context, email string) (int64, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -87,6 +91,18 @@ func (s *sqlDB) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID)
 
 func (s *sqlDB) DeleteSessionByID(ctx context.Context, arg database.DeleteSessionByIDParams) error {
 	return s.queries.DeleteSessionByID(ctx, arg)
+}
+
+func (s *sqlDB) CreateContact(ctx context.Context, arg database.CreateContactParams) (database.Contact, error) {
+	return s.queries.CreateContact(ctx, arg)
+}
+
+func (s *sqlDB) CountContactsByIPToday(ctx context.Context, ipAddress string) (int64, error) {
+	return s.queries.CountContactsByIPToday(ctx, ipAddress)
+}
+
+func (s *sqlDB) CountContactsByEmailToday(ctx context.Context, email string) (int64, error) {
+	return s.queries.CountContactsByEmailToday(ctx, email)
 }
 
 type Server struct {

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -22,17 +21,70 @@ func (s *Server) contactPageHandler(c *gin.Context) {
 	}
 }
 
+const maxContactsPerIPPerDay int64 = 5
+const maxContactsPerEmailPerDay int64 = 3
+
 func (s *Server) contactFormHandler(c *gin.Context) {
+	renderError := func() {
+		c.Status(http.StatusOK)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		if err := views.ContactFail().Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering contact fail: %v", err)
+		}
+	}
+
+	renderRateLimit := func() {
+		log.Printf("rate limit exceeded for ip: %s", c.ClientIP())
+		c.Status(http.StatusOK)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		if err := views.ContactRateLimit().Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering contact rate limit: %v", err)
+		}
+	}
+
+	ip := c.ClientIP()
 	name := c.PostForm("name")
 	email := c.PostForm("email")
 	subject := c.PostForm("subject")
 	message := c.PostForm("message")
 
-	// Simulate processing delay (e.g., sending email, database operation)
-	time.Sleep(1 * time.Second)
+	ipCount, err := s.db.CountContactsByIPToday(c.Request.Context(), ip)
+	if err != nil {
+		log.Printf("error counting contacts by ip: %v", err)
+		renderError()
+		return
+	}
+	if ipCount >= maxContactsPerIPPerDay {
+		renderRateLimit()
+		return
+	}
 
-	log.Printf("Contact form: %s (%s) - %s: %s", name, email, subject, message)
+	emailCount, err := s.db.CountContactsByEmailToday(c.Request.Context(), email)
+	if err != nil {
+		log.Printf("error counting contacts by email: %v", err)
+		renderError()
+		return
+	}
+	if emailCount >= maxContactsPerEmailPerDay {
+		renderRateLimit()
+		return
+	}
 
+	_, err = s.db.CreateContact(c.Request.Context(), database.CreateContactParams{
+		Name:      name,
+		Email:     email,
+		Subject:   subject,
+		Message:   message,
+		IpAddress: ip,
+	})
+	if err != nil {
+		log.Printf("error saving contact: %v", err)
+		renderError()
+		return
+	}
+
+	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
 	if err := views.ContactSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering contact success: %v", err)
 	}
