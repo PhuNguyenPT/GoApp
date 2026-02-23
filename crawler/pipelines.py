@@ -17,52 +17,50 @@ class JsonWriterPipeline:
         instance.crawler = crawler
         return instance
 
-    def open_spider(self, spider=None):
-        name = (
-            spider.name
-            if spider
-            else self.crawler.spider.name
-            if self.crawler.spider
-            else "unknown"
-        )
+    def open_spider(self):
+        name = self.crawler.spider.name if self.crawler.spider else "unknown"
         os.makedirs(self.settings["OUTPUT_DIR"], exist_ok=True)
         fname = f"{self.settings['OUTPUT_DIR']}/{name}_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
         self.file = open(fname, "w", encoding="utf-8")
 
-    def close_spider(self, spider=None):
-        self.file.close()
+    def close_spider(self):
+        if getattr(self, "file", None):
+            self.file.close()
 
-    def process_item(self, item, spider=None):
+    def process_item(self, item):
         line = json.dumps(ItemAdapter(item).asdict(), ensure_ascii=False)
         self.file.write(line + "\n")
         return item
 
 
 class PostgresPipeline:
+    BATCH_SIZE = 50
+
     @classmethod
     def from_crawler(cls, crawler):
         instance = cls()
         instance.settings = crawler.settings
         return instance
 
-    def open_spider(self, spider=None):
-        db_url = self.settings["DATABASE_URL"]
+    def open_spider(self):
+        db_url = self.settings.get("DATABASE_URL")
         if not db_url:
             logger.warning("DATABASE_URL not set — skipping Postgres pipeline")
             self.conn = None
             return
         self.conn = psycopg2.connect(db_url)
         self.cur = self.conn.cursor()
+        self._item_count = 0
 
-    def close_spider(self, spider=None):
-        if not self.conn:
+    def close_spider(self):
+        if not getattr(self, "conn", None):
             return
         self.conn.commit()
         self.cur.close()
         self.conn.close()
 
-    def process_item(self, item, spider=None):
-        if not self.conn:
+    def process_item(self, item):
+        if not getattr(self, "conn", None):
             return item
         data = ItemAdapter(item).asdict()
         self.cur.execute(
@@ -85,12 +83,14 @@ class PostgresPipeline:
                 rating = EXCLUDED.rating,
                 review_count = EXCLUDED.review_count,
                 crawled_at = EXCLUDED.crawled_at
-        """,
+            """,
             {
                 **data,
                 "images": json.dumps(data.get("images", [])),
                 "specs": json.dumps(data.get("specs", {})),
             },
         )
-        self.conn.commit()
+        self._item_count += 1
+        if self._item_count % self.BATCH_SIZE == 0:
+            self.conn.commit()
         return item
