@@ -76,3 +76,15 @@ coverage.html
 *.key
 *.srl
 *.pem
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+
+# Scrapy
+.scrapy/
+
+# Crawler output
+crawler/output/
