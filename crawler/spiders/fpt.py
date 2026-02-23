@@ -78,15 +78,16 @@ class FptSpider(scrapy.Spider):
         item["price"] = parse_price(str(offers.get("price", "")))
         original_raw = response.css("span.line-through::text").get() or ""
         original = parse_price(original_raw)
-        # Only use original_price if it's actually higher than current price
         item["original_price"] = (
             original if original and item["price"] and original > item["price"] else None
         )
-        item["discount_percent"] = (
-            parse_discount(response.css("span.text-red-red-7::text").get() or "")
-            if item["original_price"]
-            else None
-        )
+        if item["original_price"] and item["price"]:
+            diff = item["original_price"] - item["price"]
+            percent = (diff / item["original_price"]) * 100
+            item["discount_percent"] = round(percent)
+        else:
+            raw_discount = response.css("span.text-red-red-7::text").get()
+            item["discount_percent"] = parse_discount(raw_discount) if raw_discount else None
         item["brand"] = clean_text(
             product_data.get("brand", {}).get("name")
             or response.css("[class*='brand'] img::attr(alt)").get()
