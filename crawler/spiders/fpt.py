@@ -1,8 +1,9 @@
-import re
-import scrapy
 from datetime import datetime, timezone
+
+import scrapy
+
 from items import ProductItem
-from utils.helpers import parse_price, parse_discount, clean_text, parse_rating
+from utils.helpers import clean_text, parse_discount, parse_price
 
 
 class FptSpider(scrapy.Spider):
@@ -12,7 +13,7 @@ class FptSpider(scrapy.Spider):
         "https://fptshop.com.vn/dien-thoai",
         "https://fptshop.com.vn/may-tinh-xach-tay",
         "https://fptshop.com.vn/may-tinh-bang",
-        "https://fptshop.com.vn/phu-kien"
+        "https://fptshop.com.vn/phu-kien",
     ]
 
     custom_settings = {
@@ -29,7 +30,7 @@ class FptSpider(scrapy.Spider):
             ),
         },
     }
-    
+
     async def start(self):
         for url in self.start_urls:
             yield scrapy.Request(
@@ -38,7 +39,7 @@ class FptSpider(scrapy.Spider):
                 callback=self.parse,
                 errback=self.handle_error,
             )
-                    
+
     def parse(self, response):
         seen = set()
         for href in response.css("[class*='ProductCard_cardDefault'] a::attr(href)").getall():
@@ -61,6 +62,7 @@ class FptSpider(scrapy.Spider):
         item["name"] = clean_text(response.css("h1::text").get())
 
         import json
+
         json_ld = response.css("script[type='application/ld+json']::text").getall()
         product_data = {}
         for blob in json_ld:
@@ -74,16 +76,25 @@ class FptSpider(scrapy.Spider):
 
         offers = product_data.get("offers", {})
         item["price"] = parse_price(str(offers.get("price", "")))
-        item["original_price"] = parse_price(
-            response.css("span.line-through::text").get() or ""
+        original_raw = response.css("span.line-through::text").get() or ""
+        original = parse_price(original_raw)
+        # Only use original_price if it's actually higher than current price
+        item["original_price"] = (
+            original if original and item["price"] and original > item["price"] else None
         )
-        item["discount_percent"] = parse_discount(
-            response.css("span.text-red-red-7::text").get() or ""
+        item["discount_percent"] = (
+            parse_discount(response.css("span.text-red-red-7::text").get() or "")
+            if item["original_price"]
+            else None
         )
-        item["brand"] = clean_text(product_data.get("brand", {}).get("name") or
-                                response.css("[class*='brand'] img::attr(alt)").get())
-        item["category"] = clean_text(response.css("ol li:nth-last-child(2) a::text").get()) or \
-                   response.url.split("/")[3].replace("-", " ").title()
+        item["brand"] = clean_text(
+            product_data.get("brand", {}).get("name")
+            or response.css("[class*='brand'] img::attr(alt)").get()
+        )
+        item["category"] = (
+            clean_text(response.css("ol li:nth-last-child(2) a::text").get())
+            or response.url.split("/")[3].replace("-", " ").title()
+        )
         item["in_stock"] = offers.get("availability", "").endswith("InStock")
         agg = product_data.get("aggregateRating", {})
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None

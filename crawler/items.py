@@ -1,5 +1,6 @@
 import scrapy
 
+
 class ProductItem(scrapy.Item):
     name = scrapy.Field()
     url = scrapy.Field()

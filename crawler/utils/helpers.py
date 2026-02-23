@@ -1,5 +1,4 @@
 import re
-from typing import Optional
 
 
 def parse_price(raw):

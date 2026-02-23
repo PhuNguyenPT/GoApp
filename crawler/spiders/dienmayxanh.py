@@ -1,8 +1,10 @@
 import re
-import scrapy
 from datetime import datetime, timezone
+
+import scrapy
+
 from items import ProductItem
-from utils.helpers import parse_price, parse_discount, clean_text, parse_rating
+from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
 
 
 class DienmayxanhSpider(scrapy.Spider):
@@ -45,7 +47,9 @@ class DienmayxanhSpider(scrapy.Spider):
         item["currency"] = "VND"
         item["name"] = clean_text(response.css("h1.product-name::text").get())
         item["brand"] = clean_text(response.css("div.parameter a[href*='/hang/']::text").get())
-        item["category"] = clean_text(response.css("ol.breadcrumb li:nth-last-child(2) a::text").get())
+        item["category"] = clean_text(
+            response.css("ol.breadcrumb li:nth-last-child(2) a::text").get()
+        )
         item["price"] = parse_price(response.css("p.box-price-present strong::text").get())
         item["original_price"] = parse_price(response.css("p.box-price-old::text").get())
         item["discount_percent"] = parse_discount(response.css("p.box-price-percent::text").get())

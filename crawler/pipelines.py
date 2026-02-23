@@ -2,8 +2,9 @@ import json
 import logging
 import os
 from datetime import datetime
-from itemadapter import ItemAdapter
+
 import psycopg2
+from itemadapter import ItemAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,13 @@ class JsonWriterPipeline:
         return instance
 
     def open_spider(self, spider=None):
-        name = spider.name if spider else self.crawler.spider.name if self.crawler.spider else "unknown"
+        name = (
+            spider.name
+            if spider
+            else self.crawler.spider.name
+            if self.crawler.spider
+            else "unknown"
+        )
         os.makedirs(self.settings["OUTPUT_DIR"], exist_ok=True)
         fname = f"{self.settings['OUTPUT_DIR']}/{name}_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
         self.file = open(fname, "w", encoding="utf-8")
@@ -58,7 +65,8 @@ class PostgresPipeline:
         if not self.conn:
             return item
         data = ItemAdapter(item).asdict()
-        self.cur.execute("""
+        self.cur.execute(
+            """
             INSERT INTO products (
                 name, url, source, price, original_price, discount_percent,
                 currency, brand, category, rating, review_count,
@@ -77,7 +85,12 @@ class PostgresPipeline:
                 rating = EXCLUDED.rating,
                 review_count = EXCLUDED.review_count,
                 crawled_at = EXCLUDED.crawled_at
-        """, {**data, "images": json.dumps(data.get("images", [])),
-                        "specs": json.dumps(data.get("specs", {}))})
+        """,
+            {
+                **data,
+                "images": json.dumps(data.get("images", [])),
+                "specs": json.dumps(data.get("specs", {})),
+            },
+        )
         self.conn.commit()
         return item
