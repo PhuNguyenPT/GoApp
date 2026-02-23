@@ -5,9 +5,11 @@
 package database
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type Contact struct {
@@ -18,6 +20,26 @@ type Contact struct {
 	Message   string
 	IpAddress string
 	CreatedAt time.Time
+}
+
+type Product struct {
+	ID              int32
+	Url             string
+	Source          sql.NullString
+	Name            sql.NullString
+	Brand           sql.NullString
+	Category        sql.NullString
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullInt32
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	Images          pqtype.NullRawMessage
+	Specs           pqtype.NullRawMessage
+	CrawledAt       sql.NullTime
+	CreatedAt       sql.NullTime
 }
 
 type Session struct {
