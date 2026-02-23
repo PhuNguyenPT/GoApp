@@ -20,6 +20,7 @@ class FptSpider(scrapy.Spider):
         "DOWNLOAD_DELAY": 1.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.RFPDupeFilter",
+        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 60_000,
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -30,12 +31,16 @@ class FptSpider(scrapy.Spider):
             ),
         },
     }
+    _playwright_meta = {
+        "playwright": True,
+        "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
+    }
 
     async def start(self):
         for url in self.start_urls:
             yield scrapy.Request(
                 url,
-                meta={"playwright": True},
+                meta=self._playwright_meta,
                 callback=self.parse,
                 errback=self.handle_error,
             )
@@ -50,7 +55,10 @@ class FptSpider(scrapy.Spider):
                 href,
                 callback=self.parse_product,
                 errback=self.handle_error,
-                meta={"playwright": True, "playwright_include_page": False},
+                meta={
+                    **self._playwright_meta,
+                    "playwright_include_page": False,
+                },
             )
 
     def parse_product(self, response):
@@ -118,4 +126,20 @@ class FptSpider(scrapy.Spider):
         yield item
 
     def handle_error(self, failure):
+        from playwright._impl._errors import TimeoutError as PlaywrightTimeout
+
+        if failure.check(PlaywrightTimeout):
+            request = failure.request
+            retries = request.meta.get("_timeout_retries", 0)
+            max_retries = 3
+            if retries < max_retries:
+                self.logger.warning(
+                    "Timeout on %s — retrying (%d/%d)", request.url, retries + 1, max_retries
+                )
+                new_request = request.copy()
+                new_request.meta["_timeout_retries"] = retries + 1
+                new_request.dont_filter = True
+                yield new_request
+                return
+
         self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))
