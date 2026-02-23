@@ -76,12 +76,14 @@ class PostgresPipeline:
                 %(specs)s, %(crawled_at)s
             )
             ON CONFLICT (url) DO UPDATE SET
+                name = EXCLUDED.name,
                 price = EXCLUDED.price,
                 original_price = EXCLUDED.original_price,
                 discount_percent = EXCLUDED.discount_percent,
                 in_stock = EXCLUDED.in_stock,
                 rating = EXCLUDED.rating,
                 review_count = EXCLUDED.review_count,
+                images = EXCLUDED.images,
                 crawled_at = EXCLUDED.crawled_at
             """,
             {

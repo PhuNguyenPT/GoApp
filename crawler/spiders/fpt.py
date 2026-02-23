@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
+import psycopg2
 import scrapy
+from scrapy_playwright.page import PageMethod
 
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
@@ -31,19 +33,51 @@ class FptSpider(scrapy.Spider):
             ),
         },
     }
-    _playwright_meta = {
+
+    _listing_meta = {
         "playwright": True,
         "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
+        "playwright_page_methods": [
+            PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
+            PageMethod("wait_for_timeout", 2000),
+            PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
+            PageMethod("wait_for_timeout", 1000),
+        ],
+    }
+
+    _product_meta = {
+        "playwright": True,
+        "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
+        "playwright_include_page": False,
     }
 
     async def start(self):
         for url in self.start_urls:
             yield scrapy.Request(
                 url,
-                meta=self._playwright_meta,
+                meta=self._listing_meta,
                 callback=self.parse,
                 errback=self.handle_error,
             )
+
+        db_url = self.settings.get("DATABASE_URL")
+        if db_url:
+            try:
+                conn = psycopg2.connect(db_url)
+                cur = conn.cursor()
+                cur.execute("SELECT url FROM products WHERE price IS NULL OR in_stock = false")
+                for (url,) in cur.fetchall():
+                    yield scrapy.Request(
+                        url,
+                        meta=self._product_meta,
+                        callback=self.parse_product,
+                        errback=self.handle_error,
+                        dont_filter=True,
+                    )
+                cur.close()
+                conn.close()
+            except Exception as e:
+                self.logger.error("Failed to fetch stale URLs from DB: %s", e)
 
     def parse(self, response):
         seen = set()
@@ -55,10 +89,7 @@ class FptSpider(scrapy.Spider):
                 href,
                 callback=self.parse_product,
                 errback=self.handle_error,
-                meta={
-                    **self._playwright_meta,
-                    "playwright_include_page": False,
-                },
+                meta=self._product_meta,
             )
 
     def parse_product(self, response):
@@ -96,6 +127,8 @@ class FptSpider(scrapy.Spider):
         else:
             raw_discount = response.css("span.text-red-red-7::text").get()
             item["discount_percent"] = parse_discount(raw_discount) if raw_discount else None
+        if item["price"] and item["discount_percent"] and not item["original_price"]:
+            item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
         item["brand"] = clean_text(
             product_data.get("brand", {}).get("name")
             or response.css("[class*='brand'] img::attr(alt)").get()
