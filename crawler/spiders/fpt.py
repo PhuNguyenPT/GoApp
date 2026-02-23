@@ -75,10 +75,10 @@ class FptSpider(scrapy.Spider):
         offers = product_data.get("offers", {})
         item["price"] = parse_price(str(offers.get("price", "")))
         item["original_price"] = parse_price(
-            response.css("[class*='price-old']::text, [class*='oldPrice']::text").get() or ""
+            response.css("span.line-through::text").get() or ""
         )
         item["discount_percent"] = parse_discount(
-            response.css("[class*='discount']::text, [class*='sale']::text").get() or ""
+            response.css("span.text-red-red-7::text").get() or ""
         )
         item["brand"] = clean_text(product_data.get("brand", {}).get("name") or
                                 response.css("[class*='brand'] img::attr(alt)").get())

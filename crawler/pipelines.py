@@ -13,11 +13,12 @@ class JsonWriterPipeline:
     def from_crawler(cls, crawler):
         instance = cls()
         instance.settings = crawler.settings
+        instance.crawler = crawler
         return instance
 
     def open_spider(self, spider=None):
+        name = spider.name if spider else self.crawler.spider.name if self.crawler.spider else "unknown"
         os.makedirs(self.settings["OUTPUT_DIR"], exist_ok=True)
-        name = spider.name if spider else "unknown"
         fname = f"{self.settings['OUTPUT_DIR']}/{name}_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
         self.file = open(fname, "w", encoding="utf-8")
 
