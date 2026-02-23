@@ -40,3 +40,4 @@ typing_extensions==4.15.0
 urllib3==2.6.3
 w3lib==2.4.0
 zope.interface==8.2
+scrapy-playwright
