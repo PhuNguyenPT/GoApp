@@ -3,9 +3,11 @@ from datetime import datetime, timezone
 import psycopg2
 import scrapy
 from scrapy_playwright.page import PageMethod
+import json
 
-from items import ProductItem
+from crawler.items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
+from playwright._impl._errors import TimeoutError as PlaywrightTimeout
 
 
 class FptSpider(scrapy.Spider):
@@ -100,8 +102,6 @@ class FptSpider(scrapy.Spider):
         item["currency"] = "VND"
         item["name"] = clean_text(response.css("h1::text").get())
 
-        import json
-
         json_ld = response.css("script[type='application/ld+json']::text").getall()
         product_data = {}
         for blob in json_ld:
@@ -137,6 +137,7 @@ class FptSpider(scrapy.Spider):
             clean_text(response.css("ol li:nth-last-child(2) a::text").get())
             or response.url.split("/")[3].replace("-", " ").title()
         )
+        item["quantity"] = None
         item["in_stock"] = offers.get("availability", "").endswith("InStock")
         agg = product_data.get("aggregateRating", {})
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
@@ -159,7 +160,6 @@ class FptSpider(scrapy.Spider):
         yield item
 
     def handle_error(self, failure):
-        from playwright._impl._errors import TimeoutError as PlaywrightTimeout
 
         if failure.check(PlaywrightTimeout):
             request = failure.request

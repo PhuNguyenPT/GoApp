@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS products (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
     url TEXT UNIQUE NOT NULL,
     source TEXT,
     name TEXT,
@@ -12,12 +12,14 @@ CREATE TABLE IF NOT EXISTS products (
     discount_percent INT,
     currency TEXT DEFAULT 'VND',
     in_stock BOOLEAN,
+    quantity INT,
     rating NUMERIC,
     review_count INT,
     images JSONB,
     specs JSONB,
     crawled_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 -- +goose StatementEnd
 

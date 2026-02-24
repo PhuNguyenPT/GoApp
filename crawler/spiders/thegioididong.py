@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import scrapy
 
-from items import ProductItem
+from crawler.items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
 
 
