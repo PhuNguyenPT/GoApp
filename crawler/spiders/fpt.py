@@ -6,7 +6,7 @@ import scrapy
 from playwright._impl._errors import TimeoutError as PlaywrightTimeout
 from scrapy_playwright.page import PageMethod
 
-from crawler.items import ProductItem
+from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
 
 EXCLUDE_PATHS = {
