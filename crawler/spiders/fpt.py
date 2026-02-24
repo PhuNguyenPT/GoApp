@@ -26,7 +26,6 @@ FALLBACK_URLS = [
     "/phu-kien",
 ]
 
-
 class FptSpider(scrapy.Spider):
     name = "fpt"
     allowed_domains = ["fptshop.com.vn"]
@@ -49,12 +48,11 @@ class FptSpider(scrapy.Spider):
 
     _listing_meta = {
         "playwright": True,
-        "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
+        "playwright_page_goto_kwargs": {"wait_until": "commit"},
         "playwright_page_methods": [
+            PageMethod("wait_for_selector", "[class*='ProductCard']", timeout=60000),
             PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
             PageMethod("wait_for_timeout", 2000),
-            PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
-            PageMethod("wait_for_timeout", 1000),
         ],
     }
 
@@ -89,7 +87,7 @@ class FptSpider(scrapy.Spider):
                 meta=self._listing_meta,
             )
 
-    async def start(self):
+    async def start(self):    
         yield scrapy.Request(
             "https://fptshop.com.vn",
             meta=self._listing_meta,
@@ -189,7 +187,7 @@ class FptSpider(scrapy.Spider):
             if key and val:
                 item["specs"][key] = val
 
-        for prop in (product_data.get("additionalProperty") or []):
+        for prop in product_data.get("additionalProperty") or []:
             name = prop.get("name")
             value = prop.get("value")
             if name and value:
