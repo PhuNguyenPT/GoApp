@@ -143,7 +143,7 @@ class ThegioididongSpider(scrapy.Spider):
 
         item = ProductItem()
         item["source"] = "thegioididong"
-        item["url"] = response.url
+        item["url"] = ld_product.get("url") or response.url.split("?")[0]
         item["crawled_at"] = datetime.now(timezone.utc).isoformat()
         item["currency"] = offers.get("priceCurrency", "VND")
 

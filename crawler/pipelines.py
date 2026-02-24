@@ -186,9 +186,10 @@ class PostgresPipeline:
     def _get_date_id(self, crawled_at):
         if not crawled_at:
             return None
+        dt = datetime.fromisoformat(crawled_at).date()
         self.cur.execute(
-            "SELECT date_id FROM warehouse.dim_date WHERE full_date = %s::DATE",
-            (str(crawled_at),),
+            "SELECT date_id FROM warehouse.dim_date WHERE full_date = %s",
+            (dt,),
         )
         row = self.cur.fetchone()
         return row[0] if row else None
