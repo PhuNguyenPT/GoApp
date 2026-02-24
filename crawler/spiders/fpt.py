@@ -48,11 +48,12 @@ class FptSpider(scrapy.Spider):
 
     _listing_meta = {
         "playwright": True,
-        "playwright_page_goto_kwargs": {"wait_until": "commit"},
+        "playwright_page_goto_kwargs": {"wait_until": "commit"},  # returns on first byte — avoids the hang
         "playwright_page_methods": [
-            PageMethod("wait_for_selector", "[class*='ProductCard']", timeout=60000),
+            # Manually gate on domcontentloaded with our own timeout cap
+            PageMethod("wait_for_load_state", "domcontentloaded", timeout=15_000),
             PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
-            PageMethod("wait_for_timeout", 2000),
+            PageMethod("wait_for_timeout", 1500),
         ],
     }
 
@@ -194,8 +195,7 @@ class FptSpider(scrapy.Spider):
                 item["specs"][name] = value
         yield item
 
-    def handle_error(self, failure):
-
+    async def handle_error(self, failure):
         if failure.check(PlaywrightTimeout):
             request = failure.request
             retries = request.meta.get("_timeout_retries", 0)

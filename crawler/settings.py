@@ -37,9 +37,18 @@ OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+_ABORT_TYPES = {"image", "media", "font", "ping", "stylesheet"}
+_ABORT_DOMAINS = {
+    "google-analytics.com", "googletagmanager.com", "facebook.net",
+    "facebook.com", "hotjar.com", "zalo.me", "clarity.ms",
+    "doubleclick.net", "adservice.google.com",
+}
 
 def _should_abort_request(req):
-    return req.resource_type in {"image", "media", "font", "ping", "stylesheet"}
-
+    if req.resource_type in _ABORT_TYPES:
+        return True
+    if req.resource_type in {"xhr", "fetch", "script"}:
+        return any(d in req.url for d in _ABORT_DOMAINS)
+    return False
 
 PLAYWRIGHT_ABORT_REQUEST = _should_abort_request
