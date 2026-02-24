@@ -1,13 +1,13 @@
+import json
 from datetime import datetime, timezone
 
 import psycopg2
 import scrapy
+from playwright._impl._errors import TimeoutError as PlaywrightTimeout
 from scrapy_playwright.page import PageMethod
-import json
 
 from crawler.items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
-from playwright._impl._errors import TimeoutError as PlaywrightTimeout
 
 
 class FptSpider(scrapy.Spider):
@@ -67,7 +67,9 @@ class FptSpider(scrapy.Spider):
             try:
                 conn = psycopg2.connect(db_url)
                 cur = conn.cursor()
-                cur.execute("SELECT url FROM products WHERE price IS NULL OR in_stock = false")
+                cur.execute(
+                    "SELECT url FROM products WHERE source = 'fpt' AND (price IS NULL OR in_stock = false)"
+                )
                 for (url,) in cur.fetchall():
                     yield scrapy.Request(
                         url,

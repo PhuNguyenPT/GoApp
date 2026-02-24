@@ -121,6 +121,6 @@ DROP TABLE    IF EXISTS warehouse.dim_source;
 DROP TABLE    IF EXISTS warehouse.dim_date;
 DROP TRIGGER  IF EXISTS trg_products_history ON products;
 DROP FUNCTION IF EXISTS record_product_history;
-DROP TABLE    IF EXISTS warehouse.products_history;
+DROP TABLE    IF EXISTS products_history;
 DROP SCHEMA IF EXISTS warehouse;
 -- +goose StatementEnd
