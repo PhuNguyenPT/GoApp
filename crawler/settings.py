@@ -36,3 +36,5 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+PLAYWRIGHT_ABORT_REQUEST = lambda req: req.resource_type in {"image", "media", "font", "ping", "stylesheet"}
