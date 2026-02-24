@@ -23,8 +23,19 @@ FALLBACK_URLS = [
     "/dien-thoai",
     "/may-tinh-xach-tay",
     "/may-tinh-bang",
-    "/phu-kien",
+    "/may-tinh-de-ban",
+    "/man-hinh",
+    "/tivi",
+    "/tu-lanh",
+    "/may-giat",
+    "/thiet-bi-bep",
+    "/robot-hut-bui",
+    "/may-loc-nuoc",
+    "/may-loc-khong-khi",
+    "/smartwatch",
+    "/phu-kien",  # covers /tai-nghe, /loa, /may-anh etc. via subcategory discovery
 ]
+
 
 class FptSpider(scrapy.Spider):
     name = "fpt"
@@ -46,23 +57,7 @@ class FptSpider(scrapy.Spider):
         },
     }
 
-    _listing_meta = {
-        "playwright": True,
-        "playwright_page_goto_kwargs": {"wait_until": "commit"},  # returns on first byte — avoids the hang
-        "playwright_page_methods": [
-            # Manually gate on domcontentloaded with our own timeout cap
-            PageMethod("wait_for_load_state", "domcontentloaded", timeout=15_000),
-            PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
-            PageMethod("wait_for_timeout", 1500),
-        ],
-    }
-
-    _product_meta = {
-        "playwright": True,
-        "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
-        "playwright_include_page": False,
-    }
-
+    _listing_meta = {} 
     def parse_categories(self, response):
         all_links = response.css("a::attr(href)").getall()
         hrefs = [
@@ -88,13 +83,14 @@ class FptSpider(scrapy.Spider):
                 meta=self._listing_meta,
             )
 
-    async def start(self):    
-        yield scrapy.Request(
-            "https://fptshop.com.vn",
-            meta=self._listing_meta,
-            callback=self.parse_categories,
-            errback=self.handle_error,
-        )
+    async def start(self):
+        for href in FALLBACK_URLS:
+            yield scrapy.Request(
+                f"https://fptshop.com.vn{href}",
+                meta=self._listing_meta,
+                callback=self.parse,
+                errback=self.handle_error,
+            )
 
         db_url = self.settings.get("DATABASE_URL")
         if db_url:
@@ -107,7 +103,6 @@ class FptSpider(scrapy.Spider):
                 for (url,) in cur.fetchall():
                     yield scrapy.Request(
                         url,
-                        meta=self._product_meta,
                         callback=self.parse_product,
                         errback=self.handle_error,
                         dont_filter=True,
@@ -123,11 +118,21 @@ class FptSpider(scrapy.Spider):
             if href in seen:
                 continue
             seen.add(href)
+            yield response.follow(href, callback=self.parse_product, errback=self.handle_error)
+        base = response.url.rstrip("/").split("?")[0]
+        path = base.replace("https://fptshop.com.vn", "")
+        sub_seen = set()
+        for href in response.css(f"a[href^='{path}/']::attr(href)").getall():
+            if href.count("/") != 2:
+                continue
+            if href in sub_seen:
+                continue
+            sub_seen.add(href)
             yield response.follow(
                 href,
-                callback=self.parse_product,
+                callback=self.parse,
                 errback=self.handle_error,
-                meta=self._product_meta,
+                meta=self._listing_meta,
             )
 
     def parse_product(self, response):
@@ -136,63 +141,76 @@ class FptSpider(scrapy.Spider):
         item["url"] = response.url
         item["crawled_at"] = datetime.now(timezone.utc).isoformat()
         item["currency"] = "VND"
-        item["name"] = clean_text(response.css("h1::text").get())
 
-        json_ld = response.css("script[type='application/ld+json']::text").getall()
+        # Use stable script ID instead of looping all scripts
         product_data = {}
-        for blob in json_ld:
+        raw = response.css("#detail-product-script::text").get()
+        if raw:
             try:
-                d = json.loads(blob)
-                if d.get("@type") == "Product":
-                    product_data = d
-                    break
+                product_data = json.loads(raw)
             except Exception:
                 pass
 
+        # Category from breadcrumb JSON-LD (position 2 = top-level category e.g. "Điện thoại")
+        category = None
+        raw_bc = response.css("#breadcrumb-structured-data::text").get()
+        if raw_bc:
+            try:
+                bc = json.loads(raw_bc)
+                cat_item = next(
+                    (x for x in bc.get("itemListElement", []) if x.get("position") == 2), None
+                )
+                if cat_item:
+                    category = cat_item.get("name")
+            except Exception:
+                pass
+        if not category:
+            url_parts = response.url.split("/")
+            category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
+        item["category"] = category
+
         offers = product_data.get("offers", {})
+        agg = product_data.get("aggregateRating", {})
+
+        item["name"] = clean_text(product_data.get("name") or response.css("h1::text").get())
         item["price"] = parse_price(str(offers.get("price", "")))
-        original_raw = response.css("span.line-through::text").get() or ""
-        original = parse_price(original_raw)
+
+        original = parse_price(response.css("span.line-through::text").get() or "")
         item["original_price"] = (
             original if original and item["price"] and original > item["price"] else None
         )
+
         if item["original_price"] and item["price"]:
-            diff = item["original_price"] - item["price"]
-            percent = (diff / item["original_price"]) * 100
-            item["discount_percent"] = round(percent)
+            item["discount_percent"] = round(
+                (item["original_price"] - item["price"]) / item["original_price"] * 100
+            )
         else:
-            raw_discount = response.css("span.text-red-red-7::text").get()
-            item["discount_percent"] = parse_discount(raw_discount) if raw_discount else None
+            # ['2', '%', '3.000.000đ'] → join first two → '2%'
+            parts = response.css("span.text-red-red-7::text").getall()
+            item["discount_percent"] = parse_discount("".join(parts[:2])) if parts else None
+
         if item["price"] and item["discount_percent"] and not item["original_price"]:
             item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
-        item["brand"] = clean_text(
-            product_data.get("brand", {}).get("name")
-            or response.css("[class*='brand'] img::attr(alt)").get()
-        )
-        item["category"] = (
-            clean_text(response.css("ol li:nth-last-child(2) a::text").get())
-            or response.url.split("/")[3].replace("-", " ").title()
-        )
+
+        item["brand"] = clean_text(product_data.get("brand", {}).get("name"))
         item["quantity"] = None
         item["in_stock"] = offers.get("availability", "").endswith("InStock")
-        agg = product_data.get("aggregateRating", {})
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
         item["review_count"] = int(agg["reviewCount"]) if agg.get("reviewCount") else None
-        images = product_data.get("image", [])
-        item["images"] = images if isinstance(images, list) else [images]
-        item["specs"] = {}
-        spec_table = response.css("table.technical-content tr, [class*='Specification'] tr")
-        for row in spec_table:
-            key = clean_text(row.css("td:first-child::text").get())
-            val = clean_text(row.css("td:last-child::text").get())
-            if key and val:
-                item["specs"][key] = val
 
-        for prop in product_data.get("additionalProperty") or []:
-            name = prop.get("name")
-            value = prop.get("value")
-            if name and value:
-                item["specs"][name] = value
+        # Single image string in SSR, wrap in list
+        ld_image = product_data.get("image")
+        item["images"] = (
+            ld_image if isinstance(ld_image, list) else ([ld_image] if ld_image else [])
+        )
+
+        # Filter empty spec values (e.g. Chip: '')
+        item["specs"] = {
+            prop["name"]: prop["value"]
+            for prop in (product_data.get("additionalProperty") or [])
+            if prop.get("name") and str(prop.get("value", "")).strip()
+        }
+
         yield item
 
     async def handle_error(self, failure):

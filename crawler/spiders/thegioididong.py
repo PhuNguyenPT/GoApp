@@ -214,7 +214,7 @@ class ThegioididongSpider(scrapy.Spider):
 
         yield item
 
-    def handle_error(self, failure):
+    async def handle_error(self, failure):
         if failure.check(PlaywrightTimeout):
             request = failure.request
             retries = request.meta.get("_timeout_retries", 0)
