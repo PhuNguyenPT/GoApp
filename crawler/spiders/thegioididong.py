@@ -10,16 +10,24 @@ from scrapy_playwright.page import PageMethod
 from crawler.items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
 
+EXCLUDED_NAV = {"/may-in", "/muc-in", "/sim-so-dep"}
+
+FALLBACK_URLS = [
+    "/dtdd",
+    "/laptop",
+    "/may-tinh-bang",
+    "/tai-nghe",
+    "/phu-kien",
+    "/dong-ho-thong-minh-ldp",
+    "/dong-ho",
+    "/may-doi-tra",
+]
+
 
 class ThegioididongSpider(scrapy.Spider):
     name = "thegioididong"
     allowed_domains = ["thegioididong.com"]
-    start_urls = [
-        "https://www.thegioididong.com/dtdd",
-        "https://www.thegioididong.com/laptop",
-        "https://www.thegioididong.com/may-tinh-bang",
-        "https://www.thegioididong.com/tai-nghe",
-    ]
+
     custom_settings = {
         "DOWNLOAD_DELAY": 1.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
@@ -51,13 +59,12 @@ class ThegioididongSpider(scrapy.Spider):
     }
 
     async def start(self):
-        for url in self.start_urls:
-            yield scrapy.Request(
-                url,
-                meta=self._listing_meta,
-                callback=self.parse,
-                errback=self.handle_error,
-            )
+        yield scrapy.Request(
+            "https://www.thegioididong.com",
+            meta=self._listing_meta,
+            callback=self.parse_categories,
+            errback=self.handle_error,
+        )
 
         db_url = self.settings.get("DATABASE_URL")
         if db_url:
@@ -80,13 +87,34 @@ class ThegioididongSpider(scrapy.Spider):
             except Exception as e:
                 self.logger.error("Failed to fetch stale URLs from DB: %s", e)
 
+    def parse_categories(self, response):
+        hrefs = [
+            h
+            for h in response.css("[class*='nav'] a::attr(href)").getall()
+            if h and not h.startswith("javascript") and h not in EXCLUDED_NAV
+        ]
+        if not hrefs:
+            self.logger.warning("Nav selector returned nothing — using fallback URLs")
+            hrefs = FALLBACK_URLS
+        seen = set()
+        for href in hrefs:
+            if href in seen:
+                continue
+            seen.add(href)
+            yield response.follow(
+                href,
+                callback=self.parse,
+                errback=self.handle_error,
+                meta=self._listing_meta,
+            )
+
     def parse(self, response):
         for link in response.css("ul.listproduct li.item a.main-contain::attr(href)").getall():
             yield response.follow(
                 link,
                 callback=self.parse_product,
                 errback=self.handle_error,
-                meta=self._product_meta,  # add
+                meta=self._product_meta,
             )
         next_page = response.css("a.next::attr(href)").get()
         if next_page:
@@ -94,7 +122,7 @@ class ThegioididongSpider(scrapy.Spider):
                 next_page,
                 callback=self.parse,
                 errback=self.handle_error,
-                meta=self._listing_meta,  # add
+                meta=self._listing_meta,
             )
 
     def parse_product(self, response):
@@ -180,7 +208,7 @@ class ThegioididongSpider(scrapy.Spider):
         # Specs from additionalProperty
         item["specs"] = {
             prop["name"]: prop["value"]
-            for prop in ld_product.get("additionalProperty", [])
+            for prop in (ld_product.get("additionalProperty") or [])
             if prop.get("name") and prop.get("value")
         }
 

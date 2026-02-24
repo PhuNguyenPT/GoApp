@@ -9,16 +9,27 @@ from scrapy_playwright.page import PageMethod
 from crawler.items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
 
+EXCLUDE_PATHS = {
+    "/",
+    "/gio-hang",
+    "/tim-kiem",
+    "/cua-hang",
+    "/tos",
+    "/sim-fpt",
+    "/may-doi-tra",
+}
+
+FALLBACK_URLS = [
+    "/dien-thoai",
+    "/may-tinh-xach-tay",
+    "/may-tinh-bang",
+    "/phu-kien",
+]
+
 
 class FptSpider(scrapy.Spider):
     name = "fpt"
     allowed_domains = ["fptshop.com.vn"]
-    start_urls = [
-        "https://fptshop.com.vn/dien-thoai",
-        "https://fptshop.com.vn/may-tinh-xach-tay",
-        "https://fptshop.com.vn/may-tinh-bang",
-        "https://fptshop.com.vn/phu-kien",
-    ]
 
     custom_settings = {
         "DOWNLOAD_DELAY": 1.5,
@@ -53,14 +64,38 @@ class FptSpider(scrapy.Spider):
         "playwright_include_page": False,
     }
 
-    async def start(self):
-        for url in self.start_urls:
-            yield scrapy.Request(
-                url,
-                meta=self._listing_meta,
+    def parse_categories(self, response):
+        all_links = response.css("a::attr(href)").getall()
+        hrefs = [
+            link
+            for link in all_links
+            if link.startswith("/")
+            and link.count("/") == 1
+            and link not in EXCLUDE_PATHS
+            and not link.startswith("/tim-kiem")
+        ]
+        if not hrefs:
+            self.logger.warning("Category discovery returned nothing — using fallback URLs")
+            hrefs = FALLBACK_URLS
+        seen = set()
+        for href in hrefs:
+            if href in seen:
+                continue
+            seen.add(href)
+            yield response.follow(
+                href,
                 callback=self.parse,
                 errback=self.handle_error,
+                meta=self._listing_meta,
             )
+
+    async def start(self):
+        yield scrapy.Request(
+            "https://fptshop.com.vn",
+            meta=self._listing_meta,
+            callback=self.parse_categories,
+            errback=self.handle_error,
+        )
 
         db_url = self.settings.get("DATABASE_URL")
         if db_url:
@@ -154,7 +189,7 @@ class FptSpider(scrapy.Spider):
             if key and val:
                 item["specs"][key] = val
 
-        for prop in product_data.get("additionalProperty", []):
+        for prop in (product_data.get("additionalProperty") or []):
             name = prop.get("name")
             value = prop.get("value")
             if name and value:
