@@ -28,11 +28,7 @@ ITEM_PIPELINES = {
     "pipelines.JsonWriterPipeline": 100,
     "pipelines.PostgresPipeline": 200,
 }
-DOWNLOAD_HANDLERS = {
-    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-}
-TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

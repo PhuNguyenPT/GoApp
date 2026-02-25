@@ -23,7 +23,7 @@ type Contact struct {
 }
 
 type Product struct {
-	ID              int32
+	ID              uuid.UUID
 	Url             string
 	Source          sql.NullString
 	Name            sql.NullString
@@ -34,12 +34,36 @@ type Product struct {
 	DiscountPercent sql.NullInt32
 	Currency        sql.NullString
 	InStock         sql.NullBool
+	Quantity        sql.NullInt32
 	Rating          sql.NullString
 	ReviewCount     sql.NullInt32
 	Images          pqtype.NullRawMessage
 	Specs           pqtype.NullRawMessage
 	CrawledAt       sql.NullTime
 	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
+type ProductsHistory struct {
+	HistoryID       uuid.UUID
+	ProductID       uuid.UUID
+	Url             string
+	Source          sql.NullString
+	Name            sql.NullString
+	Brand           sql.NullString
+	Category        sql.NullString
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullString
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	Quantity        sql.NullInt32
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	Images          pqtype.NullRawMessage
+	Specs           pqtype.NullRawMessage
+	CrawledAt       sql.NullTime
+	ChangedAt       time.Time
 }
 
 type Session struct {
@@ -59,4 +83,55 @@ type User struct {
 	Name         string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+}
+
+type WarehouseDimDate struct {
+	DateID    int32
+	FullDate  time.Time
+	Year      int32
+	Quarter   int32
+	Month     int32
+	MonthName string
+	Week      int32
+	DayOfWeek int32
+	DayName   string
+	IsWeekend bool
+}
+
+type WarehouseDimProduct struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	Url       string
+	Name      sql.NullString
+	Brand     sql.NullString
+	Category  sql.NullString
+	Currency  sql.NullString
+	Images    pqtype.NullRawMessage
+	Specs     pqtype.NullRawMessage
+	ValidFrom time.Time
+	ValidTo   sql.NullTime
+	IsCurrent bool
+}
+
+type WarehouseDimSource struct {
+	ID        uuid.UUID
+	Name      string
+	Domain    sql.NullString
+	Country   string
+	CreatedAt time.Time
+}
+
+type WarehouseFactProductSnapshot struct {
+	ID              uuid.UUID
+	DimProductID    uuid.UUID
+	SourceID        uuid.UUID
+	DateID          int32
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullString
+	Quantity        sql.NullInt32
+	InStock         sql.NullBool
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	CrawledAt       time.Time
 }
