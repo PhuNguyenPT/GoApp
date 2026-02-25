@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 import psycopg2
 import scrapy
 from playwright._impl._errors import TimeoutError as PlaywrightTimeout
-from scrapy_playwright.page import PageMethod
 
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
@@ -57,7 +56,8 @@ class FptSpider(scrapy.Spider):
         },
     }
 
-    _listing_meta = {} 
+    _listing_meta = {}
+
     def parse_categories(self, response):
         all_links = response.css("a::attr(href)").getall()
         hrefs = [
@@ -187,7 +187,8 @@ class FptSpider(scrapy.Spider):
         else:
             # ['2', '%', '3.000.000đ'] → join first two → '2%'
             parts = response.css("span.text-red-red-7::text").getall()
-            item["discount_percent"] = parse_discount("".join(parts[:2])) if parts else None
+            discount = parse_discount("".join(parts[:2])) if parts else None
+            item["discount_percent"] = discount if discount and 0 < discount < 100 else None
 
         if item["price"] and item["discount_percent"] and not item["original_price"]:
             item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
