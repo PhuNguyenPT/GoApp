@@ -9,8 +9,6 @@ from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
 
 EXCLUDED_NAV = {
-    "/may-in",
-    "/muc-in",
     "/sim-so-dep",
     "/tien-ich",
     "/tien-ich-khac",
@@ -48,6 +46,8 @@ FALLBACK_URLS = [
     "/ban-phim",
     "/sac-dtdd",
     "/adapter-sac",
+    "/may-in",
+    "/muc-in",
 ]
 
 
