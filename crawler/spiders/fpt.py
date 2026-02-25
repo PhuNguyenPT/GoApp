@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 
 import psycopg2
 import scrapy
-from playwright._impl._errors import TimeoutError as PlaywrightTimeout
 
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
@@ -44,7 +43,6 @@ class FptSpider(scrapy.Spider):
         "DOWNLOAD_DELAY": 1.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.RFPDupeFilter",
-        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 60_000,
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -55,8 +53,6 @@ class FptSpider(scrapy.Spider):
             ),
         },
     }
-
-    _listing_meta = {}
 
     def parse_categories(self, response):
         all_links = response.css("a::attr(href)").getall()
@@ -80,14 +76,12 @@ class FptSpider(scrapy.Spider):
                 href,
                 callback=self.parse,
                 errback=self.handle_error,
-                meta=self._listing_meta,
             )
 
     async def start(self):
         for href in FALLBACK_URLS:
             yield scrapy.Request(
                 f"https://fptshop.com.vn{href}",
-                meta=self._listing_meta,
                 callback=self.parse,
                 errback=self.handle_error,
             )
@@ -132,7 +126,6 @@ class FptSpider(scrapy.Spider):
                 href,
                 callback=self.parse,
                 errback=self.handle_error,
-                meta=self._listing_meta,
             )
 
     def parse_product(self, response):
@@ -214,19 +207,5 @@ class FptSpider(scrapy.Spider):
 
         yield item
 
-    async def handle_error(self, failure):
-        if failure.check(PlaywrightTimeout):
-            request = failure.request
-            retries = request.meta.get("_timeout_retries", 0)
-            max_retries = 3
-            if retries < max_retries:
-                self.logger.warning(
-                    "Timeout on %s — retrying (%d/%d)", request.url, retries + 1, max_retries
-                )
-                new_request = request.copy()
-                new_request.meta["_timeout_retries"] = retries + 1
-                new_request.dont_filter = True
-                yield new_request
-                return
-
+    def handle_error(self, failure):
         self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))

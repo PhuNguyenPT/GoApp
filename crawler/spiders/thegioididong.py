@@ -4,8 +4,6 @@ from datetime import datetime, timezone
 
 import psycopg2
 import scrapy
-from playwright._impl._errors import TimeoutError as PlaywrightTimeout
-from scrapy_playwright.page import PageMethod
 
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
@@ -32,7 +30,6 @@ class ThegioididongSpider(scrapy.Spider):
         "DOWNLOAD_DELAY": 1.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.RFPDupeFilter",
-        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 60_000,
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -44,24 +41,9 @@ class ThegioididongSpider(scrapy.Spider):
         },
     }
 
-    _listing_meta = {
-        "playwright": True,
-        "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
-        "playwright_page_methods": [
-            PageMethod("evaluate", "window.scrollTo(0, document.body.scrollHeight)"),
-            PageMethod("wait_for_timeout", 2000),
-        ],
-    }
-
-    _product_meta = {
-        "playwright": True,
-        "playwright_page_goto_kwargs": {"wait_until": "domcontentloaded"},
-    }
-
     async def start(self):
         yield scrapy.Request(
             "https://www.thegioididong.com",
-            meta=self._listing_meta,
             callback=self.parse_categories,
             errback=self.handle_error,
         )
@@ -77,7 +59,6 @@ class ThegioididongSpider(scrapy.Spider):
                 for (url,) in cur.fetchall():
                     yield scrapy.Request(
                         url,
-                        meta=self._product_meta,
                         callback=self.parse_product,
                         errback=self.handle_error,
                         dont_filter=True,
@@ -105,7 +86,6 @@ class ThegioididongSpider(scrapy.Spider):
                 href,
                 callback=self.parse,
                 errback=self.handle_error,
-                meta=self._listing_meta,
             )
 
     def parse(self, response):
@@ -114,7 +94,6 @@ class ThegioididongSpider(scrapy.Spider):
                 link,
                 callback=self.parse_product,
                 errback=self.handle_error,
-                meta=self._product_meta,
             )
         next_page = response.css("a.next::attr(href)").get()
         if next_page:
@@ -122,7 +101,6 @@ class ThegioididongSpider(scrapy.Spider):
                 next_page,
                 callback=self.parse,
                 errback=self.handle_error,
-                meta=self._listing_meta,
             )
 
     def parse_product(self, response):
@@ -147,7 +125,6 @@ class ThegioididongSpider(scrapy.Spider):
         item["crawled_at"] = datetime.now(timezone.utc).isoformat()
         item["currency"] = offers.get("priceCurrency", "VND")
 
-        # Core fields from JSON-LD
         item["name"] = ld_product.get("name") or clean_text(response.css("h1::text").get())
         item["sku"] = ld_product.get("sku")
         item["description"] = ld_product.get("description")
@@ -166,13 +143,11 @@ class ThegioididongSpider(scrapy.Spider):
             breadcrumbs = response.css("[class*='breadcrumb'] a::text").getall()
             item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
 
-        # Price from offers
         item["price"] = offers.get("price") or parse_price(
             response.css("[class*='price-present']::text").get()
         )
         item["original_price"] = parse_price(response.css("p.box-price-old::text").get())
 
-        # Discount: derive from prices if both present, else parse from HTML
         if item["original_price"] and item["price"] and item["original_price"] > item["price"]:
             diff = item["original_price"] - item["price"]
             item["discount_percent"] = round((diff / item["original_price"]) * 100)
@@ -181,31 +156,29 @@ class ThegioididongSpider(scrapy.Spider):
                 response.css("p.box-price-percent::text").get()
             )
 
-        # Reverse: if discount known but original_price missing, back-calculate it
         if item["price"] and item["discount_percent"] and not item["original_price"]:
-            item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
+            discount = item["discount_percent"]
+            item["original_price"] = (
+                round(item["price"] / (1 - discount / 100)) if 0 < discount < 100 else None
+            )
 
-        # Stock from offers
         availability = offers.get("availability", "")
         item["in_stock"] = "InStock" in availability or bool(
             response.css("[class*='btn-buynow']").get()
         )
         item["quantity"] = None
 
-        # Rating & reviews from aggregateRating
         item["rating"] = rating.get("ratingValue") or parse_rating(
             response.css(".point-average-score::text").get()
         )
         item["review_count"] = rating.get("reviewCount")
 
-        # Images
         ld_image = ld_product.get("image", {})
         ld_image_url = ld_image.get("contentUrl") if isinstance(ld_image, dict) else ld_image
         all_images = response.css("div.owl-carousel img::attr(src)").getall()
         product_images = list(dict.fromkeys(url for url in all_images if "/Products/" in url))
         item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
-        # Specs from additionalProperty
         item["specs"] = {
             prop["name"]: prop["value"]
             for prop in (ld_product.get("additionalProperty") or [])
@@ -214,15 +187,5 @@ class ThegioididongSpider(scrapy.Spider):
 
         yield item
 
-    async def handle_error(self, failure):
-        if failure.check(PlaywrightTimeout):
-            request = failure.request
-            retries = request.meta.get("_timeout_retries", 0)
-            if retries < 3:
-                self.logger.warning("Timeout on %s — retrying (%d/3)", request.url, retries + 1)
-                new_request = request.copy()
-                new_request.meta["_timeout_retries"] = retries + 1
-                new_request.dont_filter = True
-                yield new_request
-                return
+    def handle_error(self, failure):
         self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))
