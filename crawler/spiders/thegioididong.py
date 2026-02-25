@@ -113,8 +113,8 @@ class ThegioididongSpider(scrapy.Spider):
                     ld_product = data
                 elif data.get("@type") == "BreadcrumbList":
                     ld_breadcrumbs = data.get("itemListElement", [])
-            except json.JSONDecodeError, AttributeError:
-                pass
+            except (json.JSONDecodeError, AttributeError) as e:
+                self.logger.warning("Failed to parse LD+JSON at %s: %s", response.url, e)
 
         offers = ld_product.get("offers") or {}
         rating = ld_product.get("aggregateRating") or {}
