@@ -8,17 +8,46 @@ import scrapy
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
 
-EXCLUDED_NAV = {"/may-in", "/muc-in", "/sim-so-dep"}
+EXCLUDED_NAV = {
+    "/may-in",
+    "/muc-in",
+    "/sim-so-dep",
+    "/tien-ich",
+    "/tien-ich-khac",
+    "/tin-tuc",
+    "/hoi-dap",
+    "/tra-gop",
+    "/bao-hanh",
+    "/cart",
+    "/flashsale",
+    "/online-only",
+    "/thu-cu-doi-moi",
+    "/dong-ho-gia-soc",
+    "/chuong-trinh-dac-quyen-tgdd",
+    "/chuong-trinh-tra-cham-ict",
+    "/he-thong-sieu-thi-the-gioi-di-dong",
+    "/thong-tin-khac",
+    "/dat-ve-may-bay",
+    "/may-doi-tra",
+}
 
 FALLBACK_URLS = [
     "/dtdd",
     "/laptop",
     "/may-tinh-bang",
+    "/may-tinh-de-ban",
     "/tai-nghe",
     "/phu-kien",
     "/dong-ho-thong-minh-ldp",
     "/dong-ho",
-    "/may-doi-tra",
+    "/man-hinh-may-tinh",
+    "/camera-giam-sat",
+    "/loa-laptop",
+    "/loa",
+    "/chuot-may-tinh",
+    "/ban-phim",
+    "/sac-dtdd",
+    "/adapter-sac",
 ]
 
 
@@ -71,8 +100,13 @@ class ThegioididongSpider(scrapy.Spider):
     def parse_categories(self, response):
         hrefs = [
             h
-            for h in response.css("[class*='nav'] a::attr(href)").getall()
-            if h and not h.startswith("javascript") and h not in EXCLUDED_NAV
+            for h in response.css("[class*='main'] a::attr(href)").getall()
+            if h
+            and h.startswith("/")
+            and "?" not in h
+            and "#" not in h
+            and not h.startswith("javascript")
+            and h.split("/")[1] not in {e.lstrip("/") for e in EXCLUDED_NAV}
         ]
         if not hrefs:
             self.logger.warning("Nav selector returned nothing — using fallback URLs")
