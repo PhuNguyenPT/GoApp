@@ -141,7 +141,7 @@ class FptSpider(scrapy.Spider):
         if raw:
             try:
                 product_data = json.loads(raw)
-            except (json.JSONDecodeError, ValueError) as e:
+            except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse product JSON at %s: %s", response.url, e)
         # Category from breadcrumb JSON-LD (position 2 = top-level category e.g. "Điện thoại")
         category = None
@@ -154,7 +154,7 @@ class FptSpider(scrapy.Spider):
                 )
                 if cat_item:
                     category = cat_item.get("name")
-            except (json.JSONDecodeError, ValueError) as e:
+            except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse breadcrumb JSON at %s: %s", response.url, e)
         if not category:
             url_parts = response.url.split("/")
