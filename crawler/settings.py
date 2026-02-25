@@ -3,6 +3,15 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+# Build DATABASE_URL from individual vars (same as GoApp .env)
+_pg_host = os.getenv("POSTGRES_HOST", "localhost")
+_pg_port = os.getenv("POSTGRES_PORT", "5432")
+_pg_db = os.getenv("POSTGRES_DATABASE", "go")
+_pg_user = os.getenv("POSTGRES_USERNAME", "")
+_pg_pass = os.getenv("POSTGRES_PASSWORD", "")
+DATABASE_URL = f"postgresql://{_pg_user}:{_pg_pass}@{_pg_host}:{_pg_port}/{_pg_db}"
 
 BOT_NAME = "crawler"
 SPIDER_MODULES = ["spiders"]
@@ -28,7 +37,3 @@ ITEM_PIPELINES = {
     "pipelines.JsonWriterPipeline": 100,
     "pipelines.PostgresPipeline": 200,
 }
-
-OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output")
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
