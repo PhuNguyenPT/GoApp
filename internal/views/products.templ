@@ -1,0 +1,138 @@
+package views
+
+import (
+    "fmt"
+    "database/sql"
+    "GoApp/internal/database"
+)
+
+type ProductsPageData struct {
+    Sources          []sql.NullString
+    Categories       []sql.NullString
+    Products         []database.GetProductsBySourceAndCategoryRow
+    SelectedSource   string
+    SelectedCategory string
+    Page             int
+    TotalPages       int
+    TotalCount       int64
+}
+
+templ ProductsPage(seo SEOMeta, userName string, data ProductsPageData) {
+    <!DOCTYPE html>
+    <html lang="en">
+    @Head(seo)
+    <body class="min-h-screen bg-gray-50 flex flex-col">
+        @Header("products", userName)
+        <main class="flex-1 max-w-6xl mx-auto px-8 py-10 w-full">
+            <h1 class="text-3xl font-bold mb-6">Products</h1>
+            <form method="GET" action="/products" class="flex flex-wrap gap-4 mb-8">
+                <select name="source" class="border rounded-lg px-3 py-2 text-sm"
+                    hx-get="/products"
+                    hx-target="#product-results"
+                    hx-include="[name='category'],[name='source']"
+                    hx-push-url="true">
+                    <option value="">All Sources</option>
+                    for _, s := range data.Sources {
+                        if s.Valid {
+                            <option value={ s.String } selected?={ data.SelectedSource == s.String }>
+                                { s.String }
+                            </option>
+                        }
+                    }
+                </select>
+                <select name="category" class="border rounded-lg px-3 py-2 text-sm"
+                    hx-get="/products"
+                    hx-target="#product-results"
+                    hx-include="[name='source'],[name='category']"
+                    hx-push-url="true">
+                    <option value="">All Categories</option>
+                    for _, c := range data.Categories {
+                        if c.Valid {
+                            <option value={ c.String } selected?={ data.SelectedCategory == c.String }>
+                                { c.String }
+                            </option>
+                        }
+                    }
+                </select>
+            </form>
+            <div id="product-results">
+                @ProductGrid(data)
+            </div>
+        </main>
+        @Footer()
+    </body>
+    </html>
+}
+
+templ ProductGrid(data ProductsPageData) {
+    if len(data.Products) == 0 {
+        <p class="text-gray-500">No products found.</p>
+    } else {
+        <p class="text-sm text-gray-500 mb-4">{ fmt.Sprintf("%d products found", data.TotalCount) }</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            for _, p := range data.Products {
+                @ProductCard(p)
+            }
+        </div>
+        if data.TotalPages > 1 {
+            <div class="flex gap-2 mt-8 justify-center">
+                if data.Page > 1 {
+                    <a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page-1)) }
+                       class="px-4 py-2 rounded-lg border hover:bg-gray-100 text-sm">← Prev</a>
+                }
+                <span class="px-4 py-2 text-sm text-gray-600">
+                    { fmt.Sprintf("Page %d of %d", data.Page, data.TotalPages) }
+                </span>
+                if data.Page < data.TotalPages {
+                    <a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page+1)) }
+                       class="px-4 py-2 rounded-lg border hover:bg-gray-100 text-sm">Next →</a>
+                }
+            </div>
+        }
+    }
+}
+
+templ ProductCard(p database.GetProductsBySourceAndCategoryRow) {
+    <a href={ templ.SafeURL(p.Url) } target="_blank" rel="noopener noreferrer"
+       class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
+        <div class="aspect-square bg-gray-100 overflow-hidden">
+            if p.Images.Valid {
+                <img
+                    src={ extractFirstImage(string(p.Images.RawMessage)) }
+                    alt={ p.Name.String }
+                    class="w-full h-full object-contain p-4"
+                    loading="lazy"
+                    onerror="this.style.display='none'"
+                />
+            }
+        </div>
+        <div class="p-4 flex flex-col flex-1">
+            if p.Brand.Valid {
+                <span class="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">{ p.Brand.String }</span>
+            }
+            <h3 class="text-sm font-semibold text-gray-800 line-clamp-2 flex-1 mb-2">
+                if p.Name.Valid {
+                    { p.Name.String }
+                }
+            </h3>
+            <div class="flex items-center justify-between mt-auto">
+                <div>
+                    if p.Price.Valid {
+                        <span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
+                    }
+                    if p.DiscountPercent.Valid && p.DiscountPercent.Int32 > 0 {
+                        <span class="ml-2 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
+                            -{ fmt.Sprintf("%d%%", p.DiscountPercent.Int32) }
+                        </span>
+                    }
+                </div>
+                if p.Rating.Valid {
+                    <span class="text-xs text-yellow-500">★ { p.Rating.String }</span>
+                }
+            </div>
+            if p.Source.Valid {
+                <span class="mt-2 text-xs text-gray-400">{ p.Source.String }</span>
+            }
+        </div>
+    </a>
+}

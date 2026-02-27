@@ -1,0 +1,132 @@
+package server
+
+import (
+	"GoApp/internal/database"
+	"GoApp/internal/views"
+	"database/sql"
+	"log"
+	"math"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
+const productsPerPage = 20
+
+func (s *Server) productsPageHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	selectedSource := c.Query("source")
+	selectedCategory := c.Query("category")
+	pageStr := c.DefaultQuery("page", "1")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		log.Printf("error parsing page: %v", err)
+		page = 1
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	sources, err := s.db.GetDistinctSources(ctx)
+	if err != nil {
+		log.Printf("error getting distinct sources: %v", err)
+	}
+
+	sourceArg := sql.NullString{String: selectedSource, Valid: true}
+	categoryArg := sql.NullString{String: selectedCategory, Valid: true}
+
+	categories, err := s.db.GetCategoriesBySource(ctx, sourceArg)
+	if err != nil {
+		log.Printf("error getting categories by source: %v", err)
+	}
+
+	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
+		Source:   sourceArg,
+		Category: categoryArg,
+	})
+	if err != nil {
+		log.Printf("error counting products: %v", err)
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(productsPerPage)))
+	offset := (page - 1) * productsPerPage
+
+	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:   sourceArg,
+		Category: categoryArg,
+		Limit:    int32(productsPerPage),
+		Offset:   int32(offset),
+	})
+	if err != nil {
+		log.Printf("error getting products: %v", err)
+	}
+	log.Printf("selectedSource: %q, selectedCategory: %q", selectedSource, selectedCategory)
+	log.Printf("total: %d, products: %d", total, len(products))
+
+	data := views.ProductsPageData{
+		Sources:          sources,
+		Categories:       categories,
+		Products:         products,
+		SelectedSource:   selectedSource,
+		SelectedCategory: selectedCategory,
+		Page:             page,
+		TotalPages:       totalPages,
+		TotalCount:       total,
+	}
+
+	userName, _ := c.Get("userName")
+	userNameStr, _ := userName.(string)
+
+	if c.GetHeader("HX-Request") == "true" {
+		c.Header("Content-Type", "text/html")
+		if err := views.ProductGrid(data).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering ProductGrid: %v", err)
+		}
+		return
+	}
+
+	seo := views.SEOMeta{
+		Title:       "Products - GoApp",
+		Description: "Browse products from FPT Shop and The Gioi Di Dong",
+	}
+	c.Header("Content-Type", "text/html")
+	if err := views.ProductsPage(seo, userNameStr, data).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering ProductsPage: %v", err)
+	}
+}
+
+func (s *Server) productsFragmentHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		log.Printf("error parsing limit: %v", err)
+		limit = 20
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	src := c.Query("source")
+	cat := c.Query("category")
+
+	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:   sql.NullString{String: src, Valid: true},
+		Category: sql.NullString{String: cat, Valid: true},
+		Limit:    int32(limit),
+		Offset:   0,
+	})
+	if err != nil {
+		log.Printf("error getting products fragment: %v", err)
+		return
+	}
+
+	c.Header("Content-Type", "text/html")
+	for _, p := range products {
+		if err := views.ProductCard(p).Render(ctx, c.Writer); err != nil {
+			log.Printf("error rendering ProductCard: %v", err)
+		}
+	}
+}

@@ -187,7 +187,6 @@ func (m *mockDB) GetCategoriesBySource(ctx context.Context, source sql.NullStrin
 			unique[p.Category.String] = p.Category
 		}
 	}
-
 	var result []sql.NullString
 	for _, c := range unique {
 		result = append(result, c)
@@ -285,7 +284,6 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 	for _, p := range all {
 		//  Match if arg is empty OR if it matches the record
 		sourceMatch := !arg.Source.Valid || arg.Source.String == "" || strings.EqualFold(p.Source.String, arg.Source.String)
-
 		categoryMatch := !arg.Category.Valid || arg.Category.String == "" || strings.Contains(
 			strings.ToLower(p.Category.String),
 			strings.ToLower(arg.Category.String),
