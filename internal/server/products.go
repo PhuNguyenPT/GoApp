@@ -10,8 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const pageSize = 20
-
 func (s *Server) productsPageHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -45,13 +43,13 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		log.Printf("error counting products: %v", err)
 	}
 
-	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
-	offset := (pageNumber - 1) * pageSize
+	totalPages := int(math.Ceil(float64(total) / float64(s.cfg.PageSize)))
+	offset := (pageNumber - 1) * s.cfg.PageSize
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
 		Column1: selectedSource,
 		Column2: selectedCategory,
-		Limit:   int32(pageSize),
+		Limit:   int32(s.cfg.PageSize),
 		Offset:  int32(offset),
 	})
 	if err != nil {
@@ -92,14 +90,14 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 func (s *Server) productsFragmentHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	limitStr := c.DefaultQuery("limit", "20")
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(s.cfg.PageSize))
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		log.Printf("error parsing limit: %v", err)
-		limit = 20
+		limit = s.cfg.PageSize
 	}
 	if limit < 1 || limit > 100 {
-		limit = 20
+		limit = s.cfg.PageSize
 	}
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
