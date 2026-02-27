@@ -40,8 +40,7 @@ templ ProductsPage(seo SEOMeta, userName string, data ProductsPageData) {
                         }
                     }
                 </select>
-                <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm"
-                    hx-get="/products"
+                <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm w-72"
                     hx-target="#product-results"
                     hx-include="[name='source'],[name='category']"
                     hx-push-url="true">
@@ -138,7 +137,7 @@ templ ProductCard(p database.GetProductsBySourceAndCategoryRow) {
 }
 
 templ CategorySelectOOB(categories []sql.NullString, selectedCategory string) {
-    <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm"
+    <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm w-72"
         hx-get="/products"
         hx-target="#product-results"
         hx-include="[name='source'],[name='category']"
