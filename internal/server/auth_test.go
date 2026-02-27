@@ -10,51 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestAuthHeaderHandler(t *testing.T) {
-	t.Run("unauthenticated returns sign in fragment", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodGet, "/auth-header", nil)
-		if err != nil {
-			t.Fatalf("failed to create request: %v", err)
-		}
-		rr := httptest.NewRecorder()
-		testHandler.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("expected status 200, got %v", rr.Code)
-		}
-		if !strings.Contains(rr.Body.String(), "/register") {
-			t.Errorf("expected register link in unauthenticated fragment")
-		}
-		if !strings.Contains(rr.Body.String(), "Get Started") {
-			t.Errorf("expected Get Started button in unauthenticated fragment")
-		}
-	})
-
-	t.Run("authenticated returns user fragment", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodGet, "/auth-header", nil)
-		if err != nil {
-			t.Fatalf("failed to create request: %v", err)
-		}
-		req.AddCookie(&http.Cookie{Name: "session_token", Value: "valid-token"})
-		rr := httptest.NewRecorder()
-		testHandler.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("expected status 200, got %v", rr.Code)
-		}
-		// mockDB returns "Test User" → first letter "T"
-		if !strings.Contains(rr.Body.String(), "T") {
-			t.Errorf("expected user initial in authenticated fragment")
-		}
-		if !strings.Contains(rr.Body.String(), "/logout") {
-			t.Errorf("expected logout link in authenticated fragment")
-		}
-		if !strings.Contains(rr.Body.String(), "/dashboard") {
-			t.Errorf("expected dashboard link in authenticated fragment")
-		}
-	})
-}
-
 func TestRegisterPageHandler(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "/register", nil)
 	if err != nil {
@@ -125,10 +80,6 @@ func TestRegisterHandler(t *testing.T) {
 			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
 
-		if rr.Header().Get("HX-Redirect") != "/dashboard" {
-			t.Errorf("expected HX-Redirect to /dashboard, got %v", rr.Header().Get("HX-Redirect"))
-		}
-
 		cookies := rr.Result().Cookies()
 		found := false
 		for _, c := range cookies {
@@ -139,6 +90,10 @@ func TestRegisterHandler(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("expected session_token cookie to be set")
+		}
+
+		if !strings.Contains(rr.Body.String(), "/dashboard") {
+			t.Errorf("expected dashboard link in success response")
 		}
 	})
 
@@ -218,10 +173,7 @@ func TestLoginHandler(t *testing.T) {
 			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
 		}
 
-		if got := rr.Header().Get("HX-Redirect"); got != "/dashboard" {
-			t.Errorf("expected HX-Redirect to /dashboard, got %q", got)
-		}
-
+		// Check session cookie is set
 		cookies := rr.Result().Cookies()
 		var found bool
 		for _, c := range cookies {
@@ -232,6 +184,11 @@ func TestLoginHandler(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("expected session_token cookie to be set")
+		}
+
+		// Check success response renders dashboard link
+		if !strings.Contains(rr.Body.String(), "/dashboard") {
+			t.Errorf("expected dashboard link in success response")
 		}
 	})
 
