@@ -35,9 +35,9 @@ func formatPrice(price string) string {
 func FormatMonthYear(t time.Time, lang string) string {
 	if lang == "vi" {
 		months := []string{
-			"tháng 1", "tháng 2", "tháng 3", "tháng 4",
-			"tháng 5", "tháng 6", "tháng 7", "tháng 8",
-			"tháng 9", "tháng 10", "tháng 11", "tháng 12",
+			"Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4",
+			"Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8",
+			"Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
 		}
 		return months[t.Month()-1] + " năm " + strconv.Itoa(t.Year())
 	}
@@ -47,9 +47,9 @@ func FormatMonthYear(t time.Time, lang string) string {
 func FormatDateTime(t time.Time, lang string) string {
 	if lang == "vi" {
 		months := []string{
-			"tháng 1", "tháng 2", "tháng 3", "tháng 4",
-			"tháng 5", "tháng 6", "tháng 7", "tháng 8",
-			"tháng 9", "tháng 10", "tháng 11", "tháng 12",
+			"Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4",
+			"Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8",
+			"Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
 		}
 		return strconv.Itoa(t.Day()) + " " + months[t.Month()-1] + ", " + strconv.Itoa(t.Year()) + " " + t.Format("15:04")
 	}
