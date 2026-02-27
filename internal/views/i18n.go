@@ -71,6 +71,7 @@ type Translations struct {
 	NameUpdated          string
 	PasswordUpdated      string
 	Show                 string
+	Hide                 string
 	Expires              string
 	// Common
 	GoHome string
@@ -174,6 +175,7 @@ func T(lang string) Translations {
 			NameUpdated:          "Cập nhật tên thành công.",
 			PasswordUpdated:      "Cập nhật mật khẩu thành công.",
 			Show:                 "Hiện",
+			Hide:                 "Ẩn",
 			Expires:              "hết hạn",
 			// Common
 			GoHome: "Về trang chủ",
@@ -275,6 +277,7 @@ func T(lang string) Translations {
 		NameUpdated:          "Name updated successfully.",
 		PasswordUpdated:      "Password updated successfully.",
 		Show:                 "Show",
+		Hide:                 "Hide",
 		Expires:              "expires",
 		// Common
 		GoHome: "Go to Home",
