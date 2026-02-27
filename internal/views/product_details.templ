@@ -14,31 +14,42 @@ templ ProductDetailPage(userName string, p database.GetProductByIDRow, lang stri
     })
     <body class="min-h-screen bg-gray-50 flex flex-col">
         @Header("products", userName, lang)
-        <main class="flex-1 max-w-4xl mx-auto px-8 py-10 w-full">
+        <main class="flex-1 max-w-7xl mx-auto px-8 py-10 w-full">
             <a href="/products" class="text-sm text-blue-600 hover:underline mb-6 inline-block">← { T(lang).Products }</a>
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+                <div class="flex flex-col md:flex-row">
                     <!-- Image -->
-                    <div class="aspect-square bg-gray-100 overflow-hidden">
-                        if p.Images.Valid {
-                            <div class="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth">
-                                for _, img := range extractAllImages(p.Images.RawMessage) {
-                                    <div class="w-full h-full shrink-0 snap-start">
-                                        <img
-                                            src={ img }
-                                            alt={ p.Name.String }
-                                            class="w-full h-full object-cover"
-                                            onerror="this.style.display='none'"
-                                        />
-                                    </div>
-                                }
+                        <div class="md:w-3/5 bg-white flex items-center justify-center">
+                            if p.Images.Valid {
+                                <div class="relative cursor-pointer w-full"
+                                    id="lightbox-trigger"
+                                    data-images={ string(p.Images.RawMessage) }>
+                                    <img
+                                        src={ extractFirstImage(p.Images.RawMessage) }
+                                        alt={ p.Name.String }
+                                        class="w-full h-auto object-contain"
+                                        onerror="this.style.display='none'"
+                                    />
+                                    if len(extractAllImages(p.Images.RawMessage)) > 1 {
+                                        <span class="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                                            { fmt.Sprintf("1 / %d", len(extractAllImages(p.Images.RawMessage))) }
+                                        </span>
+                                    }
+                                </div>
+                            <!-- Lightbox -->
+                            <div id="lightbox" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center">
+                                <button id="prev-btn" class="absolute left-4 text-white text-4xl px-4 py-2 hover:text-gray-300">‹</button>
+                                <img id="lightbox-img" src="" alt="" class="max-h-screen max-w-screen-md object-contain p-4"/>
+                                <button id="next-btn" class="absolute right-4 text-white text-4xl px-4 py-2 hover:text-gray-300">›</button>
+                                <span id="lightbox-counter" class="absolute bottom-4 text-white text-sm"></span>
+                                <button id="close-btn" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300">✕</button>
                             </div>
                         }
                     </div>
 
                     <!-- Info -->
-                    <div class="p-8 flex flex-col gap-4">
+                    <div class="md:w-2/5 p-8 flex flex-col gap-4 border-t md:border-t-0 md:border-l border-gray-200">
                         if p.Brand.Valid {
                             <span class="text-xs text-blue-600 font-medium uppercase tracking-wide">{ p.Brand.String }</span>
                         }
@@ -48,7 +59,6 @@ templ ProductDetailPage(userName string, p database.GetProductByIDRow, lang stri
                         if p.Category.Valid {
                             <span class="text-sm text-gray-500">{ p.Category.String }</span>
                         }
-
                         <div class="flex items-center gap-3 mt-2">
                             if p.Price.Valid {
                                 <span class="text-2xl font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
@@ -59,19 +69,16 @@ templ ProductDetailPage(userName string, p database.GetProductByIDRow, lang stri
                                 </span>
                             }
                         </div>
-
                         if p.OriginalPrice.Valid && p.OriginalPrice.String != "" {
                             <span class="text-sm text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String) }</span>
                         }
-
                         if p.Rating.Valid {
                             <span class="text-sm text-yellow-500">★ { p.Rating.String }</span>
                         }
-
                         if p.Source.Valid {
                             <div class="mt-auto pt-4 border-t border-gray-100">
                                 <a href={ templ.SafeURL(p.Url) } target="_blank" rel="noopener noreferrer"
-                                   class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm">
+                                class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm">
                                     { T(lang).ViewOnStore }
                                 </a>
                                 <p class="text-xs text-gray-400 mt-2">{ T(lang).Source }: { p.Source.String }</p>
@@ -81,6 +88,7 @@ templ ProductDetailPage(userName string, p database.GetProductByIDRow, lang stri
                 </div>
             </div>
         </main>
+        <script src="/public/product-detail.js"></script>
         @Footer(lang)
     </body>
     </html>
