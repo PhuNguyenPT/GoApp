@@ -57,9 +57,6 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	if err != nil {
 		log.Printf("error getting products: %v", err)
 	}
-	log.Printf("selectedSource: %q, selectedCategory: %q", selectedSource, selectedCategory)
-	log.Printf("total: %d, products: %d", total, len(products))
-
 	data := views.ProductsPageData{
 		Sources:          sources,
 		Categories:       categories,
