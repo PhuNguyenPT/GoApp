@@ -77,18 +77,31 @@ templ ProductGrid(data ProductsPageData, lang string) {
             }
         </div>
         if data.TotalPages > 1 {
-            <div class="flex gap-2 mt-8 justify-center">
+            <div class="flex gap-1 mt-8 justify-center items-center flex-wrap">
                 if data.Page > 1 {
                     <a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page-1)) }
-                       class="px-4 py-2 rounded-lg border hover:bg-gray-100 text-sm">← { T(lang).Prev }</a>
+                    class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm">←</a>
                 }
-                <span class="px-4 py-2 text-sm text-gray-600">
-                    { fmt.Sprintf("%s %d %s %d", T(lang).Page, data.Page, T(lang).Of, data.TotalPages) }
-                </span>
+
+                for _, p := range paginationPages(data.Page, data.TotalPages) {
+                    if p == 0 {
+                        <span class="px-2 py-2 text-sm text-gray-400">...</span>
+                    } else if p == data.Page {
+                        <span class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">{ fmt.Sprintf("%d", p) }</span>
+                    } else {
+                        <a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, p)) }
+                        class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm">{ fmt.Sprintf("%d", p) }</a>
+                    }
+                }
+
                 if data.Page < data.TotalPages {
                     <a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page+1)) }
-                       class="px-4 py-2 rounded-lg border hover:bg-gray-100 text-sm">{ T(lang).Next } →</a>
+                    class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm">→</a>
                 }
+
+                <span class="w-full text-center text-sm text-gray-500 mt-1">
+                    { fmt.Sprintf("%s %d %s %d", T(lang).Page, data.Page, T(lang).Of, data.TotalPages) }
+                </span>
             </div>
         }
     }

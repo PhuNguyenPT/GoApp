@@ -55,3 +55,47 @@ func FormatDateTime(t time.Time, lang string) string {
 	}
 	return t.Format("Jan 2, 2006 15:04")
 }
+
+func paginationPages(current, total int) []int {
+	if total <= 1 {
+		return nil
+	}
+
+	set := map[int]bool{}
+	pages := []int{}
+
+	add := func(p int) {
+		if p >= 1 && p <= total && !set[p] {
+			set[p] = true
+		}
+	}
+
+	add(1)
+	add(total)
+	add(current)
+	for i := -2; i <= 2; i++ {
+		add(current + i)
+	}
+
+	// build sorted list
+	sorted := []int{}
+	for p := 1; p <= total; p++ {
+		if set[p] {
+			sorted = append(sorted, p)
+		}
+	}
+
+	// insert 0 as ellipsis where gaps exist
+	for i, p := range sorted {
+		if i == 0 {
+			pages = append(pages, p)
+			continue
+		}
+		if p-pages[len(pages)-1] > 1 {
+			pages = append(pages, 0) // ellipsis
+		}
+		pages = append(pages, p)
+	}
+
+	return pages
+}
