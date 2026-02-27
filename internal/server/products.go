@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const productsPerPage = 20
+const pageSize = 20
 
 func (s *Server) productsPageHandler(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -18,13 +18,13 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	selectedSource := c.Query("source")
 	selectedCategory := c.Query("category")
 	pageStr := c.DefaultQuery("page", "1")
-	page, err := strconv.Atoi(pageStr)
+	pageNumber, err := strconv.Atoi(pageStr)
 	if err != nil {
-		log.Printf("error parsing page: %v", err)
-		page = 1
+		log.Printf("error parsing pageNumber: %v", err)
+		pageNumber = 1
 	}
-	if page < 1 {
-		page = 1
+	if pageNumber < 1 {
+		pageNumber = 1
 	}
 
 	sources, err := s.db.GetDistinctSources(ctx)
@@ -45,13 +45,13 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		log.Printf("error counting products: %v", err)
 	}
 
-	totalPages := int(math.Ceil(float64(total) / float64(productsPerPage)))
-	offset := (page - 1) * productsPerPage
+	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+	offset := (pageNumber - 1) * pageSize
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
 		Column1: selectedSource,
 		Column2: selectedCategory,
-		Limit:   int32(productsPerPage),
+		Limit:   int32(pageSize),
 		Offset:  int32(offset),
 	})
 	if err != nil {
@@ -63,7 +63,7 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		Products:         products,
 		SelectedSource:   selectedSource,
 		SelectedCategory: selectedCategory,
-		Page:             page,
+		Page:             pageNumber,
 		TotalPages:       totalPages,
 		TotalCount:       total,
 	}
