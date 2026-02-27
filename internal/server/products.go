@@ -73,24 +73,21 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	userName, _ := c.Get("userName")
 	userNameStr, _ := userName.(string)
+	lang := getLangStr(c)
 
 	if c.GetHeader("HX-Request") == "true" {
 		c.Header("Content-Type", "text/html")
-		if err := views.CategorySelectOOB(categories, selectedCategory).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.CategorySelectOOB(categories, selectedCategory, lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering CategorySelectOOB: %v", err)
 		}
-		if err := views.ProductGrid(data).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.ProductGrid(data, lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering ProductGrid: %v", err)
 		}
 		return
 	}
 
-	seo := views.SEOMeta{
-		Title:       "Products - GoApp",
-		Description: "Browse products from FPT Shop and The Gioi Di Dong",
-	}
 	c.Header("Content-Type", "text/html")
-	if err := views.ProductsPage(seo, userNameStr, data).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.ProductsPage(userNameStr, data, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering ProductsPage: %v", err)
 	}
 }

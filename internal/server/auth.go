@@ -17,13 +17,6 @@ import (
 
 var validate = validator.New()
 
-func (s *Server) authHeaderHandler(c *gin.Context) {
-	userName := getUserName(c)
-	if err := views.AuthHeaderFragment(userName).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Printf("error rendering auth header: %v", err)
-	}
-}
-
 type RegisterInput struct {
 	Name     string `form:"name"     validate:"required"`
 	Email    string `form:"email"    validate:"required,email"`
@@ -44,7 +37,7 @@ func getClientIP(c *gin.Context) string {
 func (s *Server) registerPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.RegisterPage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.RegisterPage(getUserName(c), getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering register page: %v", err)
 	}
 }
@@ -67,14 +60,14 @@ func (s *Server) registerHandler(c *gin.Context) {
 	renderError := func(msg string) {
 		c.Status(http.StatusOK)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		if err := views.RegisterError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.RegisterError(msg, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering register error: %v", err)
 		}
 	}
 
 	var input RegisterInput
 	if err := c.ShouldBind(&input); err != nil {
-		renderError("All fields are required.")
+		renderError(views.T(getLangStr(c)).ErrAllRequired)
 		return
 	}
 	if err := validate.Struct(input); err != nil {
@@ -85,7 +78,7 @@ func (s *Server) registerHandler(c *gin.Context) {
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 
@@ -95,13 +88,13 @@ func (s *Server) registerHandler(c *gin.Context) {
 		PasswordHash: string(hash),
 	})
 	if err != nil {
-		renderError("Email already in use.")
+		renderError(views.T(getLangStr(c)).ErrEmailInUse)
 		return
 	}
 
 	token, err := uuid.NewV7()
 	if err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 	ip := getClientIP(c)
@@ -115,13 +108,16 @@ func (s *Server) registerHandler(c *gin.Context) {
 		IpAddress: ip,
 	})
 	if err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 	secure := s.cfg.AppEnv == EnvProduction
 	c.SetCookie("session_token", token.String(), 86400, "/", "", secure, true)
-	c.Header("HX-Redirect", "/dashboard")
 	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.RegisterSuccess(input.Name, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering register success: %v", err)
+	}
 }
 
 type LoginInput struct {
@@ -132,7 +128,7 @@ type LoginInput struct {
 func (s *Server) loginPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.LoginPage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.LoginPage(getUserName(c), getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering login page: %v", err)
 	}
 }
@@ -141,29 +137,29 @@ func (s *Server) loginHandler(c *gin.Context) {
 	renderError := func(msg string) {
 		c.Status(http.StatusOK)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		if err := views.LoginError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.LoginError(msg, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering login error: %v", err)
 		}
 	}
 
 	var input LoginInput
 	if err := c.ShouldBind(&input); err != nil {
-		renderError("All fields are required.")
+		renderError(views.T(getLangStr(c)).ErrAllRequired)
 		return
 	}
 	if err := validate.Struct(input); err != nil {
-		renderError("Invalid email or password.")
+		renderError(views.T(getLangStr(c)).ErrInvalidPassword)
 		return
 	}
 
 	user, err := s.db.GetUserByEmail(c.Request.Context(), input.Email)
 	if err != nil {
-		renderError("Invalid email or password.")
+		renderError(views.T(getLangStr(c)).ErrInvalidPassword)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		renderError("Invalid email or password.")
+		renderError(views.T(getLangStr(c)).ErrInvalidPassword)
 		return
 	}
 
@@ -179,14 +175,17 @@ func (s *Server) loginHandler(c *gin.Context) {
 		IpAddress: ip,
 	})
 	if err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 	secure := s.cfg.AppEnv == EnvProduction
 
 	c.SetCookie("session_token", token, 86400, "/", "", secure, true)
-	c.Header("HX-Redirect", "/dashboard")
 	c.Status(http.StatusOK)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	if err := views.LoginSuccess(user.Name, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering login success: %v", err)
+	}
 }
 
 func (s *Server) logoutHandler(c *gin.Context) {

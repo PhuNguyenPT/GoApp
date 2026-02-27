@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func extractFirstImage(raw string) string {
@@ -29,4 +30,28 @@ func formatPrice(price string) string {
 		result = append(result, byte(ch))
 	}
 	return fmt.Sprintf("%s ₫", string(result))
+}
+
+func FormatMonthYear(t time.Time, lang string) string {
+	if lang == "vi" {
+		months := []string{
+			"tháng 1", "tháng 2", "tháng 3", "tháng 4",
+			"tháng 5", "tháng 6", "tháng 7", "tháng 8",
+			"tháng 9", "tháng 10", "tháng 11", "tháng 12",
+		}
+		return months[t.Month()-1] + " năm " + strconv.Itoa(t.Year())
+	}
+	return t.Format("January 2006")
+}
+
+func FormatDateTime(t time.Time, lang string) string {
+	if lang == "vi" {
+		months := []string{
+			"tháng 1", "tháng 2", "tháng 3", "tháng 4",
+			"tháng 5", "tháng 6", "tháng 7", "tháng 8",
+			"tháng 9", "tháng 10", "tháng 11", "tháng 12",
+		}
+		return strconv.Itoa(t.Day()) + " " + months[t.Month()-1] + ", " + strconv.Itoa(t.Year()) + " " + t.Format("15:04")
+	}
+	return t.Format("Jan 2, 2006 15:04")
 }

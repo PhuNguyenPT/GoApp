@@ -12,7 +12,7 @@ import (
 func (s *Server) contactPageHandler(c *gin.Context) {
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.ContactPage(getUserName(c)).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.ContactPage(getUserName(c), getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering contact page: %v", err)
 	}
 }
@@ -21,10 +21,11 @@ const maxContactsPerIPPerDay int64 = 5
 const maxContactsPerEmailPerDay int64 = 3
 
 func (s *Server) contactFormHandler(c *gin.Context) {
+	lang := getLangStr(c)
 	renderError := func() {
 		c.Status(http.StatusOK)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		if err := views.ContactFail().Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.ContactFail(lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering contact fail: %v", err)
 		}
 	}
@@ -33,7 +34,7 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 		log.Printf("rate limit exceeded for ip: %s", c.ClientIP())
 		c.Status(http.StatusOK)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		if err := views.ContactRateLimit().Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.ContactRateLimit(lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering contact rate limit: %v", err)
 		}
 	}
@@ -81,7 +82,7 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.ContactSuccess(name).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.ContactSuccess(name, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering contact success: %v", err)
 	}
 }
