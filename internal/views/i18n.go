@@ -102,8 +102,13 @@ type Translations struct {
 	HomeViewAll        string
 }
 
+const (
+	LangEN = "en"
+	LangVI = "vi"
+)
+
 func T(lang string) Translations {
-	if lang == "vi" {
+	if lang == LangVI {
 		return Translations{
 			// Nav
 			Home:       "Trang chủ",
