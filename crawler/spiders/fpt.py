@@ -36,7 +36,7 @@ FALLBACK_URLS = [
 
 
 class FptSpider(scrapy.Spider):
-    name = "fpt"
+    name = "fptshop"
     allowed_domains = ["fptshop.com.vn"]
 
     custom_settings = {
@@ -92,7 +92,7 @@ class FptSpider(scrapy.Spider):
                 conn = psycopg2.connect(db_url)
                 cur = conn.cursor()
                 cur.execute(
-                    "SELECT url FROM products WHERE source = 'fpt' AND (price IS NULL OR in_stock = false)"
+                    "SELECT url FROM products WHERE source = 'fptshop' AND (price IS NULL OR in_stock = false)"
                 )
                 for (url,) in cur.fetchall():
                     yield scrapy.Request(
@@ -130,7 +130,7 @@ class FptSpider(scrapy.Spider):
 
     def parse_product(self, response):
         item = ProductItem()
-        item["source"] = "fpt"
+        item["source"] = "fptshop"
         item["url"] = response.url
         item["crawled_at"] = datetime.now(timezone.utc).isoformat()
         item["currency"] = "VND"

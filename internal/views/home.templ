@@ -1,0 +1,47 @@
+package views
+
+templ HomePage(userName string, lang string) {
+    <!DOCTYPE html>
+    <html lang={ lang }>
+    @Head(SEOMeta{
+        Title:        T(lang).HomeWelcome,
+        Description:  T(lang).HomeSubtitle,
+        CanonicalURL: "https://yourdomain.com/",
+    })
+    <body class="min-h-screen bg-gray-50 flex flex-col">
+        @Header("home", userName, lang)
+
+        <main class="flex-1">
+            <div class="max-w-4xl mx-auto px-8 py-12">
+                <div class="text-center mb-12">
+                    <h1 class="text-5xl font-bold mb-4">{ T(lang).HomeWelcome }</h1>
+                    <p class="text-xl text-gray-600">{ T(lang).HomeSubtitle }</p>
+                </div>
+                <div class="text-center space-x-4">
+                    <a href="/contact" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold">
+                        { T(lang).HomeGetInTouch }
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        <div class="max-w-4xl mx-auto px-8 py-10">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">{ T(lang).HomeLatestProducts }</h2>
+                <a href="/products" class="text-blue-600 hover:underline text-sm font-medium">{ T(lang).HomeViewAll }</a>
+            </div>
+            <div hx-get="/products-fragment?limit=4"
+                hx-trigger="load"
+                hx-swap="innerHTML"
+                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="animate-pulse bg-white rounded-xl h-64 shadow-sm"></div>
+                <div class="animate-pulse bg-white rounded-xl h-64 shadow-sm"></div>
+                <div class="animate-pulse bg-white rounded-xl h-64 shadow-sm"></div>
+                <div class="animate-pulse bg-white rounded-xl h-64 shadow-sm"></div>
+            </div>
+        </div>
+
+        @Footer(lang)
+    </body>
+    </html>
+}

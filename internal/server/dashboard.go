@@ -40,7 +40,7 @@ func (s *Server) dashboardPageHandler(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.Email, user.CreatedAt, sessions).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardPage(user.Name, maskEmail(user.Email), user.Email, user.CreatedAt, sessions, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard: %v", err)
 	}
 }
@@ -56,10 +56,11 @@ type UpdateUserPasswordInput struct {
 }
 
 func (s *Server) updateUserNameHandler(c *gin.Context) {
+	lang := getLangStr(c)
 	renderError := func(msg string) {
 		c.Status(http.StatusOK)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		if err := views.DashboardError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.DashboardError(msg, lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering dashboard error: %v", err)
 		}
 	}
@@ -68,11 +69,11 @@ func (s *Server) updateUserNameHandler(c *gin.Context) {
 
 	var input UpdateUserNameInput
 	if err := c.ShouldBind(&input); err != nil {
-		renderError("Name is required.")
+		renderError(views.T(lang).ErrNameRequired)
 		return
 	}
 	if err := validate.Struct(input); err != nil {
-		renderError("Name is required.")
+		renderError(views.T(lang).ErrNameRequired)
 		return
 	}
 
@@ -81,22 +82,23 @@ func (s *Server) updateUserNameHandler(c *gin.Context) {
 		Name: input.Name,
 	})
 	if err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardNameSuccess(input.Name).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardNameSuccess(input.Name, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard success: %v", err)
 	}
 }
 
 func (s *Server) updateUserPasswordHandler(c *gin.Context) {
+	lang := getLangStr(c)
 	renderError := func(msg string) {
 		c.Status(http.StatusOK)
 		c.Header("Content-Type", "text/html; charset=utf-8")
-		if err := views.DashboardError(msg).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := views.DashboardError(msg, lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering dashboard error: %v", err)
 		}
 	}
@@ -105,7 +107,7 @@ func (s *Server) updateUserPasswordHandler(c *gin.Context) {
 
 	var input UpdateUserPasswordInput
 	if err := c.ShouldBind(&input); err != nil {
-		renderError("All fields are required.")
+		renderError(views.T(getLangStr(c)).ErrAllRequired)
 		return
 	}
 	if err := validate.Struct(input); err != nil {
@@ -114,24 +116,24 @@ func (s *Server) updateUserPasswordHandler(c *gin.Context) {
 		return
 	}
 	if input.NewPassword != input.ConfirmPassword {
-		renderError("Passwords do not match.")
+		renderError(views.T(lang).ErrPasswordMismatch)
 		return
 	}
 
 	user, err := s.db.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.CurrentPassword)); err != nil {
-		renderError("Current password is incorrect.")
+		renderError(views.T(lang).ErrWrongPassword)
 		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		renderError("Something went wrong, please try again")
+		renderError(views.T(lang).ErrSomethingWrong)
 		return
 	}
 
@@ -139,13 +141,13 @@ func (s *Server) updateUserPasswordHandler(c *gin.Context) {
 		ID:           user.ID,
 		PasswordHash: string(hash),
 	}); err != nil {
-		renderError("Something went wrong, please try again.")
+		renderError(views.T(getLangStr(c)).ErrSomethingWrong)
 		return
 	}
 
 	c.Status(http.StatusOK)
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	if err := views.DashboardSuccess("Password updated successfully.").Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.DashboardSuccess(views.T(lang).PasswordUpdated, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering dashboard success: %v", err)
 	}
 }

@@ -73,7 +73,7 @@ func TestDashboardPageHandler(t *testing.T) {
 		if !strings.Contains(rr.Body.String(), "Mozilla/5.0 Test Browser") {
 			t.Errorf("expected session user agent in dashboard body")
 		}
-		if !strings.Contains(rr.Body.String(), "active") {
+		if !strings.Contains(rr.Body.String(), "Active Sessions") {
 			t.Errorf("expected active sessions count in dashboard body")
 		}
 	})

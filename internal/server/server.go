@@ -35,6 +35,12 @@ type DB interface {
 	CreateContact(ctx context.Context, arg database.CreateContactParams) (database.Contact, error)
 	CountContactsByIPToday(ctx context.Context, ipAddress string) (int64, error)
 	CountContactsByEmailToday(ctx context.Context, email string) (int64, error)
+
+	GetDistinctSources(ctx context.Context) ([]sql.NullString, error)
+	GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error)
+	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error)
+	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
+	GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -103,6 +109,26 @@ func (s *sqlDB) CountContactsByIPToday(ctx context.Context, ipAddress string) (i
 
 func (s *sqlDB) CountContactsByEmailToday(ctx context.Context, email string) (int64, error) {
 	return s.queries.CountContactsByEmailToday(ctx, email)
+}
+
+func (s *sqlDB) GetDistinctSources(ctx context.Context) ([]sql.NullString, error) {
+	return s.queries.GetDistinctSources(ctx)
+}
+
+func (s *sqlDB) GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error) {
+	return s.queries.GetCategoriesBySource(ctx, source)
+}
+
+func (s *sqlDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error) {
+	return s.queries.GetProductsBySourceAndCategory(ctx, arg)
+}
+
+func (s *sqlDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
+	return s.queries.CountProductsBySourceAndCategory(ctx, arg)
+}
+
+func (s *sqlDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error) {
+	return s.queries.GetProductByID(ctx, id)
 }
 
 type Server struct {

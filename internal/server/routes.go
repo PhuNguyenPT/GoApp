@@ -15,6 +15,7 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	}))
 	r.Use(gin.Recovery())
 	r.Use(s.resolveUserMiddleware())
+	r.Use(s.langMiddleware())
 
 	apiGroup := r.Group("/api")
 	apiGroup.Use(cors.New(cors.Config{
@@ -30,11 +31,11 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	}
 
 	r.Static("/public", "./frontend-template/public")
-	r.GET("/auth-header", s.authHeaderHandler)
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.File("./frontend-template/public/favicon.ico")
 	})
-	r.StaticFile("/", "./frontend-template/public/index.html")
+	r.GET("/", s.homePageHandler)
+
 	r.GET("/contact", s.contactPageHandler)
 	r.POST("/contact", s.contactFormHandler)
 	r.GET("/sitemap.xml", func(c *gin.Context) {
@@ -54,6 +55,9 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	r.GET("/login", s.loginPageHandler)
 	r.POST("/login", s.loginHandler)
 	r.GET("/logout", s.logoutHandler)
+	r.GET("/products-fragment", s.productsFragmentHandler)
+	r.GET("/products", s.productsPageHandler)
+	r.GET("/products/:id", s.productDetailPageHandler)
 
 	protected := r.Group("/")
 	protected.Use(s.authMiddleware())
