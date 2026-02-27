@@ -37,10 +37,10 @@ type Translations struct {
 	ContactFail      string
 	ContactRateLimit string
 	// Placeholders
-	PlaceholderName    string
-	PlaceholderEmail   string
-	PlaceholderSubject string
-	PlaceholderMessage string
+	PlaceholderName     string
+	PlaceholderEmail    string
+	PlaceholderSubject  string
+	PlaceholderMessage  string
 	PlaceholderPassword string
 	// Products
 	ProductsTitle       string
@@ -140,10 +140,10 @@ func T(lang string) Translations {
 			ContactFail:      "Đã có lỗi xảy ra. Vui lòng thử lại sau.",
 			ContactRateLimit: "Bạn đã đạt giới hạn tin nhắn trong ngày. Vui lòng thử lại vào ngày mai.",
 			// Placeholders
-			PlaceholderName:    "Nguyễn Văn A",
-			PlaceholderEmail:   "a.nguyenvan@email.com",
-			PlaceholderSubject: "Chúng tôi có thể giúp gì cho bạn?",
-			PlaceholderMessage: "Nhập nội dung tin nhắn...",
+			PlaceholderName:     "Nguyễn Văn A",
+			PlaceholderEmail:    "a.nguyenvan@email.com",
+			PlaceholderSubject:  "Chúng tôi có thể giúp gì cho bạn?",
+			PlaceholderMessage:  "Nhập nội dung tin nhắn...",
 			PlaceholderPassword: "••••••••",
 			// Products
 			ProductsTitle:       "Sản phẩm",
@@ -241,10 +241,10 @@ func T(lang string) Translations {
 		ContactFail:      "Something went wrong. Please try again later.",
 		ContactRateLimit: "You've reached the maximum number of messages for today. Please try again tomorrow.",
 		// Placeholders
-		PlaceholderName:    "John Doe",
-		PlaceholderEmail:   "john@example.com",
-		PlaceholderSubject: "How can we help you?",
-		PlaceholderMessage: "Write your message here...",
+		PlaceholderName:     "John Doe",
+		PlaceholderEmail:    "john@example.com",
+		PlaceholderSubject:  "How can we help you?",
+		PlaceholderMessage:  "Write your message here...",
 		PlaceholderPassword: "••••••••",
 		// Products
 		ProductsTitle:       "Products",
