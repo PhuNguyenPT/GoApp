@@ -174,9 +174,10 @@ func (m *mockDB) GetDistinctSources(ctx context.Context) ([]sql.NullString, erro
 	return result, nil
 }
 
-func (m *mockDB) GetCategoriesBySource(ctx context.Context, source sql.NullString) ([]sql.NullString, error) {
+func (m *mockDB) GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error) {
+	src, _ := source.(string)
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source: source,
+		Column1: src,
 	})
 	if err != nil {
 		return []sql.NullString{}, err
@@ -280,15 +281,13 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 	}
 
 	// filter by source and category
+	src, _ := arg.Column1.(string)
+	cat, _ := arg.Column2.(string)
+
 	var result []database.GetProductsBySourceAndCategoryRow
 	for _, p := range all {
-		//  Match if arg is empty OR if it matches the record
-		sourceMatch := !arg.Source.Valid || arg.Source.String == "" || strings.EqualFold(p.Source.String, arg.Source.String)
-		categoryMatch := !arg.Category.Valid || arg.Category.String == "" || strings.Contains(
-			strings.ToLower(p.Category.String),
-			strings.ToLower(arg.Category.String),
-		)
-
+		sourceMatch := src == "" || strings.EqualFold(p.Source.String, src)
+		categoryMatch := cat == "" || strings.EqualFold(p.Category.String, cat)
 		if sourceMatch && categoryMatch {
 			result = append(result, p)
 		}
@@ -297,9 +296,11 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 }
 
 func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
+	col1, _ := arg.Column1.(string)
+	col2, _ := arg.Column2.(string)
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:   arg.Source,
-		Category: arg.Category,
+		Column1: col1,
+		Column2: col2,
 	})
 	if err != nil {
 		return 0, err

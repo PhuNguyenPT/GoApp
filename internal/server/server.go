@@ -37,7 +37,7 @@ type DB interface {
 	CountContactsByEmailToday(ctx context.Context, email string) (int64, error)
 
 	GetDistinctSources(ctx context.Context) ([]sql.NullString, error)
-	GetCategoriesBySource(ctx context.Context, source sql.NullString) ([]sql.NullString, error)
+	GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error)
 	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error)
 	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
 }
@@ -114,7 +114,7 @@ func (s *sqlDB) GetDistinctSources(ctx context.Context) ([]sql.NullString, error
 	return s.queries.GetDistinctSources(ctx)
 }
 
-func (s *sqlDB) GetCategoriesBySource(ctx context.Context, source sql.NullString) ([]sql.NullString, error) {
+func (s *sqlDB) GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error) {
 	return s.queries.GetCategoriesBySource(ctx, source)
 }
 

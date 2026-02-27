@@ -3,7 +3,6 @@ package server
 import (
 	"GoApp/internal/database"
 	"GoApp/internal/views"
-	"database/sql"
 	"log"
 	"math"
 	"strconv"
@@ -33,17 +32,14 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		log.Printf("error getting distinct sources: %v", err)
 	}
 
-	sourceArg := sql.NullString{String: selectedSource, Valid: true}
-	categoryArg := sql.NullString{String: selectedCategory, Valid: true}
-
-	categories, err := s.db.GetCategoriesBySource(ctx, sourceArg)
+	categories, err := s.db.GetCategoriesBySource(ctx, selectedSource)
 	if err != nil {
 		log.Printf("error getting categories by source: %v", err)
 	}
 
 	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
-		Source:   sourceArg,
-		Category: categoryArg,
+		Column1: selectedSource,
+		Column2: selectedCategory,
 	})
 	if err != nil {
 		log.Printf("error counting products: %v", err)
@@ -53,10 +49,10 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	offset := (page - 1) * productsPerPage
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:   sourceArg,
-		Category: categoryArg,
-		Limit:    int32(productsPerPage),
-		Offset:   int32(offset),
+		Column1: selectedSource,
+		Column2: selectedCategory,
+		Limit:   int32(productsPerPage),
+		Offset:  int32(offset),
 	})
 	if err != nil {
 		log.Printf("error getting products: %v", err)
@@ -109,14 +105,11 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 		limit = 20
 	}
 
-	src := c.Query("source")
-	cat := c.Query("category")
-
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:   sql.NullString{String: src, Valid: true},
-		Category: sql.NullString{String: cat, Valid: true},
-		Limit:    int32(limit),
-		Offset:   0,
+		Column1: c.Query("source"),
+		Column2: c.Query("category"),
+		Limit:   int32(limit),
+		Offset:  0,
 	})
 	if err != nil {
 		log.Printf("error getting products fragment: %v", err)

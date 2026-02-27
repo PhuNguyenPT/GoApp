@@ -15,17 +15,17 @@ import (
 
 const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCategory :one
 SELECT COUNT(*) FROM products
-WHERE (source = $1 OR $1 = '')
-AND (category = $2 OR $2 = '')
+WHERE ($1 = '' OR lower(source) = lower($1))
+AND ($2 = '' OR lower(category) = lower($2))
 `
 
 type CountProductsBySourceAndCategoryParams struct {
-	Source   sql.NullString
-	Category sql.NullString
+	Column1 interface{}
+	Column2 interface{}
 }
 
 func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg CountProductsBySourceAndCategoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category)
+	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Column1, arg.Column2)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -33,13 +33,13 @@ func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg Coun
 
 const getCategoriesBySource = `-- name: GetCategoriesBySource :many
 SELECT DISTINCT category FROM products
-WHERE (source = $1 OR $1 = '')
+WHERE ($1 = '' OR lower(source) = lower($1))
 AND category IS NOT NULL
 ORDER BY category
 `
 
-func (q *Queries) GetCategoriesBySource(ctx context.Context, source sql.NullString) ([]sql.NullString, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoriesBySource, source)
+func (q *Queries) GetCategoriesBySource(ctx context.Context, dollar_1 interface{}) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getCategoriesBySource, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -95,17 +95,17 @@ SELECT id, url, source, name, brand, category, price, original_price,
        discount_percent, currency, in_stock, rating, review_count,
        images, crawled_at, created_at
 FROM products
-WHERE (source = $1 OR $1 = '')
-AND (category = $2 OR $2 = '')
-ORDER BY created_at DESC
+WHERE ($1 = '' OR lower(source) = lower($1))
+AND ($2 = '' OR lower(category) = lower($2))
+ORDER BY crawled_at DESC
 LIMIT $3 OFFSET $4
 `
 
 type GetProductsBySourceAndCategoryParams struct {
-	Source   sql.NullString
-	Category sql.NullString
-	Limit    int32
-	Offset   int32
+	Column1 interface{}
+	Column2 interface{}
+	Limit   int32
+	Offset  int32
 }
 
 type GetProductsBySourceAndCategoryRow struct {
@@ -129,8 +129,8 @@ type GetProductsBySourceAndCategoryRow struct {
 
 func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]GetProductsBySourceAndCategoryRow, error) {
 	rows, err := q.db.QueryContext(ctx, getProductsBySourceAndCategory,
-		arg.Source,
-		arg.Category,
+		arg.Column1,
+		arg.Column2,
 		arg.Limit,
 		arg.Offset,
 	)
