@@ -40,6 +40,7 @@ type DB interface {
 	GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error)
 	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error)
 	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
+	GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -124,6 +125,10 @@ func (s *sqlDB) GetProductsBySourceAndCategory(ctx context.Context, arg database
 
 func (s *sqlDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
 	return s.queries.CountProductsBySourceAndCategory(ctx, arg)
+}
+
+func (s *sqlDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error) {
+	return s.queries.GetProductByID(ctx, id)
 }
 
 type Server struct {

@@ -308,6 +308,25 @@ func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg datab
 	return int64(len(products)), nil
 }
 
+func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error) {
+	return database.GetProductByIDRow{
+		ID:              id,
+		Url:             "https://fptshop.com.vn/dien-thoai/iphone-17-pro",
+		Source:          sql.NullString{String: "fptshop", Valid: true},
+		Name:            sql.NullString{String: "iPhone 17 Pro", Valid: true},
+		Brand:           sql.NullString{String: "Apple", Valid: true},
+		Category:        sql.NullString{String: "Điện thoại", Valid: true},
+		Price:           sql.NullString{String: "33590000.0", Valid: true},
+		OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
+		DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},
+		Currency:        sql.NullString{String: "VND", Valid: true},
+		InStock:         sql.NullBool{Bool: true, Valid: true},
+		Rating:          sql.NullString{String: "4.9", Valid: true},
+		ReviewCount:     sql.NullInt32{Int32: 25, Valid: true},
+		Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdn2.fptshop.com.vn/unsafe/iphone_17_pro_cosmic_orange_1_12e8ea1358.png"]`), Valid: true},
+	}, nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {

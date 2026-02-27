@@ -108,12 +108,12 @@ templ ProductGrid(data ProductsPageData, lang string) {
 }
 
 templ ProductCard(p database.GetProductsBySourceAndCategoryRow) {
-    <a href={ templ.SafeURL(p.Url) } target="_blank" rel="noopener noreferrer"
+    <a href={ templ.SafeURL(fmt.Sprintf("/products/%s", p.ID.String())) }
        class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
         <div class="aspect-square bg-gray-100 overflow-hidden">
             if p.Images.Valid {
                 <img
-                    src={ extractFirstImage(string(p.Images.RawMessage)) }
+                    src={ extractFirstImage(p.Images.RawMessage) }
                     alt={ p.Name.String }
                     class="w-full h-full object-contain p-4"
                     loading="lazy"

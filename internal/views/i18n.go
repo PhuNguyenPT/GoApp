@@ -51,6 +51,10 @@ type Translations struct {
 	Prev                string
 	Next                string
 	NoProducts          string
+	// Product Details
+	Source      string
+	ViewOnStore string
+
 	// Dashboard
 	DashboardTitle       string
 	DashboardDescription string
@@ -160,6 +164,9 @@ func T(lang string) Translations {
 			Prev:                "Trước",
 			Next:                "Tiếp",
 			NoProducts:          "Không tìm thấy sản phẩm.",
+			// Product Details
+			Source:      "Nguồn",
+			ViewOnStore: "Xem trên cửa hàng",
 			// Dashboard
 			DashboardTitle:       "Bảng điều khiển",
 			DashboardDescription: "Trang quản lý của bạn",
@@ -262,6 +269,9 @@ func T(lang string) Translations {
 		Prev:                "Prev",
 		Next:                "Next",
 		NoProducts:          "No products found.",
+		// Product Details
+		Source:      "Source",
+		ViewOnStore: "View on store",
 		// Dashboard
 		DashboardTitle:       "Dashboard",
 		DashboardDescription: "Your dashboard",

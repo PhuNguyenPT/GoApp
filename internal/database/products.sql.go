@@ -90,6 +90,59 @@ func (q *Queries) GetDistinctSources(ctx context.Context) ([]sql.NullString, err
 	return items, nil
 }
 
+const getProductByID = `-- name: GetProductByID :one
+SELECT id, url, source, name, brand, category, price, original_price,
+       discount_percent, currency, in_stock, rating, review_count,
+       images, specs, crawled_at, created_at
+FROM products
+WHERE id = $1
+`
+
+type GetProductByIDRow struct {
+	ID              uuid.UUID
+	Url             string
+	Source          sql.NullString
+	Name            sql.NullString
+	Brand           sql.NullString
+	Category        sql.NullString
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullInt32
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	Images          pqtype.NullRawMessage
+	Specs           pqtype.NullRawMessage
+	CrawledAt       sql.NullTime
+	CreatedAt       sql.NullTime
+}
+
+func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getProductByID, id)
+	var i GetProductByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Url,
+		&i.Source,
+		&i.Name,
+		&i.Brand,
+		&i.Category,
+		&i.Price,
+		&i.OriginalPrice,
+		&i.DiscountPercent,
+		&i.Currency,
+		&i.InStock,
+		&i.Rating,
+		&i.ReviewCount,
+		&i.Images,
+		&i.Specs,
+		&i.CrawledAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
 SELECT id, url, source, name, brand, category, price, original_price,
        discount_percent, currency, in_stock, rating, review_count,

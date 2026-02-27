@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-func extractFirstImage(raw string) string {
+func extractFirstImage(raw []byte) string {
 	var images []string
-	if err := json.Unmarshal([]byte(raw), &images); err == nil && len(images) > 0 {
+	if err := json.Unmarshal(raw, &images); err == nil && len(images) > 0 {
 		return images[0]
 	}
 	return ""
@@ -98,4 +98,12 @@ func paginationPages(current, total int) []int {
 	}
 
 	return pages
+}
+
+func extractAllImages(raw []byte) []string {
+	var images []string
+	if err := json.Unmarshal(raw, &images); err == nil {
+		return images
+	}
+	return nil
 }

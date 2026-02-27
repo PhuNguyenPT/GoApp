@@ -5,9 +5,11 @@ import (
 	"GoApp/internal/views"
 	"log"
 	"math"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func (s *Server) productsPageHandler(c *gin.Context) {
@@ -116,5 +118,29 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 		if err := views.ProductCard(p).Render(ctx, c.Writer); err != nil {
 			log.Printf("error rendering ProductCard: %v", err)
 		}
+	}
+}
+
+func (s *Server) productDetailPageHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/products")
+		return
+	}
+
+	product, err := s.db.GetProductByID(c.Request.Context(), id)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/products")
+		return
+	}
+
+	userName, _ := c.Get("userName")
+	userNameStr, _ := userName.(string)
+	lang := getLangStr(c)
+
+	c.Header("Content-Type", "text/html")
+	if err := views.ProductDetailPage(userNameStr, product, lang).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering ProductDetailPage: %v", err)
 	}
 }
