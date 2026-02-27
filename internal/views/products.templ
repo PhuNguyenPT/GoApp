@@ -29,7 +29,7 @@ templ ProductsPage(seo SEOMeta, userName string, data ProductsPageData) {
                 <select name="source" class="border rounded-lg px-3 py-2 text-sm"
                     hx-get="/products"
                     hx-target="#product-results"
-                    hx-include="[name='category'],[name='source']"
+                    hx-include="[name='source']"
                     hx-push-url="true">
                     <option value="">All Sources</option>
                     for _, s := range data.Sources {
@@ -40,7 +40,7 @@ templ ProductsPage(seo SEOMeta, userName string, data ProductsPageData) {
                         }
                     }
                 </select>
-                <select name="category" class="border rounded-lg px-3 py-2 text-sm"
+                <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm"
                     hx-get="/products"
                     hx-target="#product-results"
                     hx-include="[name='source'],[name='category']"
@@ -135,4 +135,22 @@ templ ProductCard(p database.GetProductsBySourceAndCategoryRow) {
             }
         </div>
     </a>
+}
+
+templ CategorySelectOOB(categories []sql.NullString, selectedCategory string) {
+    <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm"
+        hx-get="/products"
+        hx-target="#product-results"
+        hx-include="[name='source'],[name='category']"
+        hx-push-url="true"
+        hx-swap-oob="true">
+        <option value="">All Categories</option>
+        for _, c := range categories {
+            if c.Valid {
+                <option value={ c.String } selected?={ selectedCategory == c.String }>
+                    { c.String }
+                </option>
+            }
+        }
+    </select>
 }

@@ -76,6 +76,9 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	if c.GetHeader("HX-Request") == "true" {
 		c.Header("Content-Type", "text/html")
+		if err := views.CategorySelectOOB(categories, selectedCategory).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering CategorySelectOOB: %v", err)
+		}
 		if err := views.ProductGrid(data).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering ProductGrid: %v", err)
 		}
