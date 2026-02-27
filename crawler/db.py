@@ -4,7 +4,7 @@ from datetime import datetime
 SOURCE_DOMAIN = {
     "dienmaycholon": "dienmaycholon.com",
     "dienmayxanh": "dienmayxanh.com",
-    "fpt": "fptshop.com.vn",
+    "fptshop": "fptshop.com.vn",
     "thegioididong": "thegioididong.com",
 }
 

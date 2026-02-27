@@ -208,7 +208,7 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 		{
 			ID:              ids[0],
 			Url:             "https://fptshop.com.vn/dien-thoai/iphone-17-pro",
-			Source:          sql.NullString{String: "fpt", Valid: true},
+			Source:          sql.NullString{String: "fptshop", Valid: true},
 			Name:            sql.NullString{String: "iPhone 17 Pro", Valid: true},
 			Brand:           sql.NullString{String: "Apple", Valid: true},
 			Category:        sql.NullString{String: "Điện thoại", Valid: true},
@@ -240,7 +240,7 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 		{
 			ID:              ids[2],
 			Url:             "https://fptshop.com.vn/may-tinh-xach-tay/acer-predator-helios-18-gaming-ai-ph18-73-98aq-u9-275hx",
-			Source:          sql.NullString{String: "fpt", Valid: true},
+			Source:          sql.NullString{String: "fptshop", Valid: true},
 			Name:            sql.NullString{String: "Acer Predator Helios 18 Gaming AI PH18-73-98AQ U9 275HX", Valid: true},
 			Brand:           sql.NullString{String: "Acer", Valid: true},
 			Category:        sql.NullString{String: "Laptop", Valid: true},
