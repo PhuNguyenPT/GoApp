@@ -14,26 +14,31 @@ def upsert_product(cur, data):
         """
         INSERT INTO products (
             url, source, name, brand, category,
-            price, original_price, currency,
+            price, original_price, discount_percent, currency,
             in_stock, quantity, rating, review_count,
             images, specs, crawled_at
         ) VALUES (
             %(url)s, %(source)s, %(name)s, %(brand)s, %(category)s,
-            %(price)s, %(original_price)s, %(currency)s,
+            %(price)s, %(original_price)s, %(discount_percent)s, %(currency)s,
             %(in_stock)s, %(quantity)s, %(rating)s, %(review_count)s,
             %(images)s, %(specs)s, %(crawled_at)s
         )
         ON CONFLICT (url) DO UPDATE SET
-            name           = EXCLUDED.name,
-            price          = EXCLUDED.price,
-            original_price = EXCLUDED.original_price,
-            in_stock       = EXCLUDED.in_stock,
-            quantity       = EXCLUDED.quantity,
-            rating         = EXCLUDED.rating,
-            review_count   = EXCLUDED.review_count,
-            images         = EXCLUDED.images,
-            specs          = EXCLUDED.specs,
-            crawled_at     = EXCLUDED.crawled_at
+            name             = EXCLUDED.name,
+            brand            = EXCLUDED.brand,
+            category         = EXCLUDED.category,
+            price            = EXCLUDED.price,
+            original_price   = EXCLUDED.original_price,
+            discount_percent = EXCLUDED.discount_percent,
+            currency         = EXCLUDED.currency,
+            in_stock         = EXCLUDED.in_stock,
+            quantity         = EXCLUDED.quantity,
+            rating           = EXCLUDED.rating,
+            review_count     = EXCLUDED.review_count,
+            images           = EXCLUDED.images,
+            specs            = EXCLUDED.specs,
+            crawled_at       = EXCLUDED.crawled_at,
+            updated_at       = NOW()
         RETURNING id
         """,
         {
