@@ -79,6 +79,9 @@ class FptSpider(scrapy.Spider):
             )
 
     async def start(self):
+        if hasattr(self, "start_url"):
+            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            return
         for href in FALLBACK_URLS:
             yield scrapy.Request(
                 f"https://fptshop.com.vn{href}",
@@ -191,11 +194,17 @@ class FptSpider(scrapy.Spider):
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
         item["review_count"] = int(agg["reviewCount"]) if agg.get("reviewCount") else None
 
+        product_images = list(
+            dict.fromkeys(
+                url
+                for url in response.css("[class*='swiper'] img::attr(src)").getall()
+                if "/unsafe/828x0/" in url
+            )
+        )
         # Single image string in SSR, wrap in list
         ld_image = product_data.get("image")
-        item["images"] = (
-            ld_image if isinstance(ld_image, list) else ([ld_image] if ld_image else [])
-        )
+        ld_image_url = ld_image[0] if isinstance(ld_image, list) else ld_image
+        item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
         # Filter empty spec values (e.g. Chip: '')
         item["specs"] = {
