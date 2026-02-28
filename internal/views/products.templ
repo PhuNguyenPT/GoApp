@@ -9,7 +9,7 @@ import (
 type ProductsPageData struct {
     Sources          []sql.NullString
     Categories       []sql.NullString
-    Products         []database.GetProductsBySourceAndCategoryRow
+    Products         []database.Product
     SelectedSource   string
     SelectedCategory string
     Page             int
@@ -107,7 +107,7 @@ templ ProductGrid(data ProductsPageData, lang string) {
     }
 }
 
-templ ProductCard(p database.GetProductsBySourceAndCategoryRow) {
+templ ProductCard(p database.Product) {
     <a href={ templ.SafeURL(fmt.Sprintf("/products/%s", p.ID.String())) }
        class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
         <div class="aspect-square bg-gray-100 overflow-hidden">

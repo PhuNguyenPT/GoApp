@@ -38,9 +38,9 @@ type DB interface {
 
 	GetDistinctSources(ctx context.Context) ([]sql.NullString, error)
 	GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error)
-	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error)
+	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error)
 	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
-	GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error)
+	GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -119,7 +119,7 @@ func (s *sqlDB) GetCategoriesBySource(ctx context.Context, source interface{}) (
 	return s.queries.GetCategoriesBySource(ctx, source)
 }
 
-func (s *sqlDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error) {
+func (s *sqlDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {
 	return s.queries.GetProductsBySourceAndCategory(ctx, arg)
 }
 
@@ -127,7 +127,7 @@ func (s *sqlDB) CountProductsBySourceAndCategory(ctx context.Context, arg databa
 	return s.queries.CountProductsBySourceAndCategory(ctx, arg)
 }
 
-func (s *sqlDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error) {
+func (s *sqlDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error) {
 	return s.queries.GetProductByID(ctx, id)
 }
 

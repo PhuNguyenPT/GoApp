@@ -5,7 +5,7 @@ import (
     "GoApp/internal/database"
 )
 
-templ ProductDetailPage(userName string, p database.GetProductByIDRow, lang string) {
+templ ProductDetailPage(userName string, p database.Product, lang string) {
     <!DOCTYPE html>
     <html lang={ lang }>
     @Head(SEOMeta{

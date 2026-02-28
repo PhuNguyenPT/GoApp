@@ -10,10 +10,7 @@ AND category IS NOT NULL
 ORDER BY category;
 
 -- name: GetProductsBySourceAndCategory :many
-SELECT id, url, source, name, brand, category, price, original_price,
-       discount_percent, currency, in_stock, rating, review_count,
-       images, crawled_at, created_at
-FROM products
+SELECT * FROM products
 WHERE ($1 = '' OR lower(source) = lower($1))
 AND ($2 = '' OR lower(category) = lower($2))
 ORDER BY crawled_at DESC
@@ -25,8 +22,5 @@ WHERE ($1 = '' OR lower(source) = lower($1))
 AND ($2 = '' OR lower(category) = lower($2));
 
 -- name: GetProductByID :one
-SELECT id, url, source, name, brand, category, price, original_price,
-       discount_percent, currency, in_stock, rating, review_count,
-       images, specs, crawled_at, created_at
-FROM products
+SELECT * FROM products
 WHERE id = $1;

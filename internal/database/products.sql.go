@@ -10,7 +10,6 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCategory :one
@@ -91,36 +90,13 @@ func (q *Queries) GetDistinctSources(ctx context.Context) ([]sql.NullString, err
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, url, source, name, brand, category, price, original_price,
-       discount_percent, currency, in_stock, rating, review_count,
-       images, specs, crawled_at, created_at
-FROM products
+SELECT id, url, source, name, brand, category, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE id = $1
 `
 
-type GetProductByIDRow struct {
-	ID              uuid.UUID
-	Url             string
-	Source          sql.NullString
-	Name            sql.NullString
-	Brand           sql.NullString
-	Category        sql.NullString
-	Price           sql.NullString
-	OriginalPrice   sql.NullString
-	DiscountPercent sql.NullInt32
-	Currency        sql.NullString
-	InStock         sql.NullBool
-	Rating          sql.NullString
-	ReviewCount     sql.NullInt32
-	Images          pqtype.NullRawMessage
-	Specs           pqtype.NullRawMessage
-	CrawledAt       sql.NullTime
-	CreatedAt       sql.NullTime
-}
-
-func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductByIDRow, error) {
+func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, error) {
 	row := q.db.QueryRowContext(ctx, getProductByID, id)
-	var i GetProductByIDRow
+	var i Product
 	err := row.Scan(
 		&i.ID,
 		&i.Url,
@@ -133,21 +109,20 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductB
 		&i.DiscountPercent,
 		&i.Currency,
 		&i.InStock,
+		&i.Quantity,
 		&i.Rating,
 		&i.ReviewCount,
 		&i.Images,
 		&i.Specs,
 		&i.CrawledAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
-SELECT id, url, source, name, brand, category, price, original_price,
-       discount_percent, currency, in_stock, rating, review_count,
-       images, crawled_at, created_at
-FROM products
+SELECT id, url, source, name, brand, category, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE ($1 = '' OR lower(source) = lower($1))
 AND ($2 = '' OR lower(category) = lower($2))
 ORDER BY crawled_at DESC
@@ -161,26 +136,7 @@ type GetProductsBySourceAndCategoryParams struct {
 	Offset  int32
 }
 
-type GetProductsBySourceAndCategoryRow struct {
-	ID              uuid.UUID
-	Url             string
-	Source          sql.NullString
-	Name            sql.NullString
-	Brand           sql.NullString
-	Category        sql.NullString
-	Price           sql.NullString
-	OriginalPrice   sql.NullString
-	DiscountPercent sql.NullInt32
-	Currency        sql.NullString
-	InStock         sql.NullBool
-	Rating          sql.NullString
-	ReviewCount     sql.NullInt32
-	Images          pqtype.NullRawMessage
-	CrawledAt       sql.NullTime
-	CreatedAt       sql.NullTime
-}
-
-func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]GetProductsBySourceAndCategoryRow, error) {
+func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]Product, error) {
 	rows, err := q.db.QueryContext(ctx, getProductsBySourceAndCategory,
 		arg.Column1,
 		arg.Column2,
@@ -191,9 +147,9 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetProductsBySourceAndCategoryRow
+	var items []Product
 	for rows.Next() {
-		var i GetProductsBySourceAndCategoryRow
+		var i Product
 		if err := rows.Scan(
 			&i.ID,
 			&i.Url,
@@ -206,11 +162,14 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 			&i.DiscountPercent,
 			&i.Currency,
 			&i.InStock,
+			&i.Quantity,
 			&i.Rating,
 			&i.ReviewCount,
 			&i.Images,
+			&i.Specs,
 			&i.CrawledAt,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
