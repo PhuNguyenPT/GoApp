@@ -14,17 +14,17 @@ import (
 
 const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCategory :one
 SELECT COUNT(*) FROM products
-WHERE ($1 = '' OR lower(source) = lower($1))
-AND ($2 = '' OR lower(category) = lower($2))
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
 `
 
 type CountProductsBySourceAndCategoryParams struct {
-	Column1 interface{}
-	Column2 interface{}
+	Source   string
+	Category string
 }
 
 func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg CountProductsBySourceAndCategoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Column1, arg.Column2)
+	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -32,13 +32,13 @@ func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg Coun
 
 const getCategoriesBySource = `-- name: GetCategoriesBySource :many
 SELECT DISTINCT category FROM products
-WHERE ($1 = '' OR lower(source) = lower($1))
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND category IS NOT NULL
 ORDER BY category
 `
 
-func (q *Queries) GetCategoriesBySource(ctx context.Context, dollar_1 interface{}) ([]sql.NullString, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoriesBySource, dollar_1)
+func (q *Queries) GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getCategoriesBySource, source)
 	if err != nil {
 		return nil, err
 	}
@@ -123,25 +123,25 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
 SELECT id, url, source, name, brand, category, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
-WHERE ($1 = '' OR lower(source) = lower($1))
-AND ($2 = '' OR lower(category) = lower($2))
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
 ORDER BY crawled_at DESC
-LIMIT $3 OFFSET $4
+LIMIT $4 OFFSET $3
 `
 
 type GetProductsBySourceAndCategoryParams struct {
-	Column1 interface{}
-	Column2 interface{}
-	Limit   int32
-	Offset  int32
+	Source     string
+	Category   string
+	PageOffset int32
+	PageLimit  int32
 }
 
 func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]Product, error) {
 	rows, err := q.db.QueryContext(ctx, getProductsBySourceAndCategory,
-		arg.Column1,
-		arg.Column2,
-		arg.Limit,
-		arg.Offset,
+		arg.Source,
+		arg.Category,
+		arg.PageOffset,
+		arg.PageLimit,
 	)
 	if err != nil {
 		return nil, err

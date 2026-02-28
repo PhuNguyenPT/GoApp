@@ -38,8 +38,8 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	}
 
 	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
-		Column1: selectedSource,
-		Column2: selectedCategory,
+		Source:   selectedSource,
+		Category: selectedCategory,
 	})
 	if err != nil {
 		log.Printf("error counting products: %v", err)
@@ -49,10 +49,10 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	offset := (pageNumber - 1) * s.cfg.PageSize
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: selectedSource,
-		Column2: selectedCategory,
-		Limit:   int32(s.cfg.PageSize),
-		Offset:  int32(offset),
+		Source:     selectedSource,
+		Category:   selectedCategory,
+		PageLimit:  int32(s.cfg.PageSize),
+		PageOffset: int32(offset),
 	})
 	if err != nil {
 		log.Printf("error getting products: %v", err)
@@ -103,10 +103,10 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 	}
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: c.Query("source"),
-		Column2: c.Query("category"),
-		Limit:   int32(limit),
-		Offset:  0,
+		Source:     c.Query("source"),
+		Category:   c.Query("category"),
+		PageLimit:  int32(limit),
+		PageOffset: 0,
 	})
 	if err != nil {
 		log.Printf("error getting products fragment: %v", err)

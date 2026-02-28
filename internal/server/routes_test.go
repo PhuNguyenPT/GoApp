@@ -175,10 +175,9 @@ func (m *mockDB) GetDistinctSources(ctx context.Context) ([]sql.NullString, erro
 	return result, nil
 }
 
-func (m *mockDB) GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error) {
-	src, _ := source.(string)
+func (m *mockDB) GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error) {
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: src,
+		Source: source,
 	})
 	if err != nil {
 		return []sql.NullString{}, err
@@ -352,8 +351,8 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 	}
 
 	// filter by source and category
-	src, _ := arg.Column1.(string)
-	cat, _ := arg.Column2.(string)
+	src := arg.Source
+	cat := arg.Category
 
 	var result []database.Product
 	for _, p := range all {
@@ -367,11 +366,9 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 }
 
 func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
-	col1, _ := arg.Column1.(string)
-	col2, _ := arg.Column2.(string)
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: col1,
-		Column2: col2,
+		Source:   arg.Source,
+		Category: arg.Category,
 	})
 	if err != nil {
 		return 0, err
