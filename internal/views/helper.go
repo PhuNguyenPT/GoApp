@@ -1,6 +1,7 @@
 package views
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -106,4 +107,36 @@ func extractAllImages(raw []byte) []string {
 		return images
 	}
 	return nil
+}
+
+func extractSpecsOrdered(raw json.RawMessage) [][2]string {
+	var result [][2]string
+	dec := json.NewDecoder(bytes.NewReader(raw))
+
+	// Read opening {
+	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
+		return nil
+	}
+
+	for dec.More() {
+		// Read key
+		keyToken, err := dec.Token()
+		if err != nil {
+			break
+		}
+		key, ok := keyToken.(string)
+		if !ok {
+			break
+		}
+
+		// Read value
+		var value string
+		if err := dec.Decode(&value); err != nil {
+			break
+		}
+
+		result = append(result, [2]string{key, value})
+	}
+
+	return result
 }
