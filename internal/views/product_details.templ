@@ -22,13 +22,13 @@ templ ProductDetailPage(userName string, p database.Product, lang string) {
                     <!-- Image -->
                         <div class="md:w-3/5 bg-white flex items-center justify-center">
                             if p.Images.Valid {
-                                <div class="relative cursor-pointer w-full"
+                                <div class="relative cursor-pointer w-full h-64 md:h-[500px]"
                                     id="lightbox-trigger"
                                     data-images={ string(p.Images.RawMessage) }>
                                     <img
                                         src={ extractFirstImage(p.Images.RawMessage) }
                                         alt={ p.Name.String }
-                                        class="w-full h-auto object-contain"
+                                        class="w-full h-full object-contain"
                                         onerror="this.style.display='none'"
                                     />
                                     if len(extractAllImages(p.Images.RawMessage)) > 1 {
