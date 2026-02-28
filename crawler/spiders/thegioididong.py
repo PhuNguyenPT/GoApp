@@ -247,8 +247,13 @@ class ThegioididongSpider(scrapy.Spider):
 
             # Product images are JS-rendered and not in static HTML on landing pages.
             # Use og:image (product reveal/press image) as best available fallback.
-            og_image = response.css("meta[property='og:image']::attr(content)").get()
-            item["images"] = [og_image.split("#")[0]] if og_image else []
+            src_images = [url for url in response.css("div.owl-carousel img::attr(src)").getall() if "/Products/" in url]
+            data_src_images = [url for url in response.css("div.owl-carousel img::attr(data-src)").getall() if "/Products/" in url]
+            product_images = list(dict.fromkeys(src_images + data_src_images))
+            if not product_images:
+                og_image = response.css("meta[property='og:image']::attr(content)").get()
+                product_images = [og_image.split("#")[0]] if og_image else []
+            item["images"] = product_images
 
             item["specs"] = self._parse_gtm_specs(response)
             yield item
@@ -309,8 +314,9 @@ class ThegioididongSpider(scrapy.Spider):
 
         ld_image = ld_product.get("image", {})
         ld_image_url = ld_image.get("contentUrl") if isinstance(ld_image, dict) else ld_image
-        all_images = response.css("div.owl-carousel img::attr(src)").getall()
-        product_images = list(dict.fromkeys(url for url in all_images if "/Products/" in url))
+        src_images = [url for url in response.css("div.owl-carousel img::attr(src)").getall() if "/Products/" in url]
+        data_src_images = [url for url in response.css("div.owl-carousel img::attr(data-src)").getall() if "/Products/" in url]
+        product_images = list(dict.fromkeys(src_images + data_src_images))
         item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
         item["specs"] = {
