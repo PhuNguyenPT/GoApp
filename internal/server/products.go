@@ -17,6 +17,11 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	selectedSource := c.Query("source")
 	selectedCategory := c.Query("category")
+
+	if c.GetHeader("HX-Request") == "true" && c.Query("trigger") == "source" {
+		selectedCategory = ""
+	}
+
 	pageStr := c.DefaultQuery("page", "1")
 	pageNumber, err := strconv.Atoi(pageStr)
 	if err != nil {
@@ -57,6 +62,7 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	if err != nil {
 		log.Printf("error getting products: %v", err)
 	}
+
 	data := views.ProductsPageData{
 		Sources:          sources,
 		Categories:       categories,

@@ -32,7 +32,8 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
                 <select name="source" class="border rounded-lg px-3 py-2 text-sm"
                     hx-get="/products"
                     hx-target="#product-results"
-                    hx-include="[name='source']"
+                    hx-include="[name='source'],[name='category']"
+                    hx-vals='{"trigger": "source"}'
                     hx-push-url="true">
                     <option value="">{ T(lang).AllSources }</option>
                     for _, s := range data.Sources {
@@ -44,6 +45,7 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
                     }
                 </select>
                 <select id="category-select" name="category" class="border rounded-lg px-3 py-2 text-sm w-72"
+                    hx-get="/products"
                     hx-target="#product-results"
                     hx-include="[name='source'],[name='category']"
                     hx-push-url="true">
