@@ -55,7 +55,7 @@ docker-prod-down:
 	@docker compose --profile prod down
 
 # Test the application
-test: templ-generate
+test: templ-generate sqlc-generate
 	@echo "Testing..."
 	@go test ./... -v
 
@@ -99,6 +99,7 @@ migrate-down:
 # Lint
 lint:
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+	@go tool sqlc compile
 
 lint-fix:
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --fix
@@ -106,6 +107,7 @@ lint-fix:
 # Static analysis
 vet:
 	@go vet ./...
+	@go tool sqlc vet
 
 # Format code (Go + templ)
 fmt: templ-fmt
