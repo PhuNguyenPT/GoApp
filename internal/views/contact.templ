@@ -3,72 +3,90 @@ package views
 templ ContactPage(userName string, lang string) {
 	<!DOCTYPE html>
 	<html lang={ lang }>
-	@Head(SEOMeta{
-		Title:        T(lang).ContactTitle,
-		Description:  T(lang).ContactSubtitle,
-		Keywords:     "go, golang, htmx, templ, web app",
-		CanonicalURL: "https://yourdomain.com/contact",
-		OGImage:      "https://yourdomain.com/public/og-image.png",
-	})
-	<body class="min-h-screen bg-gray-50 flex flex-col">
-		@Header("contact", userName, lang)
-
-		<main class="flex-1">
-			<div class="max-w-2xl mx-auto px-8 py-12">
-				<div class="text-center mb-8">
-					<h1 class="text-4xl font-bold mb-4">{ T(lang).ContactHeading }</h1>
-					<p class="text-gray-600">{ T(lang).ContactSubtitle }</p>
+		@Head(SEOMeta{
+			Title:        T(lang).ContactTitle,
+			Description:  T(lang).ContactSubtitle,
+			Keywords:     "go, golang, htmx, templ, web app",
+			CanonicalURL: "https://yourdomain.com/contact",
+			OGImage:      "https://yourdomain.com/public/og-image.png",
+		})
+		<body class="min-h-screen bg-gray-50 flex flex-col">
+			@Header("contact", userName, lang)
+			<main class="flex-1">
+				<div class="max-w-2xl mx-auto px-8 py-12">
+					<div class="text-center mb-8">
+						<h1 class="text-4xl font-bold mb-4">{ T(lang).ContactHeading }</h1>
+						<p class="text-gray-600">{ T(lang).ContactSubtitle }</p>
+					</div>
+					<div class="bg-white p-8 rounded-lg shadow-md">
+						<form hx-post="/contact" hx-target="#result" hx-indicator="#spinner" class="space-y-6">
+							<div>
+								<label for="name" class="block mb-2 font-medium text-gray-700">{ T(lang).FullName }</label>
+								<input
+									type="text"
+									id="name"
+									name="name"
+									autocomplete="name"
+									required
+									placeholder={ T(lang).PlaceholderName }
+									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+								/>
+							</div>
+							<div>
+								<label for="email" class="block mb-2 font-medium text-gray-700">{ T(lang).EmailLabel }</label>
+								<input
+									type="email"
+									id="email"
+									name="email"
+									autocomplete="email"
+									required
+									placeholder={ T(lang).PlaceholderEmail }
+									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+								/>
+							</div>
+							<div>
+								<label for="subject" class="block mb-2 font-medium text-gray-700">{ T(lang).Subject }</label>
+								<input
+									type="text"
+									id="subject"
+									name="subject"
+									autocomplete="off"
+									required
+									placeholder={ T(lang).PlaceholderSubject }
+									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+								/>
+							</div>
+							<div>
+								<label for="message" class="block mb-2 font-medium text-gray-700">{ T(lang).Message }</label>
+								<textarea
+									id="message"
+									name="message"
+									rows="5"
+									autocomplete="off"
+									required
+									placeholder={ T(lang).PlaceholderMessage }
+									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+								></textarea>
+							</div>
+							<button
+								type="submit"
+								class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2"
+							>
+								<span>{ T(lang).SendMessage }</span>
+								<span id="spinner" class="htmx-indicator">
+									<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+								</span>
+							</button>
+						</form>
+						<div id="result"></div>
+					</div>
 				</div>
-				
-				<div class="bg-white p-8 rounded-lg shadow-md">
-					<form hx-post="/contact" hx-target="#result" hx-indicator="#spinner" class="space-y-6">
-						<div>
-							<label for="name" class="block mb-2 font-medium text-gray-700">{ T(lang).FullName }</label>
-							<input type="text" id="name" name="name" autocomplete="name" required 
-								placeholder={ T(lang).PlaceholderName }
-								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
-						</div>
-						
-						<div>
-							<label for="email" class="block mb-2 font-medium text-gray-700">{ T(lang).EmailLabel }</label>
-							<input type="email" id="email" name="email" autocomplete="email" required 
-								placeholder={ T(lang).PlaceholderEmail }
-								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
-						</div>
-						
-						<div>
-							<label for="subject" class="block mb-2 font-medium text-gray-700">{ T(lang).Subject }</label>
-							<input type="text" id="subject" name="subject" autocomplete="off" required 
-								placeholder={ T(lang).PlaceholderSubject }
-								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
-						</div>
-						
-						<div>
-							<label for="message" class="block mb-2 font-medium text-gray-700">{ T(lang).Message }</label>
-							<textarea id="message" name="message" rows="5" autocomplete="off" required 
-								placeholder={ T(lang).PlaceholderMessage }
-								class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"></textarea>
-						</div>
-
-						<button type="submit" 
-							class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
-							<span>{ T(lang).SendMessage }</span>
-							<span id="spinner" class="htmx-indicator">
-								<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-								</svg>
-							</span>
-						</button>
-					</form>
-					
-					<div id="result"></div>
-				</div>
-			</div>
-		</main>
-
-		@Footer(lang)
-	</body>
+			</main>
+			@Footer(lang)
+		</body>
 	</html>
 }
 
@@ -79,13 +97,13 @@ templ ContactSuccess(name string, lang string) {
 }
 
 templ ContactFail(lang string) {
-    <div class="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-        <p>{ T(lang).ContactFail }</p>
-    </div>
+	<div class="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+		<p>{ T(lang).ContactFail }</p>
+	</div>
 }
 
 templ ContactRateLimit(lang string) {
-    <div class="mt-6 p-4 bg-orange-100 border border-orange-400 text-orange-700 rounded-lg">
-        <p>{ T(lang).ContactRateLimit }</p>
-    </div>
+	<div class="mt-6 p-4 bg-orange-100 border border-orange-400 text-orange-700 rounded-lg">
+		<p>{ T(lang).ContactRateLimit }</p>
+	</div>
 }
