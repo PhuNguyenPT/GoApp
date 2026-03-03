@@ -13,6 +13,15 @@ templ-generate:
 		go run github.com/a-h/templ/cmd/templ@latest generate; \
 	fi
 
+# Format templ files
+templ-fmt:
+	@echo "Formatting templ files..."
+	@if command -v templ > /dev/null 2>&1; then \
+		templ fmt ./internal/views/; \
+	else \
+		go tool templ fmt ./internal/views/; \
+	fi
+
 # Build Tailwind CSS
 tailwind-build:
 	@echo "Building Tailwind CSS..."
@@ -98,8 +107,8 @@ lint-fix:
 vet:
 	@go vet ./...
 
-# Format code
-fmt:
-	@gofmt -w .	
+# Format code (Go + templ)
+fmt: templ-fmt
+	@gofmt -w .
 
-.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
+.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate templ-fmt tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
