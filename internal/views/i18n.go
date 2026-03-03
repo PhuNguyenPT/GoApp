@@ -51,6 +51,9 @@ type Translations struct {
 	Prev                string
 	Next                string
 	NoProducts          string
+	Filters             string
+	ClearAll            string
+	Category            string
 	// Product Details
 	Source         string
 	ViewOnStore    string
@@ -167,6 +170,9 @@ func T(lang string) Translations {
 			Prev:                "Trước",
 			Next:                "Tiếp",
 			NoProducts:          "Không tìm thấy sản phẩm.",
+			Filters:             "Bộ lọc",
+			ClearAll:            "Xoá tất cả",
+			Category:            "Danh mục",
 			// Product Details
 			Source:         "Nguồn",
 			ViewOnStore:    "Xem trên cửa hàng",
@@ -276,6 +282,9 @@ func T(lang string) Translations {
 		Prev:                "Prev",
 		Next:                "Next",
 		NoProducts:          "No products found.",
+		Filters:             "Filters",
+		ClearAll:            "Clear all",
+		Category:            "Category",
 		// Product Details
 		Source:         "Source",
 		ViewOnStore:    "View on store",

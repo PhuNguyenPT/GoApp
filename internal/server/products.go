@@ -80,8 +80,11 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	if c.GetHeader("HX-Request") == "true" {
 		c.Header("Content-Type", "text/html")
-		if err := views.CategorySelectOOB(categories, selectedCategory, lang).Render(c.Request.Context(), c.Writer); err != nil {
-			log.Printf("error rendering CategorySelectOOB: %v", err)
+		// OOB swap updates the category list in the side panel when source changes
+		if c.Query("trigger") == "source" {
+			if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(c.Request.Context(), c.Writer); err != nil {
+				log.Printf("error rendering CategoryFilterOOB: %v", err)
+			}
 		}
 		if err := views.ProductGrid(data, lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering ProductGrid: %v", err)

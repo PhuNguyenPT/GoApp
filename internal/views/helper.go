@@ -140,3 +140,17 @@ func extractSpecsOrdered(raw json.RawMessage) [][2]string {
 
 	return result
 }
+
+func sourceItemClass(source, selected string) string {
+	if source == selected {
+		return "bg-blue-50 text-blue-700 font-medium"
+	}
+	return "text-gray-600 hover:bg-gray-50"
+}
+
+func categoryItemClass(category, selected string) string {
+	if category == selected {
+		return "bg-blue-50 text-blue-700 font-medium"
+	}
+	return "text-gray-600 hover:bg-gray-50"
+}
