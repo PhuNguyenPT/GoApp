@@ -55,6 +55,9 @@ type Translations struct {
 	Source         string
 	ViewOnStore    string
 	Specifications string
+	InStock        string
+	OutOfStock     string
+	Reviews        string
 	// Dashboard
 	DashboardTitle       string
 	DashboardDescription string
@@ -168,6 +171,9 @@ func T(lang string) Translations {
 			Source:         "Nguồn",
 			ViewOnStore:    "Xem trên cửa hàng",
 			Specifications: "Thông số kỹ thuật",
+			InStock:        "Còn hàng",
+			OutOfStock:     "Hết hàng",
+			Reviews:        "đánh giá",
 			// Dashboard
 			DashboardTitle:       "Bảng điều khiển",
 			DashboardDescription: "Trang quản lý của bạn",
@@ -274,6 +280,9 @@ func T(lang string) Translations {
 		Source:         "Source",
 		ViewOnStore:    "View on store",
 		Specifications: "Specifications",
+		InStock:        "In Stock",
+		OutOfStock:     "Out of Stock",
+		Reviews:        "reviews",
 		// Dashboard
 		DashboardTitle:       "Dashboard",
 		DashboardDescription: "Your dashboard",
