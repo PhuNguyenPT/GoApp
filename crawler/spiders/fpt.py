@@ -146,7 +146,16 @@ class FptSpider(scrapy.Spider):
                 product_data = json.loads(raw)
             except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse product JSON at %s: %s", response.url, e)
-        # Category from breadcrumb JSON-LD (position 2 = top-level category e.g. "Điện thoại")
+
+        # Map SKU from JSON-LD
+        item["sku"] = product_data.get("sku")
+
+        # Map Description from JSON-LD (SEO summary)
+        raw_desc = product_data.get("description")
+        # Stripping leading/trailing quotes if they exist, then cleaning
+        item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
+
+        # Category from breadcrumb JSON-LD
         category = None
         raw_bc = response.css("#breadcrumb-structured-data::text").get()
         if raw_bc:
@@ -159,6 +168,7 @@ class FptSpider(scrapy.Spider):
                     category = cat_item.get("name")
             except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse breadcrumb JSON at %s: %s", response.url, e)
+
         if not category:
             url_parts = response.url.split("/")
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
