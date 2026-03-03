@@ -90,7 +90,7 @@ func (q *Queries) GetDistinctSources(ctx context.Context) ([]sql.NullString, err
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, url, source, name, brand, category, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+SELECT id, url, source, sku, name, brand, category, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE id = $1
 `
 
@@ -101,9 +101,11 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.ID,
 		&i.Url,
 		&i.Source,
+		&i.Sku,
 		&i.Name,
 		&i.Brand,
 		&i.Category,
+		&i.Description,
 		&i.Price,
 		&i.OriginalPrice,
 		&i.DiscountPercent,
@@ -122,7 +124,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 }
 
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
-SELECT id, url, source, name, brand, category, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+SELECT id, url, source, sku, name, brand, category, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
 ORDER BY crawled_at DESC
@@ -154,9 +156,11 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 			&i.ID,
 			&i.Url,
 			&i.Source,
+			&i.Sku,
 			&i.Name,
 			&i.Brand,
 			&i.Category,
+			&i.Description,
 			&i.Price,
 			&i.OriginalPrice,
 			&i.DiscountPercent,
