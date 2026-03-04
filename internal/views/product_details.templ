@@ -59,6 +59,9 @@ templ ProductDetailPage(userName string, p database.Product, lang string) {
 							if p.Category.Valid {
 								<span class="text-sm text-gray-500">{ p.Category.String }</span>
 							}
+							if p.Sku.Valid && p.Sku.String != "" {
+								<span class="text-xs text-gray-400">SKU: { p.Sku.String }</span>
+							}
 							<div class="flex items-center gap-3 mt-2">
 								if p.Price.Valid {
 									<span class="text-2xl font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
@@ -103,6 +106,17 @@ templ ProductDetailPage(userName string, p database.Product, lang string) {
 						</div>
 					</div>
 				</div>
+				<!-- Description -->
+				if p.Description.Valid && p.Description.String != "" {
+					<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
+						<div class="px-8 py-4 border-b border-gray-200 bg-gray-50">
+							<h2 class="text-base font-semibold text-gray-600 uppercase tracking-wide">{ T(lang).Description }</h2>
+						</div>
+						<div class="px-8 py-6">
+							<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{ p.Description.String }</p>
+						</div>
+					</div>
+				}
 				<!-- Specs -->
 				if p.Specs.Valid {
 					if specs := extractSpecsOrdered(p.Specs.RawMessage); len(specs) > 0 {
