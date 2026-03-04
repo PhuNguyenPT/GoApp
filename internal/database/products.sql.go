@@ -16,15 +16,17 @@ const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCateg
 SELECT COUNT(*) FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
 `
 
 type CountProductsBySourceAndCategoryParams struct {
-	Source   string
-	Category string
+	Source      string
+	Category    string
+	Subcategory string
 }
 
 func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg CountProductsBySourceAndCategoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category)
+	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category, arg.Subcategory)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -128,21 +130,24 @@ const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory 
 SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
 ORDER BY crawled_at DESC
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type GetProductsBySourceAndCategoryParams struct {
-	Source     string
-	Category   string
-	PageOffset int32
-	PageLimit  int32
+	Source      string
+	Category    string
+	Subcategory string
+	PageOffset  int32
+	PageLimit   int32
 }
 
 func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]Product, error) {
 	rows, err := q.db.QueryContext(ctx, getProductsBySourceAndCategory,
 		arg.Source,
 		arg.Category,
+		arg.Subcategory,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -180,6 +185,42 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubcategoriesBySourceAndCategory = `-- name: GetSubcategoriesBySourceAndCategory :many
+SELECT DISTINCT subcategory FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
+AND subcategory IS NOT NULL
+ORDER BY subcategory
+`
+
+type GetSubcategoriesBySourceAndCategoryParams struct {
+	Source   string
+	Category string
+}
+
+func (q *Queries) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getSubcategoriesBySourceAndCategory, arg.Source, arg.Category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var subcategory sql.NullString
+		if err := rows.Scan(&subcategory); err != nil {
+			return nil, err
+		}
+		items = append(items, subcategory)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

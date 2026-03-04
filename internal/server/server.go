@@ -38,6 +38,7 @@ type DB interface {
 
 	GetDistinctSources(ctx context.Context) ([]sql.NullString, error)
 	GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error)
+	GetSubcategoriesBySourceAndCategory(ctx context.Context, arg database.GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error)
 	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error)
 	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error)
@@ -117,6 +118,10 @@ func (s *sqlDB) GetDistinctSources(ctx context.Context) ([]sql.NullString, error
 
 func (s *sqlDB) GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error) {
 	return s.queries.GetCategoriesBySource(ctx, source)
+}
+
+func (s *sqlDB) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg database.GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error) {
+	return s.queries.GetSubcategoriesBySourceAndCategory(ctx, arg)
 }
 
 func (s *sqlDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {

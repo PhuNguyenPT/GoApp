@@ -9,17 +9,26 @@ WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::te
 AND category IS NOT NULL
 ORDER BY category;
 
+-- name: GetSubcategoriesBySourceAndCategory :many
+SELECT DISTINCT subcategory FROM products
+WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
+AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
+AND subcategory IS NOT NULL
+ORDER BY subcategory;
+
 -- name: GetProductsBySourceAndCategory :many
 SELECT * FROM products
 WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
 AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
+AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
 ORDER BY crawled_at DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: CountProductsBySourceAndCategory :one
 SELECT COUNT(*) FROM products
 WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
-AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text));
+AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
+AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text));
 
 -- name: GetProductByID :one
 SELECT * FROM products

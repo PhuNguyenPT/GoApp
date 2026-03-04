@@ -17,9 +17,14 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	selectedSource := c.Query("source")
 	selectedCategory := c.Query("category")
+	selectedSubcategory := c.Query("subcategory")
 
 	if c.GetHeader("HX-Request") == "true" && c.Query("trigger") == "source" {
 		selectedCategory = ""
+		selectedSubcategory = ""
+	}
+	if c.GetHeader("HX-Request") == "true" && c.Query("trigger") == "category" {
+		selectedSubcategory = ""
 	}
 
 	pageStr := c.DefaultQuery("page", "1")
@@ -42,9 +47,18 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		log.Printf("error getting categories by source: %v", err)
 	}
 
-	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
+	subcategories, err := s.db.GetSubcategoriesBySourceAndCategory(ctx, database.GetSubcategoriesBySourceAndCategoryParams{
 		Source:   selectedSource,
 		Category: selectedCategory,
+	})
+	if err != nil {
+		log.Printf("error getting subcategories: %v", err)
+	}
+
+	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
+		Source:      selectedSource,
+		Category:    selectedCategory,
+		Subcategory: selectedSubcategory,
 	})
 	if err != nil {
 		log.Printf("error counting products: %v", err)
@@ -54,24 +68,27 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	offset := (pageNumber - 1) * s.cfg.PageSize
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:     selectedSource,
-		Category:   selectedCategory,
-		PageLimit:  int32(s.cfg.PageSize),
-		PageOffset: int32(offset),
+		Source:      selectedSource,
+		Category:    selectedCategory,
+		Subcategory: selectedSubcategory,
+		PageLimit:   int32(s.cfg.PageSize),
+		PageOffset:  int32(offset),
 	})
 	if err != nil {
 		log.Printf("error getting products: %v", err)
 	}
 
 	data := views.ProductsPageData{
-		Sources:          sources,
-		Categories:       categories,
-		Products:         products,
-		SelectedSource:   selectedSource,
-		SelectedCategory: selectedCategory,
-		Page:             pageNumber,
-		TotalPages:       totalPages,
-		TotalCount:       total,
+		Sources:             sources,
+		Categories:          categories,
+		Subcategories:       subcategories,
+		Products:            products,
+		SelectedSource:      selectedSource,
+		SelectedCategory:    selectedCategory,
+		SelectedSubcategory: selectedSubcategory,
+		Page:                pageNumber,
+		TotalPages:          totalPages,
+		TotalCount:          total,
 	}
 
 	userName, _ := c.Get("userName")
@@ -80,13 +97,27 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	if c.GetHeader("HX-Request") == "true" {
 		c.Header("Content-Type", "text/html")
-		// OOB swap updates the category list in the side panel when source changes
+
+		if err := views.SourceFilterOOB(sources, selectedSource, lang).Render(ctx, c.Writer); err != nil {
+			log.Printf("error rendering SourceFilterOOB: %v", err)
+		}
+		if err := views.ActiveChipsOOB(data, lang).Render(ctx, c.Writer); err != nil {
+			log.Printf("error rendering ActiveChipsOOB: %v", err)
+		}
 		if c.Query("trigger") == "source" {
-			if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(c.Request.Context(), c.Writer); err != nil {
+			if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(ctx, c.Writer); err != nil {
 				log.Printf("error rendering CategoryFilterOOB: %v", err)
 			}
+			if err := views.SubcategoryFilterOOB(nil, selectedSource, "", "", lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
+			}
 		}
-		if err := views.ProductGrid(data, lang).Render(c.Request.Context(), c.Writer); err != nil {
+		if c.Query("trigger") == "category" {
+			if err := views.SubcategoryFilterOOB(subcategories, selectedSource, selectedCategory, selectedSubcategory, lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
+			}
+		}
+		if err := views.ProductGrid(data, lang).Render(ctx, c.Writer); err != nil {
 			log.Printf("error rendering ProductGrid: %v", err)
 		}
 		return
@@ -112,10 +143,11 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 	}
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:     c.Query("source"),
-		Category:   c.Query("category"),
-		PageLimit:  int32(limit),
-		PageOffset: 0,
+		Source:      c.Query("source"),
+		Category:    c.Query("category"),
+		Subcategory: c.Query("subcategory"),
+		PageLimit:   int32(limit),
+		PageOffset:  0,
 	})
 	if err != nil {
 		log.Printf("error getting products fragment: %v", err)

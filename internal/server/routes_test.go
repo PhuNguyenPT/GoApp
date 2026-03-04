@@ -195,6 +195,27 @@ func (m *mockDB) GetCategoriesBySource(ctx context.Context, source string) ([]sq
 	return result, nil
 }
 
+func (m *mockDB) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg database.GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:   arg.Source,
+		Category: arg.Category,
+	})
+	if err != nil {
+		return []sql.NullString{}, err
+	}
+	unique := make(map[string]sql.NullString)
+	for _, p := range products {
+		if p.Subcategory.Valid {
+			unique[p.Subcategory.String] = p.Subcategory
+		}
+	}
+	var result []sql.NullString
+	for _, s := range unique {
+		result = append(result, s)
+	}
+	return result, nil
+}
+
 func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {
 	ids := make(uuid.UUIDs, 4)
 	for i := range ids {
@@ -265,6 +286,7 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Name:            sql.NullString{String: "iPhone 17 Pro", Valid: true},
 			Brand:           sql.NullString{String: "Apple", Valid: true},
 			Category:        sql.NullString{String: "Điện thoại", Valid: true},
+			Subcategory:     sql.NullString{String: "Apple", Valid: true},
 			Price:           sql.NullString{String: "33590000.0", Valid: true},
 			OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
 			DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},
@@ -285,7 +307,8 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Source:          sql.NullString{String: "thegioididong", Valid: true},
 			Name:            sql.NullString{String: "Điện thoại iPhone 17 Pro Max 256GB", Valid: true},
 			Brand:           sql.NullString{String: "Apple", Valid: true},
-			Category:        sql.NullString{String: "Điện thoại iPhone (Apple)", Valid: true},
+			Category:        sql.NullString{String: "Điện thoại", Valid: true},
+			Subcategory:     sql.NullString{String: "Điện thoại iPhone (Apple)", Valid: true},
 			Price:           sql.NullString{String: "37590000.0", Valid: true},
 			OriginalPrice:   sql.NullString{Valid: false},
 			DiscountPercent: sql.NullInt32{Valid: false},
@@ -307,6 +330,7 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Name:            sql.NullString{String: "Acer Predator Helios 18 Gaming AI PH18-73-98AQ U9 275HX", Valid: true},
 			Brand:           sql.NullString{String: "Acer", Valid: true},
 			Category:        sql.NullString{String: "Laptop", Valid: true},
+			Subcategory:     sql.NullString{String: "Acer", Valid: true},
 			Price:           sql.NullString{String: "168990000.0", Valid: true},
 			OriginalPrice:   sql.NullString{String: "171690000.0", Valid: true},
 			DiscountPercent: sql.NullInt32{Int32: 2, Valid: true},
@@ -327,7 +351,8 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Source:          sql.NullString{String: "thegioididong", Valid: true},
 			Name:            sql.NullString{String: "Laptop Acer Gaming Nitro V 15 ANV15 41 R2UP - NH.QPGSV.004", Valid: true},
 			Brand:           sql.NullString{String: "Acer", Valid: true},
-			Category:        sql.NullString{String: "Laptop Acer", Valid: true},
+			Category:        sql.NullString{String: "Laptop", Valid: true},
+			Subcategory:     sql.NullString{String: "Laptop Acer", Valid: true},
 			Price:           sql.NullString{String: "18690000.0", Valid: true},
 			OriginalPrice:   sql.NullString{String: "20190000.0", Valid: true},
 			DiscountPercent: sql.NullInt32{Int32: 7, Valid: true},
@@ -353,12 +378,14 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 	// filter by source and category
 	src := arg.Source
 	cat := arg.Category
+	sub := arg.Subcategory
 
 	var result []database.Product
 	for _, p := range all {
 		sourceMatch := src == "" || strings.EqualFold(p.Source.String, src)
 		categoryMatch := cat == "" || strings.EqualFold(p.Category.String, cat)
-		if sourceMatch && categoryMatch {
+		subcategoryMatch := sub == "" || strings.EqualFold(p.Subcategory.String, sub)
+		if sourceMatch && categoryMatch && subcategoryMatch {
 			result = append(result, p)
 		}
 	}
@@ -367,8 +394,9 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 
 func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:   arg.Source,
-		Category: arg.Category,
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
 	})
 	if err != nil {
 		return 0, err
@@ -394,6 +422,7 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Pro
 		Name:            sql.NullString{String: "iPhone 17 Pro", Valid: true},
 		Brand:           sql.NullString{String: "Apple", Valid: true},
 		Category:        sql.NullString{String: "Điện thoại", Valid: true},
+		Subcategory:     sql.NullString{String: "Apple", Valid: true},
 		Price:           sql.NullString{String: "33590000.0", Valid: true},
 		OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
 		DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},

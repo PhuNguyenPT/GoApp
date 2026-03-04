@@ -54,6 +54,7 @@ type Translations struct {
 	Filters             string
 	ClearAll            string
 	Category            string
+	Brand               string
 	// Product Details
 	Source         string
 	ViewOnStore    string
@@ -176,6 +177,7 @@ func T(lang string) Translations {
 			Filters:             "Bộ lọc",
 			ClearAll:            "Xoá tất cả",
 			Category:            "Danh mục",
+			Brand:               "Thương hiệu",
 			// Product Details
 			Source:         "Nguồn",
 			ViewOnStore:    "Xem trên cửa hàng",
@@ -291,6 +293,7 @@ func T(lang string) Translations {
 		Filters:             "Filters",
 		ClearAll:            "Clear all",
 		Category:            "Category",
+		Brand:               "Brand",
 		// Product Details
 		Source:         "Source",
 		ViewOnStore:    "View on store",
