@@ -1,0 +1,117 @@
+let images = [];
+let current = 0;
+
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('lightbox-trigger');
+    const lightbox = document.getElementById('lightbox');
+
+    if (el) {
+        images = JSON.parse(el.dataset.images);
+        el.addEventListener('click', function () {
+            current = 0;
+            update();
+            lightbox.classList.replace('hidden', 'flex');
+        });
+    }
+
+    if (lightbox) {
+        lightbox.addEventListener('click', function (e) {
+            if (e.target === lightbox) {
+                lightbox.classList.replace('flex', 'hidden');
+            }
+        });
+    }
+
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const closeBtn = document.getElementById('close-btn');
+
+    if (prevBtn)
+        prevBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            current = (current - 1 + images.length) % images.length;
+            update();
+        });
+
+    if (nextBtn)
+        nextBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            current = (current + 1) % images.length;
+            update();
+        });
+
+    if (closeBtn)
+        closeBtn.addEventListener('click', function () {
+            lightbox.classList.replace('flex', 'hidden');
+        });
+
+    document.querySelectorAll('[data-tab]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            switchTab(btn.dataset.tab);
+        });
+    });
+
+    const descWrapper = document.getElementById('desc-wrapper');
+    const descToggle = document.getElementById('desc-toggle');
+    const descFade = document.getElementById('desc-fade');
+
+    if (descWrapper && descToggle) {
+        if (descWrapper.scrollHeight <= descWrapper.offsetHeight + 2) {
+            if (descFade) descFade.style.display = 'none';
+            descToggle.style.display = 'none';
+        } else {
+            let expanded = false;
+            descToggle.addEventListener('click', function () {
+                expanded = !expanded;
+                descWrapper.style.maxHeight = expanded
+                    ? descWrapper.scrollHeight + 'px'
+                    : '10rem';
+                descToggle.textContent = expanded
+                    ? descToggle.dataset.less
+                    : descToggle.dataset.more;
+                if (descFade) descFade.style.display = expanded ? 'none' : '';
+            });
+        }
+    }
+});
+
+function update() {
+    document.getElementById('lightbox-img').src = images[current];
+    document.getElementById('lightbox-counter').textContent =
+        current + 1 + ' / ' + images.length;
+}
+
+document.addEventListener('keydown', function (e) {
+    const lightbox = document.getElementById('lightbox');
+    if (!lightbox || lightbox.classList.contains('hidden')) return;
+    if (e.key === 'ArrowLeft') {
+        current = (current - 1 + images.length) % images.length;
+        update();
+    }
+    if (e.key === 'ArrowRight') {
+        current = (current + 1) % images.length;
+        update();
+    }
+    if (e.key === 'Escape') lightbox.classList.replace('flex', 'hidden');
+});
+
+function switchTab(tab) {
+    const panels = { desc: 'panel-desc', specs: 'panel-specs' };
+    const tabs = { desc: 'tab-desc', specs: 'tab-specs' };
+
+    Object.keys(panels).forEach(function (key) {
+        const panel = document.getElementById(panels[key]);
+        const tabBtn = document.getElementById(tabs[key]);
+        if (!panel || !tabBtn) return;
+
+        if (key === tab) {
+            panel.classList.remove('hidden');
+            tabBtn.classList.add('text-blue-600', 'border-blue-600');
+            tabBtn.classList.remove('text-gray-500', 'border-transparent');
+        } else {
+            panel.classList.add('hidden');
+            tabBtn.classList.remove('text-blue-600', 'border-blue-600');
+            tabBtn.classList.add('text-gray-500', 'border-transparent');
+        }
+    });
+}

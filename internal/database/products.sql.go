@@ -10,22 +10,21 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCategory :one
 SELECT COUNT(*) FROM products
-WHERE ($1 = '' OR lower(source) = lower($1))
-AND ($2 = '' OR lower(category) = lower($2))
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
 `
 
 type CountProductsBySourceAndCategoryParams struct {
-	Column1 interface{}
-	Column2 interface{}
+	Source   string
+	Category string
 }
 
 func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg CountProductsBySourceAndCategoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Column1, arg.Column2)
+	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -33,13 +32,13 @@ func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg Coun
 
 const getCategoriesBySource = `-- name: GetCategoriesBySource :many
 SELECT DISTINCT category FROM products
-WHERE ($1 = '' OR lower(source) = lower($1))
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND category IS NOT NULL
 ORDER BY category
 `
 
-func (q *Queries) GetCategoriesBySource(ctx context.Context, dollar_1 interface{}) ([]sql.NullString, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoriesBySource, dollar_1)
+func (q *Queries) GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getCategoriesBySource, source)
 	if err != nil {
 		return nil, err
 	}
@@ -91,126 +90,90 @@ func (q *Queries) GetDistinctSources(ctx context.Context) ([]sql.NullString, err
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, url, source, name, brand, category, price, original_price,
-       discount_percent, currency, in_stock, rating, review_count,
-       images, specs, crawled_at, created_at
-FROM products
+SELECT id, url, source, sku, name, brand, category, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE id = $1
 `
 
-type GetProductByIDRow struct {
-	ID              uuid.UUID
-	Url             string
-	Source          sql.NullString
-	Name            sql.NullString
-	Brand           sql.NullString
-	Category        sql.NullString
-	Price           sql.NullString
-	OriginalPrice   sql.NullString
-	DiscountPercent sql.NullInt32
-	Currency        sql.NullString
-	InStock         sql.NullBool
-	Rating          sql.NullString
-	ReviewCount     sql.NullInt32
-	Images          pqtype.NullRawMessage
-	Specs           pqtype.NullRawMessage
-	CrawledAt       sql.NullTime
-	CreatedAt       sql.NullTime
-}
-
-func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductByIDRow, error) {
+func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, error) {
 	row := q.db.QueryRowContext(ctx, getProductByID, id)
-	var i GetProductByIDRow
+	var i Product
 	err := row.Scan(
 		&i.ID,
 		&i.Url,
 		&i.Source,
+		&i.Sku,
 		&i.Name,
 		&i.Brand,
 		&i.Category,
+		&i.Description,
 		&i.Price,
 		&i.OriginalPrice,
 		&i.DiscountPercent,
 		&i.Currency,
 		&i.InStock,
+		&i.Quantity,
 		&i.Rating,
 		&i.ReviewCount,
 		&i.Images,
 		&i.Specs,
 		&i.CrawledAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
-SELECT id, url, source, name, brand, category, price, original_price,
-       discount_percent, currency, in_stock, rating, review_count,
-       images, crawled_at, created_at
-FROM products
-WHERE ($1 = '' OR lower(source) = lower($1))
-AND ($2 = '' OR lower(category) = lower($2))
+SELECT id, url, source, sku, name, brand, category, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
 ORDER BY crawled_at DESC
-LIMIT $3 OFFSET $4
+LIMIT $4 OFFSET $3
 `
 
 type GetProductsBySourceAndCategoryParams struct {
-	Column1 interface{}
-	Column2 interface{}
-	Limit   int32
-	Offset  int32
+	Source     string
+	Category   string
+	PageOffset int32
+	PageLimit  int32
 }
 
-type GetProductsBySourceAndCategoryRow struct {
-	ID              uuid.UUID
-	Url             string
-	Source          sql.NullString
-	Name            sql.NullString
-	Brand           sql.NullString
-	Category        sql.NullString
-	Price           sql.NullString
-	OriginalPrice   sql.NullString
-	DiscountPercent sql.NullInt32
-	Currency        sql.NullString
-	InStock         sql.NullBool
-	Rating          sql.NullString
-	ReviewCount     sql.NullInt32
-	Images          pqtype.NullRawMessage
-	CrawledAt       sql.NullTime
-	CreatedAt       sql.NullTime
-}
-
-func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]GetProductsBySourceAndCategoryRow, error) {
+func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]Product, error) {
 	rows, err := q.db.QueryContext(ctx, getProductsBySourceAndCategory,
-		arg.Column1,
-		arg.Column2,
-		arg.Limit,
-		arg.Offset,
+		arg.Source,
+		arg.Category,
+		arg.PageOffset,
+		arg.PageLimit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetProductsBySourceAndCategoryRow
+	var items []Product
 	for rows.Next() {
-		var i GetProductsBySourceAndCategoryRow
+		var i Product
 		if err := rows.Scan(
 			&i.ID,
 			&i.Url,
 			&i.Source,
+			&i.Sku,
 			&i.Name,
 			&i.Brand,
 			&i.Category,
+			&i.Description,
 			&i.Price,
 			&i.OriginalPrice,
 			&i.DiscountPercent,
 			&i.Currency,
 			&i.InStock,
+			&i.Quantity,
 			&i.Rating,
 			&i.ReviewCount,
 			&i.Images,
+			&i.Specs,
 			&i.CrawledAt,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

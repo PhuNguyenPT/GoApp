@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 
 import psycopg2
@@ -33,6 +34,10 @@ FALLBACK_URLS = [
     "/smartwatch",
     "/phu-kien",  # covers /tai-nghe, /loa, /may-anh etc. via subcategory discovery
 ]
+
+
+def strip_html(text):
+    return re.sub(r"<[^>]+>", " ", text).strip() if text else text
 
 
 class FptSpider(scrapy.Spider):
@@ -79,6 +84,9 @@ class FptSpider(scrapy.Spider):
             )
 
     async def start(self):
+        if hasattr(self, "start_url"):
+            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            return
         for href in FALLBACK_URLS:
             yield scrapy.Request(
                 f"https://fptshop.com.vn{href}",
@@ -143,7 +151,23 @@ class FptSpider(scrapy.Spider):
                 product_data = json.loads(raw)
             except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse product JSON at %s: %s", response.url, e)
-        # Category from breadcrumb JSON-LD (position 2 = top-level category e.g. "Điện thoại")
+
+        # Map SKU from JSON-LD
+        item["sku"] = product_data.get("sku")
+
+        # Long description from product content container, fall back to JSON-LD SEO summary
+        desc_el = response.css("[class*='description-container']")
+        if desc_el:
+            paragraphs = [
+                re.sub(r"\s+", " ", strip_html(block)).strip()
+                for block in desc_el.css("p, h2, h3, li").getall()
+            ]
+            item["description"] = "\n\n".join(p for p in paragraphs if p and p != "Thu gọn") or None
+        else:
+            raw_desc = product_data.get("description")
+            item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
+
+        # Category from breadcrumb JSON-LD
         category = None
         raw_bc = response.css("#breadcrumb-structured-data::text").get()
         if raw_bc:
@@ -156,6 +180,7 @@ class FptSpider(scrapy.Spider):
                     category = cat_item.get("name")
             except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse breadcrumb JSON at %s: %s", response.url, e)
+
         if not category:
             url_parts = response.url.split("/")
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
@@ -191,11 +216,17 @@ class FptSpider(scrapy.Spider):
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
         item["review_count"] = int(agg["reviewCount"]) if agg.get("reviewCount") else None
 
+        product_images = list(
+            dict.fromkeys(
+                url
+                for url in response.css("[class*='swiper'] img::attr(src)").getall()
+                if "/unsafe/828x0/" in url
+            )
+        )
         # Single image string in SSR, wrap in list
         ld_image = product_data.get("image")
-        item["images"] = (
-            ld_image if isinstance(ld_image, list) else ([ld_image] if ld_image else [])
-        )
+        ld_image_url = ld_image[0] if isinstance(ld_image, list) else ld_image
+        item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
         # Filter empty spec values (e.g. Chip: '')
         item["specs"] = {

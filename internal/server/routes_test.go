@@ -4,6 +4,7 @@ import (
 	"GoApp/internal/database"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -174,10 +175,9 @@ func (m *mockDB) GetDistinctSources(ctx context.Context) ([]sql.NullString, erro
 	return result, nil
 }
 
-func (m *mockDB) GetCategoriesBySource(ctx context.Context, source interface{}) ([]sql.NullString, error) {
-	src, _ := source.(string)
+func (m *mockDB) GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error) {
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: src,
+		Source: source,
 	})
 	if err != nil {
 		return []sql.NullString{}, err
@@ -195,7 +195,7 @@ func (m *mockDB) GetCategoriesBySource(ctx context.Context, source interface{}) 
 	return result, nil
 }
 
-func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.GetProductsBySourceAndCategoryRow, error) {
+func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {
 	ids := make(uuid.UUIDs, 4)
 	for i := range ids {
 		id, err := uuid.NewV7()
@@ -204,7 +204,60 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 		}
 		ids[i] = id
 	}
-	all := []database.GetProductsBySourceAndCategoryRow{
+
+	fptPhone, err := json.Marshal(map[string]string{
+		"Kích thước màn hình": "6.3 inch",
+		"Thời lượng pin":      "31 Giờ",
+		"Kết nối NFC":         "NFC",
+	})
+	if err != nil {
+		return []database.Product{}, err
+	}
+	tgddPhone, err := json.Marshal(map[string]string{
+		"Hệ điều hành":       "iOS 26",
+		"Chip xử lý (CPU)":   "Apple A19 Pro 6 nhân",
+		"RAM":                "12 GB",
+		"Dung lượng lưu trữ": "256 GB",
+		"Công nghệ màn hình": "OLED",
+		"Màn hình rộng":      "6.9\"",
+		"Dung lượng pin":     "37 giờ",
+		"Mạng di động":       "Hỗ trợ 5G",
+		"Bluetooth":          "v6.0",
+		"Cổng kết nối/sạc":   "Type-C",
+		"Kết nối khác":       "NFC",
+		"Kháng nước, bụi":    "IP68",
+	})
+	if err != nil {
+		return []database.Product{}, err
+	}
+	fptLaptop, err := json.Marshal(map[string]string{
+		"CPU":                 "Core Ultra 9",
+		"Card đồ hoạ":         "NVIDIA GeForce RTX 5090 24GB GDDR7 (1824 TOPS)",
+		"Kích thước màn hình": "18 inch",
+		"Tấm nền":             "IPS",
+	})
+	if err != nil {
+		return []database.Product{}, err
+	}
+	tgddLaptop, err := json.Marshal(map[string]string{
+		"Công nghệ CPU":       "AMD Ryzen 5 - 6600H",
+		"RAM":                 "16 GB",
+		"Loại RAM":            "DDR5",
+		"Ổ cứng":              "512 GB SSD NVMe PCIe",
+		"Kích thước màn hình": "15.6\"",
+		"Độ phân giải":        "Full HD (1920 x 1080)",
+		"Tấm nền":             "IPS",
+		"Tần số quét":         "165 Hz",
+		"Card màn hình":       "NVIDIA GeForce RTX 2050, 4 GB",
+		"Hệ điều hành":        "Windows 11 Home SL",
+		"Thông tin Pin":       "4-cell, 57Wh",
+	})
+	if err != nil {
+		return []database.Product{}, err
+	}
+	crawledAt := sql.NullTime{Time: time.Now(), Valid: true}
+
+	all := []database.Product{
 		{
 			ID:              ids[0],
 			Url:             "https://fptshop.com.vn/dien-thoai/iphone-17-pro",
@@ -217,9 +270,14 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},
 			Currency:        sql.NullString{String: "VND", Valid: true},
 			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
 			Rating:          sql.NullString{String: "4.9", Valid: true},
 			ReviewCount:     sql.NullInt32{Int32: 25, Valid: true},
 			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdn2.fptshop.com.vn/unsafe/iphone_17_pro_cosmic_orange_1_12e8ea1358.png"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: fptPhone, Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
 		},
 		{
 			ID:              ids[1],
@@ -229,13 +287,18 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Brand:           sql.NullString{String: "Apple", Valid: true},
 			Category:        sql.NullString{String: "Điện thoại iPhone (Apple)", Valid: true},
 			Price:           sql.NullString{String: "37590000.0", Valid: true},
-			OriginalPrice:   sql.NullString{String: "", Valid: false},
+			OriginalPrice:   sql.NullString{Valid: false},
 			DiscountPercent: sql.NullInt32{Valid: false},
 			Currency:        sql.NullString{String: "VND", Valid: true},
 			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
 			Rating:          sql.NullString{String: "4.9", Valid: true},
 			ReviewCount:     sql.NullInt32{Valid: false},
 			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdn.tgdd.vn/Products/Images/42/342679/Slider/vi-vn-iphone-17-pro-max-1.jpg"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: tgddPhone, Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
 		},
 		{
 			ID:              ids[2],
@@ -249,12 +312,14 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			DiscountPercent: sql.NullInt32{Int32: 2, Valid: true},
 			Currency:        sql.NullString{String: "VND", Valid: true},
 			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
 			Rating:          sql.NullString{String: "4.9", Valid: true},
 			ReviewCount:     sql.NullInt32{Int32: 89, Valid: true},
-			Images: pqtype.NullRawMessage{
-				RawMessage: []byte(`["https://cdn2.fptshop.com.vn/unsafe/acer_predator_helios_18_gaming_ai_ph18_73_den_1_e6a6d14282.jpg"]`),
-				Valid:      true,
-			},
+			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdn2.fptshop.com.vn/unsafe/acer_predator_helios_18_gaming_ai_ph18_73_den_1_e6a6d14282.jpg"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: fptLaptop, Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
 		},
 		{
 			ID:              ids[3],
@@ -268,23 +333,28 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			DiscountPercent: sql.NullInt32{Int32: 7, Valid: true},
 			Currency:        sql.NullString{String: "VND", Valid: true},
 			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
 			Rating:          sql.NullString{String: "4.9", Valid: true},
 			ReviewCount:     sql.NullInt32{Valid: false},
 			Images: pqtype.NullRawMessage{
 				RawMessage: []byte(`[
-			"https://cdn.tgdd.vn/Products/Images/44/333430/Slider/bao-hanh-1020x570.png",
-			"https://cdn.tgdd.vn/Products/Images/2102/214612/balo-predator-3-600x600.jpg"
-		]`),
+					"https://cdn.tgdd.vn/Products/Images/44/333430/Slider/bao-hanh-1020x570.png",
+					"https://cdn.tgdd.vn/Products/Images/2102/214612/balo-predator-3-600x600.jpg"
+				]`),
 				Valid: true,
 			},
+			Specs:     pqtype.NullRawMessage{RawMessage: tgddLaptop, Valid: true},
+			CrawledAt: crawledAt,
+			CreatedAt: crawledAt,
+			UpdatedAt: crawledAt,
 		},
 	}
 
 	// filter by source and category
-	src, _ := arg.Column1.(string)
-	cat, _ := arg.Column2.(string)
+	src := arg.Source
+	cat := arg.Category
 
-	var result []database.GetProductsBySourceAndCategoryRow
+	var result []database.Product
 	for _, p := range all {
 		sourceMatch := src == "" || strings.EqualFold(p.Source.String, src)
 		categoryMatch := cat == "" || strings.EqualFold(p.Category.String, cat)
@@ -296,11 +366,9 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 }
 
 func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
-	col1, _ := arg.Column1.(string)
-	col2, _ := arg.Column2.(string)
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: col1,
-		Column2: col2,
+		Source:   arg.Source,
+		Category: arg.Category,
 	})
 	if err != nil {
 		return 0, err
@@ -308,8 +376,18 @@ func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg datab
 	return int64(len(products)), nil
 }
 
-func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.GetProductByIDRow, error) {
-	return database.GetProductByIDRow{
+func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error) {
+	fptPhone, err := json.Marshal(map[string]string{
+		"Kích thước màn hình": "6.3 inch",
+		"Thời lượng pin":      "31 Giờ",
+		"Kết nối NFC":         "NFC",
+	})
+	if err != nil {
+		return database.Product{}, err
+	}
+	crawledAt := sql.NullTime{Time: time.Now(), Valid: true}
+
+	return database.Product{
 		ID:              id,
 		Url:             "https://fptshop.com.vn/dien-thoai/iphone-17-pro",
 		Source:          sql.NullString{String: "fptshop", Valid: true},
@@ -321,9 +399,14 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Get
 		DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},
 		Currency:        sql.NullString{String: "VND", Valid: true},
 		InStock:         sql.NullBool{Bool: true, Valid: true},
+		Quantity:        sql.NullInt32{Valid: false},
 		Rating:          sql.NullString{String: "4.9", Valid: true},
 		ReviewCount:     sql.NullInt32{Int32: 25, Valid: true},
 		Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdn2.fptshop.com.vn/unsafe/iphone_17_pro_cosmic_orange_1_12e8ea1358.png"]`), Valid: true},
+		Specs:           pqtype.NullRawMessage{RawMessage: fptPhone, Valid: true},
+		CrawledAt:       crawledAt,
+		UpdatedAt:       crawledAt,
+		CreatedAt:       crawledAt,
 	}, nil
 }
 

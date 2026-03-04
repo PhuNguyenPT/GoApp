@@ -1,0 +1,28 @@
+import { defineConfig } from "eslint/config";
+import js from "@eslint/js";
+import globals from "globals";
+
+export default defineConfig([
+  {
+    ignores: ["public/**/*.min.js", "node_modules/**"],
+  },
+  js.configs.recommended,
+  {
+    files: ["public/scripts/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2025,
+      sourceType: "script",
+      globals: {
+        ...globals.browser,
+      },
+    },
+    rules: {
+      "no-unused-vars": "warn",
+      "no-undef": "error",
+      "eqeqeq": "error",
+      "no-console": "warn",
+      "no-var": "error",
+      "prefer-const": "error",
+    },
+  },
+]);

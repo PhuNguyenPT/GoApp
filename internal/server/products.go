@@ -17,6 +17,11 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	selectedSource := c.Query("source")
 	selectedCategory := c.Query("category")
+
+	if c.GetHeader("HX-Request") == "true" && c.Query("trigger") == "source" {
+		selectedCategory = ""
+	}
+
 	pageStr := c.DefaultQuery("page", "1")
 	pageNumber, err := strconv.Atoi(pageStr)
 	if err != nil {
@@ -38,8 +43,8 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	}
 
 	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
-		Column1: selectedSource,
-		Column2: selectedCategory,
+		Source:   selectedSource,
+		Category: selectedCategory,
 	})
 	if err != nil {
 		log.Printf("error counting products: %v", err)
@@ -49,14 +54,15 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	offset := (pageNumber - 1) * s.cfg.PageSize
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: selectedSource,
-		Column2: selectedCategory,
-		Limit:   int32(s.cfg.PageSize),
-		Offset:  int32(offset),
+		Source:     selectedSource,
+		Category:   selectedCategory,
+		PageLimit:  int32(s.cfg.PageSize),
+		PageOffset: int32(offset),
 	})
 	if err != nil {
 		log.Printf("error getting products: %v", err)
 	}
+
 	data := views.ProductsPageData{
 		Sources:          sources,
 		Categories:       categories,
@@ -74,8 +80,11 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	if c.GetHeader("HX-Request") == "true" {
 		c.Header("Content-Type", "text/html")
-		if err := views.CategorySelectOOB(categories, selectedCategory, lang).Render(c.Request.Context(), c.Writer); err != nil {
-			log.Printf("error rendering CategorySelectOOB: %v", err)
+		// OOB swap updates the category list in the side panel when source changes
+		if c.Query("trigger") == "source" {
+			if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(c.Request.Context(), c.Writer); err != nil {
+				log.Printf("error rendering CategoryFilterOOB: %v", err)
+			}
 		}
 		if err := views.ProductGrid(data, lang).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Printf("error rendering ProductGrid: %v", err)
@@ -103,10 +112,10 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 	}
 
 	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Column1: c.Query("source"),
-		Column2: c.Query("category"),
-		Limit:   int32(limit),
-		Offset:  0,
+		Source:     c.Query("source"),
+		Category:   c.Query("category"),
+		PageLimit:  int32(limit),
+		PageOffset: 0,
 	})
 	if err != nil {
 		log.Printf("error getting products fragment: %v", err)

@@ -13,15 +13,33 @@ templ-generate:
 		go run github.com/a-h/templ/cmd/templ@latest generate; \
 	fi
 
-# Build Tailwind CSS
+# Format templ files
+templ-fmt:
+	@echo "Formatting templ files..."
+	@if command -v templ > /dev/null 2>&1; then \
+		templ fmt ./internal/views/; \
+	else \
+		go tool templ fmt ./internal/views/; \
+	fi
+
+# Minify CSS
 tailwind-build:
-	@echo "Building Tailwind CSS..."
-	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css --minify
+	@echo "Minifying CSS..."
+	@cd frontend-template && npm run minify:css
+
+# Minify JS
+js-build:
+	@echo "Minifying JS..."
+	@cd frontend-template && npm run minify:js
+
+# Build all frontend assets
+frontend-build: tailwind-build js-build
 
 # Build the application
-build: templ-generate sqlc-generate tailwind-build
+build: templ-generate sqlc-generate frontend-build
 	@echo "Building Go binary..."
 	@go build -o main cmd/api/main.go
+
 
 # Run SSR server + SPA frontend
 run: templ-generate
@@ -46,7 +64,7 @@ docker-prod-down:
 	@docker compose --profile prod down
 
 # Test the application
-test: templ-generate
+test: templ-generate sqlc-generate
 	@echo "Testing..."
 	@go test ./... -v
 
@@ -90,16 +108,21 @@ migrate-down:
 # Lint
 lint:
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+	@go tool sqlc compile
+	@cd frontend-template && npm run lint
 
 lint-fix:
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --fix
+	@cd frontend-template && npm run lint:fix
 
 # Static analysis
 vet:
 	@go vet ./...
+	@go tool sqlc vet
 
-# Format code
-fmt:
-	@gofmt -w .	
+# Format code (Go + templ + JS)
+fmt: templ-fmt
+	@gofmt -w .
+	@cd frontend-template && npm run fmt
 
-.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
+.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate templ-fmt tailwind-build js-build frontend-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt

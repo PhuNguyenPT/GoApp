@@ -51,10 +51,19 @@ type Translations struct {
 	Prev                string
 	Next                string
 	NoProducts          string
+	Filters             string
+	ClearAll            string
+	Category            string
 	// Product Details
-	Source      string
-	ViewOnStore string
-
+	Source         string
+	ViewOnStore    string
+	Specifications string
+	InStock        string
+	OutOfStock     string
+	Reviews        string
+	Description    string
+	ShowMore       string
+	ShowLess       string
 	// Dashboard
 	DashboardTitle       string
 	DashboardDescription string
@@ -164,9 +173,19 @@ func T(lang string) Translations {
 			Prev:                "Trước",
 			Next:                "Tiếp",
 			NoProducts:          "Không tìm thấy sản phẩm.",
+			Filters:             "Bộ lọc",
+			ClearAll:            "Xoá tất cả",
+			Category:            "Danh mục",
 			// Product Details
-			Source:      "Nguồn",
-			ViewOnStore: "Xem trên cửa hàng",
+			Source:         "Nguồn",
+			ViewOnStore:    "Xem trên cửa hàng",
+			Specifications: "Thông số kỹ thuật",
+			InStock:        "Còn hàng",
+			OutOfStock:     "Hết hàng",
+			Reviews:        "đánh giá",
+			Description:    "Mô tả sản phẩm",
+			ShowMore:       "Xem thêm",
+			ShowLess:       "Thu gọn",
 			// Dashboard
 			DashboardTitle:       "Bảng điều khiển",
 			DashboardDescription: "Trang quản lý của bạn",
@@ -269,9 +288,19 @@ func T(lang string) Translations {
 		Prev:                "Prev",
 		Next:                "Next",
 		NoProducts:          "No products found.",
+		Filters:             "Filters",
+		ClearAll:            "Clear all",
+		Category:            "Category",
 		// Product Details
-		Source:      "Source",
-		ViewOnStore: "View on store",
+		Source:         "Source",
+		ViewOnStore:    "View on store",
+		Specifications: "Specifications",
+		InStock:        "In Stock",
+		OutOfStock:     "Out of Stock",
+		Reviews:        "reviews",
+		Description:    "Description",
+		ShowMore:       "Show more",
+		ShowLess:       "Show less",
 		// Dashboard
 		DashboardTitle:       "Dashboard",
 		DashboardDescription: "Your dashboard",

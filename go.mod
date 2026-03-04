@@ -3,7 +3,7 @@ module GoApp
 go 1.25.5
 
 require (
-	github.com/a-h/templ v0.3.977
+	github.com/a-h/templ v0.3.1001
 	github.com/coder/websocket v1.8.14
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0

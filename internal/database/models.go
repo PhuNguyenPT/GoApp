@@ -26,9 +26,11 @@ type Product struct {
 	ID              uuid.UUID
 	Url             string
 	Source          sql.NullString
+	Sku             sql.NullString
 	Name            sql.NullString
 	Brand           sql.NullString
 	Category        sql.NullString
+	Description     sql.NullString
 	Price           sql.NullString
 	OriginalPrice   sql.NullString
 	DiscountPercent sql.NullInt32

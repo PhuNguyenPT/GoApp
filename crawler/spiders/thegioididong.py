@@ -51,6 +51,10 @@ FALLBACK_URLS = [
 ]
 
 
+def strip_html(text):
+    return re.sub(r"<[^>]+>", "", text).strip() if text else text
+
+
 class ThegioididongSpider(scrapy.Spider):
     name = "thegioididong"
     allowed_domains = ["thegioididong.com"]
@@ -71,6 +75,9 @@ class ThegioididongSpider(scrapy.Spider):
     }
 
     async def start(self):
+        if hasattr(self, "start_url"):
+            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            return
         yield scrapy.Request(
             "https://www.thegioididong.com",
             callback=self.parse_categories,
@@ -137,6 +144,67 @@ class ThegioididongSpider(scrapy.Spider):
                 errback=self.handle_error,
             )
 
+    def _parse_gtm_fallback(self, response):
+        """Extract product data from GTM objGTM variable when LD+JSON Product is missing."""
+        all_scripts = response.css("script:not([src])::text").getall()
+
+        # --- Pattern 1: objGTM (landing pages like Xiaomi 17 Ultra) ---
+        gtm_scripts = [s for s in all_scripts if "'name'" in s and "'price'" in s and "'id'" in s]
+        if gtm_scripts:
+            text = gtm_scripts[0]
+
+            def _get(key):
+                m = re.search(rf"'{key}':\s*'([^']*)'", text)
+                return m.group(1).strip() if m and m.group(1).strip() else None
+
+            price_raw = _get("price")
+            return {
+                "name": _get("name"),
+                "sku": _get("id"),
+                "brand": None,
+                "price": float(price_raw) if price_raw else None,
+                "in_stock": _get("dimension55") == "Yes",
+            }
+
+        # --- Pattern 2: GA4 dataLayer / MAddToCartAll (info/coming-soon pages) ---
+        ga4_scripts = [s for s in all_scripts if "item_id:" in s and "item_brand:" in s]
+        if ga4_scripts:
+            text = ga4_scripts[0]
+
+            def _get_ga4(key):
+                m = re.search(rf'{key}:\s*["`\']([^"`\']*)["`\']', text)
+                return m.group(1).strip() if m and m.group(1).strip() else None
+
+            price_raw = re.search(r"price:\s*([\d.]+)", text)
+            price = float(price_raw.group(1)) if price_raw else None
+
+            return {
+                "name": response.css(
+                    "h1::text"
+                ).get(),  # GA4 uses template literals, h1 is reliable
+                "sku": _get_ga4("item_id"),
+                "brand": _get_ga4("item_brand"),
+                "price": price if price and price > 0 else None,
+                "in_stock": False,  # price: 0.0 means not yet available
+            }
+
+        return {}
+
+    def _parse_gtm_specs(self, response):
+        """Extract specs from the inline-styled table used on landing/pre-order pages."""
+        specs = {}
+        for table in response.css("table"):
+            tds = table.css("td")
+            # Pairs: even index = label, odd index = value
+            for i in range(0, len(tds) - 1, 2):
+                key = clean_text(tds[i].css("::text").get())
+                val = strip_html(tds[i + 1].get())
+                if key and val and val.strip() != "Đang cập nhật":
+                    specs[key] = val
+            if specs:
+                break  # stop at first table with data
+        return specs
+
     def parse_product(self, response):
         ld_product = {}
         ld_breadcrumbs = []
@@ -159,9 +227,62 @@ class ThegioididongSpider(scrapy.Spider):
         item["crawled_at"] = datetime.now(timezone.utc).isoformat()
         item["currency"] = offers.get("priceCurrency", "VND")
 
+        # --- Fallback for pages without Product LD+JSON (landing/pre-order pages) ---
+        if not ld_product:
+            gtm = self._parse_gtm_fallback(response)
+            item["name"] = gtm.get("name")
+            item["sku"] = gtm.get("sku")
+            item["description"] = None
+            item["brand"] = gtm.get("brand") or ((gtm.get("name") or "").split()[0] or None)
+            item["category"] = (
+                ld_breadcrumbs[-1].get("item", {}).get("name") if ld_breadcrumbs else None
+            )
+            item["price"] = gtm.get("price")
+            item["original_price"] = None
+            item["discount_percent"] = None
+            item["in_stock"] = gtm.get("in_stock", False)
+            item["quantity"] = None
+            item["rating"] = None
+            item["review_count"] = None
+
+            # Product images are JS-rendered and not in static HTML on landing pages.
+            # Use og:image (product reveal/press image) as best available fallback.
+            src_images = [
+                url
+                for url in response.css("div.owl-carousel img::attr(src)").getall()
+                if "/Products/" in url
+            ]
+            data_src_images = [
+                url
+                for url in response.css("div.owl-carousel img::attr(data-src)").getall()
+                if "/Products/" in url
+            ]
+            product_images = list(dict.fromkeys(src_images + data_src_images))
+            if not product_images:
+                og_image = response.css("meta[property='og:image']::attr(content)").get()
+                product_images = [og_image.split("#")[0]] if og_image else []
+            item["images"] = product_images
+
+            item["specs"] = self._parse_gtm_specs(response)
+            yield item
+            return
+
+        # --- Normal path: Product LD+JSON present ---
         item["name"] = ld_product.get("name") or clean_text(response.css("h1::text").get())
         item["sku"] = ld_product.get("sku")
-        item["description"] = ld_product.get("description")
+
+        # Long description from article body, fall back to JSON-LD SEO summary
+        desc_el = response.css("div.description div.text-detail")
+        if desc_el:
+            paragraphs = [
+                re.sub(r"\s+", " ", strip_html(block)).strip()
+                for block in desc_el.css("p, h2, h3, li").getall()
+            ]
+            item["description"] = (
+                "\n\n".join(p for p in paragraphs if p and p != "Xem thêm") or None
+            )
+        else:
+            item["description"] = ld_product.get("description")
 
         # Brand: {"@type": "Brand", "name": ["iPhone (Apple)"]} — name is a list
         brand_raw = ld_product.get("brand", {}).get("name")
@@ -169,6 +290,10 @@ class ThegioididongSpider(scrapy.Spider):
             brand_raw = brand_raw[0] if brand_raw else None
         brand_match = re.search(r"\((.+?)\)", brand_raw) if brand_raw else None
         item["brand"] = brand_match.group(1) if brand_match else brand_raw
+
+        # Last resort: derive brand from first word of product name
+        if not item["brand"] and item["name"]:
+            item["brand"] = item["name"].split()[0] if item["name"].split() else None
 
         # Category from breadcrumb JSON-LD (last item)
         if ld_breadcrumbs:
@@ -209,14 +334,27 @@ class ThegioididongSpider(scrapy.Spider):
 
         ld_image = ld_product.get("image", {})
         ld_image_url = ld_image.get("contentUrl") if isinstance(ld_image, dict) else ld_image
-        all_images = response.css("div.owl-carousel img::attr(src)").getall()
-        product_images = list(dict.fromkeys(url for url in all_images if "/Products/" in url))
+        src_images = [
+            url
+            for url in response.css("div.owl-carousel img::attr(src)").getall()
+            if "/Products/" in url
+        ]
+        data_src_images = [
+            url
+            for url in response.css("div.owl-carousel img::attr(data-src)").getall()
+            if "/Products/" in url
+        ]
+        product_images = list(dict.fromkeys(src_images + data_src_images))
         item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
         item["specs"] = {
-            prop["name"]: prop["value"]
+            prop["name"]: re.sub(
+                r"\.\s*Xem thông tin hãng\s*$", "", strip_html(prop["value"])
+            ).strip()
             for prop in (ld_product.get("additionalProperty") or [])
-            if prop.get("name") and prop.get("value")
+            if prop.get("name")
+            and prop.get("value")
+            and strip_html(prop["value"]).strip() != "Đang cập nhật"
         }
 
         yield item
