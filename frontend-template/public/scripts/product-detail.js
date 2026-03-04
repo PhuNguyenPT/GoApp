@@ -26,21 +26,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const nextBtn = document.getElementById('next-btn');
     const closeBtn = document.getElementById('close-btn');
 
-    if (prevBtn) prevBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        current = (current - 1 + images.length) % images.length;
-        update();
-    });
+    if (prevBtn)
+        prevBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            current = (current - 1 + images.length) % images.length;
+            update();
+        });
 
-    if (nextBtn) nextBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        current = (current + 1) % images.length;
-        update();
-    });
+    if (nextBtn)
+        nextBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            current = (current + 1) % images.length;
+            update();
+        });
 
-    if (closeBtn) closeBtn.addEventListener('click', function () {
-        lightbox.classList.replace('flex', 'hidden');
-    });
+    if (closeBtn)
+        closeBtn.addEventListener('click', function () {
+            lightbox.classList.replace('flex', 'hidden');
+        });
 
     document.querySelectorAll('[data-tab]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -60,8 +63,12 @@ document.addEventListener('DOMContentLoaded', function () {
             let expanded = false;
             descToggle.addEventListener('click', function () {
                 expanded = !expanded;
-                descWrapper.style.maxHeight = expanded ? descWrapper.scrollHeight + 'px' : '10rem';
-                descToggle.textContent = expanded ? descToggle.dataset.less : descToggle.dataset.more;
+                descWrapper.style.maxHeight = expanded
+                    ? descWrapper.scrollHeight + 'px'
+                    : '10rem';
+                descToggle.textContent = expanded
+                    ? descToggle.dataset.less
+                    : descToggle.dataset.more;
                 if (descFade) descFade.style.display = expanded ? 'none' : '';
             });
         }
@@ -70,7 +77,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function update() {
     document.getElementById('lightbox-img').src = images[current];
-    document.getElementById('lightbox-counter').textContent = (current + 1) + ' / ' + images.length;
+    document.getElementById('lightbox-counter').textContent =
+        current + 1 + ' / ' + images.length;
 }
 
 document.addEventListener('keydown', function (e) {

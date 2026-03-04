@@ -22,15 +22,24 @@ templ-fmt:
 		go tool templ fmt ./internal/views/; \
 	fi
 
-# Build Tailwind CSS
+# Minify CSS
 tailwind-build:
-	@echo "Building Tailwind CSS..."
-	@cd frontend-template && npx tailwindcss -i ./public/styles/index.css -o ./public/output.css --minify
+	@echo "Minifying CSS..."
+	@cd frontend-template && npm run minify:css
+
+# Minify JS
+js-build:
+	@echo "Minifying JS..."
+	@cd frontend-template && npm run minify:js
+
+# Build all frontend assets
+frontend-build: tailwind-build js-build
 
 # Build the application
-build: templ-generate sqlc-generate tailwind-build
+build: templ-generate sqlc-generate frontend-build
 	@echo "Building Go binary..."
 	@go build -o main cmd/api/main.go
+
 
 # Run SSR server + SPA frontend
 run: templ-generate
@@ -100,17 +109,20 @@ migrate-down:
 lint:
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
 	@go tool sqlc compile
+	@cd frontend-template && npm run lint
 
 lint-fix:
 	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --fix
+	@cd frontend-template && npm run lint:fix
 
 # Static analysis
 vet:
 	@go vet ./...
 	@go tool sqlc vet
 
-# Format code (Go + templ)
+# Format code (Go + templ + JS)
 fmt: templ-fmt
 	@gofmt -w .
+	@cd frontend-template && npm run fmt
 
-.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate templ-fmt tailwind-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
+.PHONY: all build run test clean watch docker-watch docker-watch-down docker-prod docker-prod-down itest templ-generate templ-fmt tailwind-build js-build frontend-build sqlc-generate migrate-up migrate-down lint lint-fix vet fmt
