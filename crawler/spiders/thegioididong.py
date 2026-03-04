@@ -274,7 +274,8 @@ class ThegioididongSpider(scrapy.Spider):
         # Long description from article body, fall back to JSON-LD SEO summary
         desc_html = response.css("div.description div.text-detail").get()
         if desc_html:
-            item["description"] = re.sub(r"\s+", " ", strip_html(desc_html)).strip()
+            text = re.sub(r"\s+", " ", strip_html(desc_html)).strip()
+            item["description"] = re.sub(r"\s*Xem thêm\s*$", "", text).strip() or None
         else:
             item["description"] = ld_product.get("description")
 
@@ -342,7 +343,9 @@ class ThegioididongSpider(scrapy.Spider):
         item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
         item["specs"] = {
-            prop["name"]: strip_html(prop["value"])
+            prop["name"]: re.sub(
+                r"\.\s*Xem thông tin hãng\s*$", "", strip_html(prop["value"])
+            ).strip()
             for prop in (ld_product.get("additionalProperty") or [])
             if prop.get("name")
             and prop.get("value")
