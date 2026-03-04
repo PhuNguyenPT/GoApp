@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS products (
     name TEXT,
     brand TEXT,
     category TEXT,
+    subcategory TEXT,
     description TEXT,
     price NUMERIC,
     original_price NUMERIC,

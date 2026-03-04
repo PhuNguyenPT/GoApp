@@ -234,9 +234,16 @@ class ThegioididongSpider(scrapy.Spider):
             item["sku"] = gtm.get("sku")
             item["description"] = None
             item["brand"] = gtm.get("brand") or ((gtm.get("name") or "").split()[0] or None)
-            item["category"] = (
-                ld_breadcrumbs[-1].get("item", {}).get("name") if ld_breadcrumbs else None
-            )
+            if ld_breadcrumbs:
+                if len(ld_breadcrumbs) >= 3:
+                    item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
+                    item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                else:
+                    item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                    item["subcategory"] = None
+            else:
+                item["category"] = None
+                item["subcategory"] = None
             item["price"] = gtm.get("price")
             item["original_price"] = None
             item["discount_percent"] = None
@@ -297,10 +304,20 @@ class ThegioididongSpider(scrapy.Spider):
 
         # Category from breadcrumb JSON-LD (last item)
         if ld_breadcrumbs:
-            item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+            if len(ld_breadcrumbs) >= 3:
+                item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
+                item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+            else:
+                item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                item["subcategory"] = None
         else:
             breadcrumbs = response.css("[class*='breadcrumb'] a::text").getall()
-            item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
+            if len(breadcrumbs) >= 2:
+                item["category"] = clean_text(breadcrumbs[-2])
+                item["subcategory"] = clean_text(breadcrumbs[-1])
+            else:
+                item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
+                item["subcategory"] = None
 
         item["price"] = offers.get("price") or parse_price(
             response.css("[class*='price-present']::text").get()

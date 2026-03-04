@@ -13,12 +13,12 @@ def upsert_product(cur, data):
     cur.execute(
         """
         INSERT INTO products (
-            url, source, sku, name, brand, category,
+            url, source, sku, name, brand, category, subcategory,
             description, price, original_price, discount_percent, currency,
             in_stock, quantity, rating, review_count,
             images, specs, crawled_at
         ) VALUES (
-            %(url)s, %(source)s, %(sku)s, %(name)s, %(brand)s, %(category)s,
+            %(url)s, %(source)s, %(sku)s, %(name)s, %(brand)s, %(category)s, %(subcategory)s,
             %(description)s, %(price)s, %(original_price)s, %(discount_percent)s, %(currency)s,
             %(in_stock)s, %(quantity)s, %(rating)s, %(review_count)s,
             %(images)s, %(specs)s, %(crawled_at)s
@@ -28,6 +28,7 @@ def upsert_product(cur, data):
             name             = EXCLUDED.name,
             brand            = EXCLUDED.brand,
             category         = EXCLUDED.category,
+            subcategory      = EXCLUDED.subcategory,
             description      = EXCLUDED.description,
             price            = EXCLUDED.price,
             original_price   = EXCLUDED.original_price,
@@ -44,11 +45,25 @@ def upsert_product(cur, data):
         RETURNING id
         """,
         {
-            **data,
+            "url": data.get("url"),
+            "source": data.get("source"),
             "sku": data.get("sku"),
+            "name": data.get("name"),
+            "brand": data.get("brand"),
+            "category": data.get("category"),
+            "subcategory": data.get("subcategory"),
             "description": data.get("description"),
+            "price": data.get("price"),
+            "original_price": data.get("original_price"),
+            "discount_percent": data.get("discount_percent"),
+            "currency": data.get("currency"),
+            "in_stock": data.get("in_stock"),
+            "quantity": data.get("quantity"),
+            "rating": data.get("rating"),
+            "review_count": data.get("review_count"),
             "images": json.dumps(data.get("images", [])),
             "specs": json.dumps(data.get("specs", {})),
+            "crawled_at": data.get("crawled_at"),
         },
     )
     return cur.fetchone()[0]
@@ -76,14 +91,14 @@ def upsert_source(cur, data):
 def upsert_dim_product(cur, product_id, data):
     cur.execute(
         """
-        SELECT id, name, brand, category
+        SELECT id, name, brand, category, subcategory
         FROM warehouse.dim_product
         WHERE product_id = %s AND is_current = TRUE
         """,
         (product_id,),
     )
     current = cur.fetchone()
-    scd_fields = ("name", "brand", "category")
+    scd_fields = ("name", "brand", "category", "subcategory")
     changed = current and any(data.get(f) != current[i + 1] for i, f in enumerate(scd_fields))
 
     if current and not changed:
@@ -102,21 +117,25 @@ def upsert_dim_product(cur, product_id, data):
     cur.execute(
         """
         INSERT INTO warehouse.dim_product (
-            product_id, url, name, brand, category,
+            product_id, url, name, brand, category, subcategory,
             currency, images, specs
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (
+            %(product_id)s, %(url)s, %(name)s, %(brand)s, %(category)s, %(subcategory)s,
+            %(currency)s, %(images)s, %(specs)s
+        )
         RETURNING id
         """,
-        (
-            product_id,
-            data.get("url"),
-            data.get("name"),
-            data.get("brand"),
-            data.get("category"),
-            data.get("currency"),
-            json.dumps(data.get("images", [])),
-            json.dumps(data.get("specs", {})),
-        ),
+        {
+            "product_id": product_id,
+            "url": data.get("url"),
+            "name": data.get("name"),
+            "brand": data.get("brand"),
+            "category": data.get("category"),
+            "subcategory": data.get("subcategory"),
+            "currency": data.get("currency"),
+            "images": json.dumps(data.get("images", [])),
+            "specs": json.dumps(data.get("specs", {})),
+        },
     )
     return cur.fetchone()[0]
 

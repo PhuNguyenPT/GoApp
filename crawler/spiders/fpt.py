@@ -169,22 +169,32 @@ class FptSpider(scrapy.Spider):
 
         # Category from breadcrumb JSON-LD
         category = None
+        subcategory = None
         raw_bc = response.css("#breadcrumb-structured-data::text").get()
         if raw_bc:
             try:
                 bc = json.loads(raw_bc)
-                cat_item = next(
-                    (x for x in bc.get("itemListElement", []) if x.get("position") == 2), None
-                )
-                if cat_item:
-                    category = cat_item.get("name")
+                elements = bc.get("itemListElement", [])
+                if len(elements) >= 3:
+                    category = next(
+                        (x.get("name") for x in elements if x.get("position") == 2), None
+                    )
+                    subcategory = next(
+                        (x.get("name") for x in elements if x.get("position") == 3), None
+                    )
+                elif len(elements) == 2:
+                    category = next(
+                        (x.get("name") for x in elements if x.get("position") == 2), None
+                    )
             except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse breadcrumb JSON at %s: %s", response.url, e)
 
         if not category:
             url_parts = response.url.split("/")
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
+
         item["category"] = category
+        item["subcategory"] = subcategory
 
         offers = product_data.get("offers", {})
         agg = product_data.get("aggregateRating", {})

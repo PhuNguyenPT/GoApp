@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS products_history (
     name             TEXT,
     brand            TEXT,
     category         TEXT,
+    subcategory      TEXT,
     price            NUMERIC,
     original_price   NUMERIC,
     discount_percent NUMERIC,
@@ -28,12 +29,12 @@ CREATE OR REPLACE FUNCTION record_product_history()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO products_history (
-        product_id, url, source, name, brand, category,
+        product_id, url, source, name, brand, category, subcategory,
         price, original_price, discount_percent, currency,
         in_stock, quantity, rating, review_count,
         images, specs, crawled_at
     ) VALUES (
-        OLD.id, OLD.url, OLD.source, OLD.name, OLD.brand, OLD.category,
+        OLD.id, OLD.url, OLD.source, OLD.name, OLD.brand, OLD.category, OLD.subcategory,
         OLD.price, OLD.original_price, OLD.discount_percent, OLD.currency,
         OLD.in_stock, OLD.quantity, OLD.rating, OLD.review_count,
         OLD.images, OLD.specs, OLD.crawled_at
@@ -89,6 +90,7 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_product (
     name       TEXT,
     brand      TEXT,
     category   TEXT,
+    subcategory TEXT,
     currency   TEXT,
     images     JSONB,
     specs      JSONB,
