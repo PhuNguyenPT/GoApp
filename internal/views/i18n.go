@@ -183,7 +183,7 @@ func T(lang string) Translations {
 			InStock:        "Còn hàng",
 			OutOfStock:     "Hết hàng",
 			Reviews:        "đánh giá",
-			Description:    "Mô tả",
+			Description:    "Mô tả sản phẩm",
 			ShowMore:       "Xem thêm",
 			ShowLess:       "Thu gọn",
 			// Dashboard
