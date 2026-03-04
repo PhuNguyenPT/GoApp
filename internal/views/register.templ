@@ -19,6 +19,7 @@ templ RegisterPage(userName string, lang string) {
 							<input
 								type="text"
 								name="name"
+								maxlength="100"
 								required
 								class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								placeholder={ T(lang).PlaceholderName }
@@ -29,6 +30,7 @@ templ RegisterPage(userName string, lang string) {
 							<input
 								type="email"
 								name="email"
+								maxlength="254"
 								required
 								class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								placeholder={ T(lang).PlaceholderEmail }
@@ -39,8 +41,9 @@ templ RegisterPage(userName string, lang string) {
 							<input
 								type="password"
 								name="password"
-								required
+								maxlength="72"
 								minlength="8"
+								required
 								class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								placeholder={ T(lang).PlaceholderPassword }
 							/>

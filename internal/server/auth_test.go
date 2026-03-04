@@ -42,6 +42,21 @@ func TestValidationMessage(t *testing.T) {
 			form:     url.Values{"email": {"test@example.com"}, "password": {"password123"}},
 			wantBody: "required",
 		},
+		{
+			name:     "name too long",
+			form:     url.Values{"name": {strings.Repeat("a", 101)}, "email": {"test@example.com"}, "password": {"password123"}},
+			wantBody: "at most 100 characters",
+		},
+		{
+			name:     "email too long",
+			form:     url.Values{"name": {"Test"}, "email": {strings.Repeat("a", 246) + "@test.com"}, "password": {"password123"}},
+			wantBody: "at most 254 characters",
+		},
+		{
+			name:     "password too long",
+			form:     url.Values{"name": {"Test"}, "email": {"test@example.com"}, "password": {strings.Repeat("a", 73)}},
+			wantBody: "at most 72 characters",
+		},
 	}
 
 	for _, tt := range tests {
@@ -135,6 +150,43 @@ func TestRegisterHandler(t *testing.T) {
 		}
 		if !strings.Contains(rr.Body.String(), "at least 8 characters") {
 			t.Errorf("expected password length error message")
+		}
+	})
+	t.Run("name too long", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", strings.Repeat("a", 101))
+		form.Set("email", "test@example.com")
+		form.Set("password", "password123")
+
+		req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "at most 100 characters") {
+			t.Errorf("expected name max length error message")
+		}
+	})
+
+	t.Run("password too long", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test User")
+		form.Set("email", "test@example.com")
+		form.Set("password", strings.Repeat("a", 73))
+
+		req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "at most 72 characters") {
+			t.Errorf("expected password max length error message")
 		}
 	})
 }
