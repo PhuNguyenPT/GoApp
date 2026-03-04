@@ -272,10 +272,15 @@ class ThegioididongSpider(scrapy.Spider):
         item["sku"] = ld_product.get("sku")
 
         # Long description from article body, fall back to JSON-LD SEO summary
-        desc_html = response.css("div.description div.text-detail").get()
-        if desc_html:
-            text = re.sub(r"\s+", " ", strip_html(desc_html)).strip()
-            item["description"] = re.sub(r"\s*Xem thêm\s*$", "", text).strip() or None
+        desc_el = response.css("div.description div.text-detail")
+        if desc_el:
+            paragraphs = [
+                re.sub(r"\s+", " ", strip_html(block)).strip()
+                for block in desc_el.css("p, h2, h3, li").getall()
+            ]
+            item["description"] = (
+                "\n\n".join(p for p in paragraphs if p and p != "Xem thêm") or None
+            )
         else:
             item["description"] = ld_product.get("description")
 
