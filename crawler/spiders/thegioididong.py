@@ -270,7 +270,13 @@ class ThegioididongSpider(scrapy.Spider):
         # --- Normal path: Product LD+JSON present ---
         item["name"] = ld_product.get("name") or clean_text(response.css("h1::text").get())
         item["sku"] = ld_product.get("sku")
-        item["description"] = ld_product.get("description")
+
+        # Long description from article body, fall back to JSON-LD SEO summary
+        desc_html = response.css("div.description div.text-detail").get()
+        if desc_html:
+            item["description"] = re.sub(r"\s+", " ", strip_html(desc_html)).strip()
+        else:
+            item["description"] = ld_product.get("description")
 
         # Brand: {"@type": "Brand", "name": ["iPhone (Apple)"]} — name is a list
         brand_raw = ld_product.get("brand", {}).get("name")
