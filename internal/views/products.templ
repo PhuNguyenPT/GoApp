@@ -270,45 +270,88 @@ templ ProductGrid(data ProductsPageData, lang string) {
 templ ProductCard(p database.Product) {
 	<a
 		href={ templ.SafeURL(fmt.Sprintf("/products/%s", p.ID.String())) }
-		class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col"
+		class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
 	>
-		<div class="aspect-square bg-gray-100 overflow-hidden">
+		<!-- Image -->
+		<div class="aspect-square bg-gray-50 overflow-hidden relative">
 			if p.Images.Valid {
 				<img
 					src={ extractFirstImage(p.Images.RawMessage) }
 					alt={ p.Name.String }
-					class="w-full h-full object-contain p-4"
+					class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-200"
 					loading="lazy"
 					onerror="this.style.display='none'"
 				/>
 			}
-		</div>
-		<div class="p-4 flex flex-col flex-1">
-			if p.Brand.Valid {
-				<span class="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">{ p.Brand.String }</span>
+			<!-- Discount badge -->
+			if p.DiscountPercent.Valid && p.DiscountPercent.Int32 > 0 {
+				<span class="absolute top-2 left-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-semibold">
+					-{ fmt.Sprintf("%d%%", p.DiscountPercent.Int32) }
+				</span>
 			}
-			<h3 class="text-sm font-semibold text-gray-800 line-clamp-2 flex-1 mb-2">
+			<!-- Stock status -->
+			if p.InStock.Valid {
+				switch p.InStock.Bool {
+					case false:
+						<div class="absolute inset-0 bg-white/60 flex items-center justify-center">
+							<span class="text-xs font-semibold text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded">Out of stock</span>
+						</div>
+					case true:
+						if p.Quantity.Valid && p.Quantity.Int32 < 5 {
+							<div class="absolute bottom-2 left-2">
+								<span class="text-xs font-semibold text-orange-500 bg-white border border-orange-200 px-2 py-1 rounded">Low stock</span>
+							</div>
+						}
+				}
+			}
+		</div>
+		<!-- Content -->
+		<div class="p-3 flex flex-col flex-1">
+			<!-- Brand + Category row -->
+			<div class="flex items-center justify-between mb-1">
+				switch [2]bool{p.Brand.Valid, p.Category.Valid} {
+					case [2]bool{true, true}:
+						<span class="text-xs text-blue-600 font-medium uppercase tracking-wide truncate">{ p.Brand.String }</span>
+						<span class="text-xs text-gray-400 truncate ml-1">{ p.Category.String }</span>
+					case [2]bool{true, false}:
+						<span class="text-xs text-blue-600 font-medium uppercase tracking-wide truncate">{ p.Brand.String }</span>
+					case [2]bool{false, true}:
+						<span class="text-xs text-gray-400 truncate ml-1">{ p.Category.String }</span>
+				}
+			</div>
+			<!-- Name -->
+			<h3 class="text-sm font-semibold text-gray-800 line-clamp-2 flex-1 mb-2 leading-snug">
 				if p.Name.Valid {
 					{ p.Name.String }
 				}
 			</h3>
-			<div class="flex items-center justify-between mt-auto">
-				<div>
-					if p.Price.Valid {
+			<!-- Rating + reviews -->
+			switch [2]bool{p.Rating.Valid, p.ReviewCount.Valid && p.ReviewCount.Int32 > 0} {
+				case [2]bool{true, true}:
+					<div class="flex items-center gap-1 mb-2">
+						<span class="text-yellow-400 text-xs">★</span>
+						<span class="text-xs font-medium text-gray-700">{ p.Rating.String }</span>
+						<span class="text-xs text-gray-400">({ fmt.Sprintf("%d", p.ReviewCount.Int32) })</span>
+					</div>
+				case [2]bool{true, false}:
+					<div class="flex items-center gap-1 mb-2">
+						<span class="text-yellow-400 text-xs">★</span>
+						<span class="text-xs font-medium text-gray-700">{ p.Rating.String }</span>
+					</div>
+			}
+			<!-- Price row -->
+			<div class="flex items-baseline gap-2 mt-auto">
+				switch [2]bool{p.Price.Valid, p.OriginalPrice.Valid && p.OriginalPrice.String != "" && p.OriginalPrice.String != p.Price.String} {
+					case [2]bool{true, true}:
 						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
-					}
-					if p.DiscountPercent.Valid && p.DiscountPercent.Int32 > 0 {
-						<span class="ml-2 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
-							-{ fmt.Sprintf("%d%%", p.DiscountPercent.Int32) }
-						</span>
-					}
-				</div>
-				if p.Rating.Valid {
-					<span class="text-xs text-yellow-500">★ { p.Rating.String }</span>
+						<span class="text-xs text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String) }</span>
+					case [2]bool{true, false}:
+						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
 				}
 			</div>
+			<!-- Source -->
 			if p.Source.Valid {
-				<span class="mt-2 text-xs text-gray-400">{ p.Source.String }</span>
+				<span class="mt-2 text-xs text-gray-400 truncate">{ p.Source.String }</span>
 			}
 		</div>
 	</a>
