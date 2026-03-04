@@ -156,9 +156,13 @@ class FptSpider(scrapy.Spider):
         item["sku"] = product_data.get("sku")
 
         # Long description from product content container, fall back to JSON-LD SEO summary
-        desc_html = response.css("[class*='description-container']").get()
-        if desc_html:
-            item["description"] = re.sub(r"\s+", " ", strip_html(desc_html)).strip()
+        desc_el = response.css("[class*='description-container']")
+        if desc_el:
+            paragraphs = [
+                re.sub(r"\s+", " ", strip_html(block)).strip()
+                for block in desc_el.css("p, h2, h3, li").getall()
+            ]
+            item["description"] = "\n\n".join(p for p in paragraphs if p and p != "Thu gọn") or None
         else:
             raw_desc = product_data.get("description")
             item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
