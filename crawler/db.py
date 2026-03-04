@@ -13,20 +13,22 @@ def upsert_product(cur, data):
     cur.execute(
         """
         INSERT INTO products (
-            url, source, name, brand, category,
-            price, original_price, discount_percent, currency,
+            url, source, sku, name, brand, category,
+            description, price, original_price, discount_percent, currency,
             in_stock, quantity, rating, review_count,
             images, specs, crawled_at
         ) VALUES (
-            %(url)s, %(source)s, %(name)s, %(brand)s, %(category)s,
-            %(price)s, %(original_price)s, %(discount_percent)s, %(currency)s,
+            %(url)s, %(source)s, %(sku)s, %(name)s, %(brand)s, %(category)s,
+            %(description)s, %(price)s, %(original_price)s, %(discount_percent)s, %(currency)s,
             %(in_stock)s, %(quantity)s, %(rating)s, %(review_count)s,
             %(images)s, %(specs)s, %(crawled_at)s
         )
         ON CONFLICT (url) DO UPDATE SET
+            sku              = EXCLUDED.sku,
             name             = EXCLUDED.name,
             brand            = EXCLUDED.brand,
             category         = EXCLUDED.category,
+            description      = EXCLUDED.description,
             price            = EXCLUDED.price,
             original_price   = EXCLUDED.original_price,
             discount_percent = EXCLUDED.discount_percent,
@@ -43,6 +45,8 @@ def upsert_product(cur, data):
         """,
         {
             **data,
+            "sku": data.get("sku"),
+            "description": data.get("description"),
             "images": json.dumps(data.get("images", [])),
             "specs": json.dumps(data.get("specs", {})),
         },
