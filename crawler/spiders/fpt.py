@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 
 import psycopg2
@@ -33,6 +34,10 @@ FALLBACK_URLS = [
     "/smartwatch",
     "/phu-kien",  # covers /tai-nghe, /loa, /may-anh etc. via subcategory discovery
 ]
+
+
+def strip_html(text):
+    return re.sub(r"<[^>]+>", " ", text).strip() if text else text
 
 
 class FptSpider(scrapy.Spider):
@@ -150,10 +155,13 @@ class FptSpider(scrapy.Spider):
         # Map SKU from JSON-LD
         item["sku"] = product_data.get("sku")
 
-        # Map Description from JSON-LD (SEO summary)
-        raw_desc = product_data.get("description")
-        # Stripping leading/trailing quotes if they exist, then cleaning
-        item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
+        # Long description from product content container, fall back to JSON-LD SEO summary
+        desc_html = response.css("[class*='description-container']").get()
+        if desc_html:
+            item["description"] = re.sub(r"\s+", " ", strip_html(desc_html)).strip()
+        else:
+            raw_desc = product_data.get("description")
+            item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
 
         # Category from breadcrumb JSON-LD
         category = None
