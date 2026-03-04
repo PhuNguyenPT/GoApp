@@ -61,3 +61,22 @@ document.addEventListener('keydown', function (e) {
     }
     if (e.key === 'Escape') lightbox.classList.replace('flex', 'hidden');
 });
+
+const descWrapper = document.getElementById('desc-wrapper');
+const descToggle = document.getElementById('desc-toggle');
+const descFade = document.getElementById('desc-fade');
+
+if (descWrapper && descToggle) {
+    if (descWrapper.scrollHeight <= descWrapper.offsetHeight + 2) {
+        if (descFade) descFade.style.display = 'none';
+        descToggle.style.display = 'none';
+    } else {
+        let expanded = false;
+        descToggle.addEventListener('click', function () {
+            expanded = !expanded;
+            descWrapper.style.maxHeight = expanded ? descWrapper.scrollHeight + 'px' : '10rem';
+            descToggle.textContent = expanded ? descToggle.dataset.less : descToggle.dataset.more;
+            if (descFade) descFade.style.display = expanded ? 'none' : '';
+        });
+    }
+}

@@ -62,6 +62,8 @@ type Translations struct {
 	OutOfStock     string
 	Reviews        string
 	Description    string
+	ShowMore       string
+	ShowLess       string
 	// Dashboard
 	DashboardTitle       string
 	DashboardDescription string
@@ -182,6 +184,8 @@ func T(lang string) Translations {
 			OutOfStock:     "Hết hàng",
 			Reviews:        "đánh giá",
 			Description:    "Mô tả",
+			ShowMore:       "Xem thêm",
+			ShowLess:       "Thu gọn",
 			// Dashboard
 			DashboardTitle:       "Bảng điều khiển",
 			DashboardDescription: "Trang quản lý của bạn",
@@ -295,6 +299,8 @@ func T(lang string) Translations {
 		OutOfStock:     "Out of Stock",
 		Reviews:        "reviews",
 		Description:    "Description",
+		ShowMore:       "Show more",
+		ShowLess:       "Show less",
 		// Dashboard
 		DashboardTitle:       "Dashboard",
 		DashboardDescription: "Your dashboard",

@@ -113,7 +113,18 @@ templ ProductDetailPage(userName string, p database.Product, lang string) {
 							<h2 class="text-base font-semibold text-gray-600 uppercase tracking-wide">{ T(lang).Description }</h2>
 						</div>
 						<div class="px-8 py-6">
-							<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{ p.Description.String }</p>
+							<div id="desc-wrapper" class="relative overflow-hidden max-h-40 transition-[max-height] duration-300 ease-in-out">
+								<p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{ p.Description.String }</p>
+								<div id="desc-fade" class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none"></div>
+							</div>
+							<div class="flex justify-center mt-2">
+								<button
+									id="desc-toggle"
+									class="text-sm text-blue-600 hover:underline font-medium"
+									data-more={ T(lang).ShowMore }
+									data-less={ T(lang).ShowLess }
+								>{ T(lang).ShowMore }</button>
+							</div>
 						</div>
 					</div>
 				}
