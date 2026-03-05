@@ -111,7 +111,7 @@ type Translations struct {
 	// Home
 	HomeWelcome        string
 	HomeSubtitle       string
-	HomeGetInTouch     string
+	HomeProducts       string
 	HomeLatestProducts string
 	HomeViewAll        string
 }
@@ -234,7 +234,7 @@ func T(lang string) Translations {
 			// Home
 			HomeWelcome:        "Prizm",
 			HomeSubtitle:       "Xem mọi giá. Mua sắm tự tin.",
-			HomeGetInTouch:     "So sánh ngay",
+			HomeProducts:       "So sánh ngay",
 			HomeLatestProducts: "Sản phẩm mới nhất",
 			HomeViewAll:        "Xem tất cả →",
 		}
@@ -350,7 +350,7 @@ func T(lang string) Translations {
 		// Home
 		HomeWelcome:        "Prizm",
 		HomeSubtitle:       "See every price. Buy with confidence.",
-		HomeGetInTouch:     "Start Comparing",
+		HomeProducts:       "Start Comparing",
 		HomeLatestProducts: "Latest Products",
 		HomeViewAll:        "View all →",
 	}
