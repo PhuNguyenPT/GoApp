@@ -4,9 +4,9 @@ templ HomePage(userName string, lang string) {
 	<!DOCTYPE html>
 	<html lang={ lang }>
 		@Head(SEOMeta{
-			Title:        T(lang).HomeWelcome,
+			Title:        "Prizm",
 			Description:  T(lang).HomeSubtitle,
-			CanonicalURL: "https://yourdomain.com/",
+			CanonicalURL: "https://prizm.vn/",
 		})
 		<body class="min-h-screen bg-gray-50 flex flex-col">
 			@Header("home", userName, lang)

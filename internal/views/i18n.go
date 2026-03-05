@@ -216,7 +216,7 @@ func T(lang string) Translations {
 			Page: "Trang",
 			Of:   "của",
 			// Footer
-			FooterDesc:        "Ứng dụng web hiện đại được xây dựng với Go, Templ và HTMX.",
+			FooterDesc:        "So sánh giá thông minh trên các trang thương mại hàng đầu Việt Nam.",
 			QuickLinks:        "Liên kết nhanh",
 			AllRightsReserved: "Bảo lưu mọi quyền.",
 			FooterEmail:       "Email",
@@ -232,9 +232,9 @@ func T(lang string) Translations {
 			ErrAllRequired:      "Vui lòng điền đầy đủ thông tin.",
 			ErrInvalidPassword:  "Email hoặc mật khẩu không đúng.",
 			// Home
-			HomeWelcome:        "Chào mừng đến GoApp",
-			HomeSubtitle:       "Ứng dụng web hiệu năng cao với Go và Templ",
-			HomeGetInTouch:     "Liên hệ ngay",
+			HomeWelcome:        "Prizm",
+			HomeSubtitle:       "Xem mọi giá. Mua sắm tự tin.",
+			HomeGetInTouch:     "So sánh ngay",
 			HomeLatestProducts: "Sản phẩm mới nhất",
 			HomeViewAll:        "Xem tất cả →",
 		}
@@ -332,7 +332,7 @@ func T(lang string) Translations {
 		Page: "Page",
 		Of:   "of",
 		// Footer
-		FooterDesc:        "A modern web application built with Go, Templ, and HTMX.",
+		FooterDesc:        "Smart price comparison across Vietnam's top stores.",
 		QuickLinks:        "Quick Links",
 		AllRightsReserved: "All rights reserved.",
 		FooterEmail:       "Email",
@@ -348,9 +348,9 @@ func T(lang string) Translations {
 		ErrAllRequired:      "All fields are required.",
 		ErrInvalidPassword:  "Invalid email or password.",
 		// Home
-		HomeWelcome:        "Welcome to GoApp",
-		HomeSubtitle:       "High performance web app built with Go and Templ",
-		HomeGetInTouch:     "Get in Touch",
+		HomeWelcome:        "Prizm",
+		HomeSubtitle:       "See every price. Buy with confidence.",
+		HomeGetInTouch:     "Start Comparing",
 		HomeLatestProducts: "Latest Products",
 		HomeViewAll:        "View all →",
 	}

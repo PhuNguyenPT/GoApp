@@ -1,6 +1,6 @@
 {
-    "name": "GoApp Contact",
-    "short_name": "GoApp",
+    "name": "Prizm - Price Comparison",
+    "short_name": "Prizm",
     "icons": [
         {
             "src": "/public/android-chrome-192x192.png",
@@ -13,7 +13,7 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#00ADD8",
+    "theme_color": "#2563eb",
     "background_color": "#ffffff",
     "display": "standalone"
 }

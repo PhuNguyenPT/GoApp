@@ -4,7 +4,7 @@ templ Header(currentPage string, userName string, lang string) {
 	<header class="bg-white shadow-sm">
 		<div class="max-w-4xl mx-auto px-4 py-3">
 			<nav class="flex items-center justify-between">
-				<a href="/" class="text-xl font-bold text-gray-900 hover:text-gray-700 shrink-0">GoApp</a>
+				<a href="/" class="text-xl font-bold text-gray-900 hover:text-gray-700 shrink-0">Prizm</a>
 				<div class="flex items-center gap-3">
 					<!-- Desktop nav - hidden on mobile -->
 					<div class="hidden md:flex items-center gap-4">
@@ -78,7 +78,7 @@ templ Footer(lang string) {
 		<div class="max-w-4xl mx-auto px-8">
 			<div class="grid md:grid-cols-3 gap-8">
 				<div>
-					<h3 class="text-lg font-semibold mb-3">GoApp</h3>
+					<h3 class="text-lg font-semibold mb-3">Prizm</h3>
 					<p class="text-gray-400">{ T(lang).FooterDesc }</p>
 				</div>
 				<div>
@@ -92,13 +92,13 @@ templ Footer(lang string) {
 				<div>
 					<h3 class="text-lg font-semibold mb-3">{ T(lang).Contact }</h3>
 					<ul class="space-y-2 text-gray-400">
-						<li>{ T(lang).FooterEmail }: info@goapp.com</li>
+						<li>{ T(lang).FooterEmail }: info@prizm.vn</li>
 						<li>{ T(lang).FooterPhone }: +1 234 567 890</li>
 					</ul>
 				</div>
 			</div>
 			<div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-				<p>&copy; 2026 GoApp. { T(lang).AllRightsReserved }</p>
+				<p>&copy; 2026 Prizm. { T(lang).AllRightsReserved }</p>
 			</div>
 		</div>
 	</footer>
