@@ -302,7 +302,7 @@ templ ProductGrid(data ProductsPageData, lang string) {
 		<p class="text-gray-500">{ T(lang).NoProducts }</p>
 	} else {
 		<p class="text-sm text-gray-500 mb-4">{ fmt.Sprintf("%d %s", data.TotalCount, T(lang).ProductsFound) }</p>
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+		<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-5">
 			for _, p := range data.Products {
 				@ProductCard(p)
 			}
