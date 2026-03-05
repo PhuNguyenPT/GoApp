@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm run minify:css && npm run lint && npm run minify:js",
     "minify:css": "npx tailwindcss -i ./public/styles/index.css -o ./public/output.css --minify",
-    "minify:js": "for f in public/scripts/*.js; do terser $f -o public/$(basename $f .js).min.js --compress --mangle; done",
+    "minify:js": "for f in public/scripts/*.js; do npx terser $f -o public/$(basename $f .js).min.js --compress --mangle; done",
     "lint": "eslint public/scripts/**/*.js",
     "lint:fix": "eslint public/scripts/**/*.js --fix",
     "fmt": "prettier --write public/scripts/**/*.js",
