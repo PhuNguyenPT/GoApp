@@ -415,13 +415,13 @@ templ ProductCard(p database.GetProductSummariesRow) {
 					</div>
 			}
 			<!-- Price row -->
-			<div class="flex items-baseline gap-2 mt-auto">
+			<div class="flex items-baseline gap-1 mt-auto flex-wrap">
 				switch [2]bool{p.Price.Valid, p.OriginalPrice.Valid && p.OriginalPrice.String != "" && p.OriginalPrice.String != p.Price.String} {
 					case [2]bool{true, true}:
-						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
+						<span class="text-sm sm:text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
 						<span class="text-xs text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String, p.Currency.String) }</span>
 					case [2]bool{true, false}:
-						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
+						<span class="text-sm sm:text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
 				}
 			</div>
 			<!-- Source -->
