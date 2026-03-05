@@ -67,7 +67,7 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	totalPages := int(math.Ceil(float64(total) / float64(s.cfg.PageSize)))
 	offset := (pageNumber - 1) * s.cfg.PageSize
 
-	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+	products, err := s.db.GetProductSummaries(ctx, database.GetProductSummariesParams{
 		Source:      selectedSource,
 		Category:    selectedCategory,
 		Subcategory: selectedSubcategory,
@@ -142,7 +142,7 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 		limit = s.cfg.PageSize
 	}
 
-	products, err := s.db.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+	products, err := s.db.GetProductSummaries(ctx, database.GetProductSummariesParams{
 		Source:      c.Query("source"),
 		Category:    c.Query("category"),
 		Subcategory: c.Query("subcategory"),

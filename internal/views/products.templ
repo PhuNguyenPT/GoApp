@@ -10,7 +10,7 @@ type ProductsPageData struct {
 	Sources             []sql.NullString
 	Categories          []sql.NullString
 	Subcategories       []sql.NullString
-	Products            []database.Product
+	Products            []database.GetProductSummariesRow
 	SelectedSource      string
 	SelectedCategory    string
 	SelectedSubcategory string
@@ -351,7 +351,7 @@ templ ProductGrid(data ProductsPageData, lang string) {
 	}
 }
 
-templ ProductCard(p database.Product) {
+templ ProductCard(p database.GetProductSummariesRow) {
 	<a
 		href={ templ.SafeURL(fmt.Sprintf("/products/%s", p.ID.String())) }
 		class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
@@ -427,10 +427,10 @@ templ ProductCard(p database.Product) {
 			<div class="flex items-baseline gap-2 mt-auto">
 				switch [2]bool{p.Price.Valid, p.OriginalPrice.Valid && p.OriginalPrice.String != "" && p.OriginalPrice.String != p.Price.String} {
 					case [2]bool{true, true}:
-						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
-						<span class="text-xs text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String) }</span>
+						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
+						<span class="text-xs text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String, p.Currency.String) }</span>
 					case [2]bool{true, false}:
-						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
+						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
 				}
 			</div>
 			<!-- Source -->

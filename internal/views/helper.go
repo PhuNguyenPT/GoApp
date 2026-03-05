@@ -17,20 +17,33 @@ func extractFirstImage(raw []byte) string {
 	return ""
 }
 
-func formatPrice(price string) string {
+func formatPrice(price string, currency string) string {
 	f, err := strconv.ParseFloat(strings.TrimSpace(price), 64)
 	if err != nil {
 		return price
 	}
-	s := strconv.FormatInt(int64(f), 10)
-	result := []byte{}
-	for i, ch := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			result = append(result, ',')
+
+	switch strings.ToUpper(strings.TrimSpace(currency)) {
+	case "VND", "₫":
+		s := strconv.FormatInt(int64(f), 10)
+		result := []byte{}
+		for i, ch := range s {
+			if i > 0 && (len(s)-i)%3 == 0 {
+				result = append(result, ',')
+			}
+			result = append(result, byte(ch))
 		}
-		result = append(result, byte(ch))
+		return fmt.Sprintf("%s ₫", string(result))
+	case "USD":
+		return fmt.Sprintf("$%.2f", f)
+	case "EUR":
+		return fmt.Sprintf("€%.2f", f)
+	case "GBP":
+		return fmt.Sprintf("£%.2f", f)
+	default:
+		// fallback: use currency code as prefix with 2 decimal places
+		return fmt.Sprintf("%s %.2f", strings.ToUpper(currency), f)
 	}
-	return fmt.Sprintf("%s ₫", string(result))
 }
 
 func FormatMonthYear(t time.Time, lang string) string {

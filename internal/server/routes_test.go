@@ -439,6 +439,34 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Pro
 	}, nil
 }
 
+func (m *mockDB) GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams(arg))
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([]database.GetProductSummariesRow, len(products))
+	for i, p := range products {
+		rows[i] = database.GetProductSummariesRow{
+			ID:              p.ID,
+			Source:          p.Source,
+			Name:            p.Name,
+			Brand:           p.Brand,
+			Category:        p.Category,
+			Price:           p.Price,
+			OriginalPrice:   p.OriginalPrice,
+			DiscountPercent: p.DiscountPercent,
+			Currency:        p.Currency,
+			InStock:         p.InStock,
+			Quantity:        p.Quantity,
+			Rating:          p.Rating,
+			ReviewCount:     p.ReviewCount,
+			Images:          p.Images,
+		}
+	}
+	return rows, nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {

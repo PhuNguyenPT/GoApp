@@ -64,7 +64,7 @@ templ ProductDetailPage(userName string, p database.Product, lang string) {
 							}
 							<div class="flex items-center gap-3 mt-2">
 								if p.Price.Valid {
-									<span class="text-2xl font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
+									<span class="text-2xl font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
 								}
 								if p.DiscountPercent.Valid && p.DiscountPercent.Int32 > 0 {
 									<span class="text-sm bg-red-100 text-red-600 px-2 py-0.5 rounded font-medium">
@@ -73,7 +73,7 @@ templ ProductDetailPage(userName string, p database.Product, lang string) {
 								}
 							</div>
 							if p.OriginalPrice.Valid && p.OriginalPrice.String != "" {
-								<span class="text-sm text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String) }</span>
+								<span class="text-sm text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String, p.Currency.String) }</span>
 							}
 							if p.Rating.Valid {
 								<span class="text-sm text-yellow-500">

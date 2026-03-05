@@ -10,6 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCategory :one
@@ -124,6 +125,87 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getProductSummaries = `-- name: GetProductSummaries :many
+SELECT id, source, name, brand, category,
+       price, original_price, discount_percent, currency,
+       in_stock, quantity, rating, review_count, images
+FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+ORDER BY crawled_at DESC
+LIMIT $5 OFFSET $4
+`
+
+type GetProductSummariesParams struct {
+	Source      string
+	Category    string
+	Subcategory string
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type GetProductSummariesRow struct {
+	ID              uuid.UUID
+	Source          sql.NullString
+	Name            sql.NullString
+	Brand           sql.NullString
+	Category        sql.NullString
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullInt32
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	Quantity        sql.NullInt32
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	Images          pqtype.NullRawMessage
+}
+
+func (q *Queries) GetProductSummaries(ctx context.Context, arg GetProductSummariesParams) ([]GetProductSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getProductSummaries,
+		arg.Source,
+		arg.Category,
+		arg.Subcategory,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductSummariesRow
+	for rows.Next() {
+		var i GetProductSummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.Name,
+			&i.Brand,
+			&i.Category,
+			&i.Price,
+			&i.OriginalPrice,
+			&i.DiscountPercent,
+			&i.Currency,
+			&i.InStock,
+			&i.Quantity,
+			&i.Rating,
+			&i.ReviewCount,
+			&i.Images,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many

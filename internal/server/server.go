@@ -42,6 +42,7 @@ type DB interface {
 	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error)
 	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error)
+	GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -134,6 +135,10 @@ func (s *sqlDB) CountProductsBySourceAndCategory(ctx context.Context, arg databa
 
 func (s *sqlDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error) {
 	return s.queries.GetProductByID(ctx, id)
+}
+
+func (s *sqlDB) GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error) {
+	return s.queries.GetProductSummaries(ctx, arg)
 }
 
 type Server struct {

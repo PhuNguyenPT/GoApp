@@ -33,3 +33,14 @@ AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(sub
 -- name: GetProductByID :one
 SELECT * FROM products
 WHERE id = $1;
+
+-- name: GetProductSummaries :many
+SELECT id, source, name, brand, category,
+       price, original_price, discount_percent, currency,
+       in_stock, quantity, rating, review_count, images
+FROM products
+WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
+AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
+AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
+ORDER BY crawled_at DESC
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
