@@ -28,7 +28,9 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 SELECT COUNT(*) FROM products
 WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
 AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
-AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text));
+AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
+AND (sqlc.arg(min_price)::numeric = 0 OR price >= sqlc.arg(min_price)::numeric)
+AND (sqlc.arg(max_price)::numeric = 0 OR price <= sqlc.arg(max_price)::numeric);
 
 -- name: GetProductByID :one
 SELECT * FROM products
@@ -42,5 +44,21 @@ FROM products
 WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
 AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
 AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
+AND (sqlc.arg(min_price)::numeric = 0 OR price >= sqlc.arg(min_price)::numeric)
+AND (sqlc.arg(max_price)::numeric = 0 OR price <= sqlc.arg(max_price)::numeric)
 ORDER BY crawled_at DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- name: GetPricePercentiles :one
+SELECT
+    PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY price::numeric)::text AS p25,
+    PERCENTILE_DISC(0.50) WITHIN GROUP (ORDER BY price::numeric)::text AS p50,
+    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY price::numeric)::text AS p75,
+    MIN(price::numeric)::text AS min_price,
+    MAX(price::numeric)::text AS max_price,
+    MODE() WITHIN GROUP (ORDER BY currency)::text AS currency
+FROM products
+WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::text))
+AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
+AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
+AND price IS NOT NULL;

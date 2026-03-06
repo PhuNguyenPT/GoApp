@@ -10,6 +10,10 @@ type ProductsPageData struct {
 	Sources             []sql.NullString
 	Categories          []sql.NullString
 	Subcategories       []sql.NullString
+	MinPrice            float64
+	MaxPrice            float64
+	PricePercentiles    [5]float64 // min, p25, p50, p75, max
+	Currency            string
 	Products            []database.GetProductSummariesRow
 	SelectedSource      string
 	SelectedCategory    string
@@ -121,7 +125,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 						hx-target="#product-results"
 						hx-vals='{"source": "", "category": "", "subcategory": "", "trigger": "source"}'
 						hx-push-url="true"
-						class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + sourceItemClass("", data.SelectedSource) }
+						class={ filterItemClass("", data.SelectedSource) }
 					>
 						<span class="flex-1">{ T(lang).AllSources }</span>
 					</a>
@@ -135,7 +139,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 								hx-target="#product-results"
 								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "source"}`, s.String) }
 								hx-push-url="true"
-								class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + sourceItemClass(s.String, data.SelectedSource) }
+								class={ filterItemClass(s.String, data.SelectedSource) }
 							>
 								<span class="flex-1">{ s.String }</span>
 							</a>
@@ -156,7 +160,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 							hx-target="#product-results"
 							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "category"}`, data.SelectedSource) }
 							hx-push-url="true"
-							class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass("", data.SelectedCategory) }
+							class={ filterItemClass("", data.SelectedCategory) }
 						>
 							<span class="flex-1">{ T(lang).AllCategories }</span>
 						</a>
@@ -170,7 +174,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 									hx-target="#product-results"
 									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "", "trigger": "category"}`, data.SelectedSource, cat.String) }
 									hx-push-url="true"
-									class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass(cat.String, data.SelectedCategory) }
+									class={ filterItemClass(cat.String, data.SelectedCategory) }
 								>
 									<span class="flex-1 leading-tight">{ cat.String }</span>
 								</a>
@@ -192,7 +196,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 							hx-target="#product-results"
 							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": ""}`, data.SelectedSource, data.SelectedCategory) }
 							hx-push-url="true"
-							class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass("", data.SelectedSubcategory) }
+							class={ filterItemClass("", data.SelectedSubcategory) }
 						>
 							<span class="flex-1">{ T(lang).AllCategories }</span>
 						</a>
@@ -206,7 +210,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 									hx-target="#product-results"
 									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, data.SelectedSource, data.SelectedCategory, sub.String) }
 									hx-push-url="true"
-									class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass(sub.String, data.SelectedSubcategory) }
+									class={ filterItemClass(sub.String, data.SelectedSubcategory) }
 								>
 									<span class="flex-1 leading-tight">{ sub.String }</span>
 								</a>
@@ -218,6 +222,44 @@ templ FilterPanel(data ProductsPageData, lang string) {
 		} else {
 			<div id="subcategory-filter"></div>
 		}
+		<!-- Price Filter -->
+		<div id="price-filter" class="px-4 py-4 border-b border-gray-100">
+			<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Price }</h3>
+			<ul class="space-y-1">
+				<li>
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory)) }
+						hx-get="/products"
+						hx-target="#product-results"
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "0", "max_price": "0"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+						hx-push-url="true"
+						class={ priceItemClass(0, 0, data.MinPrice, data.MaxPrice) }
+					>
+						<span class="flex-1">{ T(lang).AllPrices }</span>
+					</a>
+				</li>
+				for _, b := range priceBucketsFromPercentiles(
+					data.PricePercentiles[0],
+					data.PricePercentiles[1],
+					data.PricePercentiles[2],
+					data.PricePercentiles[3],
+					data.PricePercentiles[4],
+				) {
+					<li>
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1])) }
+							hx-get="/products"
+							hx-target="#product-results"
+							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "%.0f", "max_price": "%.0f"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1]) }
+							hx-push-url="true"
+							class={ priceItemClass(b[0], b[1], data.MinPrice, data.MaxPrice) }
+						>
+							<span class="flex-1">{ formatPrice(fmt.Sprintf("%.0f", b[0]), data.Currency) } — { formatPrice(fmt.Sprintf("%.0f", b[1]), data.Currency) }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		</div>
 	</div>
 }
 
@@ -233,7 +275,7 @@ templ CategoryFilterOOB(categories []sql.NullString, selectedSource string, sele
 						hx-target="#product-results"
 						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "category"}`, selectedSource) }
 						hx-push-url="true"
-						class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass("", selectedCategory) }
+						class={ filterItemClass("", selectedCategory) }
 					>
 						<span class="flex-1">{ T(lang).AllCategories }</span>
 					</a>
@@ -247,7 +289,7 @@ templ CategoryFilterOOB(categories []sql.NullString, selectedSource string, sele
 								hx-target="#product-results"
 								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "", "trigger": "category"}`, selectedSource, cat.String) }
 								hx-push-url="true"
-								class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass(cat.String, selectedCategory) }
+								class={ filterItemClass(cat.String, selectedCategory) }
 							>
 								<span class="flex-1 leading-tight">{ cat.String }</span>
 							</a>
@@ -271,7 +313,7 @@ templ SubcategoryFilterOOB(subcategories []sql.NullString, selectedSource string
 						hx-target="#product-results"
 						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": ""}`, selectedSource, selectedCategory) }
 						hx-push-url="true"
-						class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass("", selectedSubcategory) }
+						class={ filterItemClass("", selectedSubcategory) }
 					>
 						<span class="flex-1">{ T(lang).AllCategories }</span>
 					</a>
@@ -285,7 +327,7 @@ templ SubcategoryFilterOOB(subcategories []sql.NullString, selectedSource string
 								hx-target="#product-results"
 								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, selectedSource, selectedCategory, sub.String) }
 								hx-push-url="true"
-								class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass(sub.String, selectedSubcategory) }
+								class={ filterItemClass(sub.String, selectedSubcategory) }
 							>
 								<span class="flex-1 leading-tight">{ sub.String }</span>
 							</a>
@@ -443,7 +485,7 @@ templ SourceFilterOOB(sources []sql.NullString, selectedSource string, lang stri
 					hx-target="#product-results"
 					hx-vals='{"source": "", "category": "", "subcategory": "", "trigger": "source"}'
 					hx-push-url="true"
-					class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + sourceItemClass("", selectedSource) }
+					class={ filterItemClass("", selectedSource) }
 				>
 					<span class="flex-1">{ T(lang).AllSources }</span>
 				</a>
@@ -457,7 +499,7 @@ templ SourceFilterOOB(sources []sql.NullString, selectedSource string, lang stri
 							hx-target="#product-results"
 							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "source"}`, s.String) }
 							hx-push-url="true"
-							class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + sourceItemClass(s.String, selectedSource) }
+							class={ filterItemClass(s.String, selectedSource) }
 						>
 							<span class="flex-1">{ s.String }</span>
 						</a>
@@ -506,6 +548,55 @@ templ ActiveChipsOOB(data ProductsPageData, lang string) {
 					{ T(lang).ClearAll }
 				</a>
 			</div>
+		}
+	</div>
+}
+
+templ PriceFilterOOB(data ProductsPageData, lang string) {
+	<div id="price-filter" class="px-4 py-4 border-b border-gray-100" hx-swap-oob="true">
+		<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Price }</h3>
+		<ul class="space-y-1">
+			<li>
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory)) }
+					hx-get="/products"
+					hx-target="#product-results"
+					hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "0", "max_price": "0"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+					hx-push-url="true"
+					class={ priceItemClass(0, 0, data.MinPrice, data.MaxPrice) }
+				>
+					<span class="flex-1">{ T(lang).AllPrices }</span>
+				</a>
+			</li>
+			for _, b := range priceBucketsFromPercentiles(
+                data.PricePercentiles[0],
+                data.PricePercentiles[1],
+                data.PricePercentiles[2],
+                data.PricePercentiles[3],
+                data.PricePercentiles[4],
+            ) {
+				<li>
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1])) }
+						hx-get="/products"
+						hx-target="#product-results"
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "%.0f", "max_price": "%.0f"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1]) }
+						hx-push-url="true"
+						class={ priceItemClass(b[0], b[1], data.MinPrice, data.MaxPrice) }
+					>
+						<span class="flex-1">{ formatPrice(fmt.Sprintf("%.0f", b[0]), data.Currency) } — { formatPrice(fmt.Sprintf("%.0f", b[1]), data.Currency) }</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ FilterHeaderOOB(data ProductsPageData, lang string) {
+	<div id="filter-header" class="px-4 py-3 border-b border-gray-100 flex items-center justify-between" hx-swap-oob="true">
+		<span class="font-semibold text-sm text-gray-700">{ T(lang).Filters }</span>
+		if data.SelectedSource != "" || data.SelectedCategory != "" || data.SelectedSubcategory != "" {
+			<a href="/products" class="text-xs text-blue-600 hover:text-blue-800">{ T(lang).ClearAll }</a>
 		}
 	</div>
 }

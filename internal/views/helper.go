@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/a-h/templ"
 )
 
 func extractFirstImage(raw []byte) string {
@@ -154,16 +156,48 @@ func extractSpecsOrdered(raw json.RawMessage) [][2]string {
 	return result
 }
 
-func sourceItemClass(source, selected string) string {
-	if source == selected {
-		return "bg-blue-50 text-blue-700 font-medium"
-	}
-	return "text-gray-600 hover:bg-gray-50"
+func filterItemClass(item, selected string) templ.CSSClasses {
+	active := item == selected
+	return templ.Classes(
+		"flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors",
+		templ.KV("bg-blue-50", active),
+		templ.KV("text-blue-700", active),
+		templ.KV("font-medium", active),
+		templ.KV("text-gray-600", !active),
+		templ.KV("hover:bg-gray-50", !active),
+	)
 }
 
-func categoryItemClass(category, selected string) string {
-	if category == selected {
-		return "bg-blue-50 text-blue-700 font-medium"
+func priceItemClass(bMin, bMax, selMin, selMax float64) templ.CSSClasses {
+	active := bMin == selMin && bMax == selMax
+	return templ.Classes(
+		"flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors",
+		templ.KV("bg-blue-50", active),
+		templ.KV("text-blue-700", active),
+		templ.KV("font-medium", active),
+		templ.KV("text-gray-600", !active),
+		templ.KV("hover:bg-gray-50", !active),
+	)
+}
+
+func priceBucketsFromPercentiles(min, p25, p50, p75, max float64) [][2]float64 {
+	points := []float64{min, p25, p50, p75, max}
+
+	// deduplicate — if percentiles collapse (few products), skip duplicates
+	var unique []float64
+	for _, p := range points {
+		if len(unique) == 0 || p > unique[len(unique)-1] {
+			unique = append(unique, p)
+		}
 	}
-	return "text-gray-600 hover:bg-gray-50"
+
+	if len(unique) < 2 {
+		return nil
+	}
+
+	var buckets [][2]float64
+	for i := 0; i < len(unique)-1; i++ {
+		buckets = append(buckets, [2]float64{unique[i], unique[i+1]})
+	}
+	return buckets
 }

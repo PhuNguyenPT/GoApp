@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -440,7 +441,13 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Pro
 }
 
 func (m *mockDB) GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error) {
-	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams(arg))
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams(database.GetProductsBySourceAndCategoryParams{
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
+		PageLimit:   arg.PageLimit,
+		PageOffset:  arg.PageOffset,
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +472,72 @@ func (m *mockDB) GetProductSummaries(ctx context.Context, arg database.GetProduc
 		}
 	}
 	return rows, nil
+}
+
+func mostCommonCurrency(products []database.Product) string {
+	counts := make(map[string]int)
+	for _, p := range products {
+		if p.Currency.Valid && p.Currency.String != "" {
+			counts[p.Currency.String]++
+		}
+	}
+	best, bestCount := "VND", 0
+	for c, n := range counts {
+		if n > bestCount {
+			best, bestCount = c, n
+		}
+	}
+	return best
+}
+
+func (m *mockDB) GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
+	})
+	if err != nil {
+		return database.GetPricePercentilesRow{}, err
+	}
+
+	var prices []float64
+	for _, p := range products {
+		if !p.Price.Valid {
+			continue
+		}
+		price, err := strconv.ParseFloat(strings.TrimSpace(p.Price.String), 64)
+		if err != nil {
+			continue
+		}
+		prices = append(prices, price)
+	}
+
+	if len(prices) == 0 {
+		return database.GetPricePercentilesRow{}, nil
+	}
+
+	// sort ascending
+	for i := 0; i < len(prices); i++ {
+		for j := i + 1; j < len(prices); j++ {
+			if prices[j] < prices[i] {
+				prices[i], prices[j] = prices[j], prices[i]
+			}
+		}
+	}
+
+	percentile := func(p float64) float64 {
+		idx := int(p * float64(len(prices)-1))
+		return prices[idx]
+	}
+
+	return database.GetPricePercentilesRow{
+		MinPrice: strconv.FormatFloat(prices[0], 'f', -1, 64),
+		P25:      strconv.FormatFloat(percentile(0.25), 'f', -1, 64),
+		P50:      strconv.FormatFloat(percentile(0.50), 'f', -1, 64),
+		P75:      strconv.FormatFloat(percentile(0.75), 'f', -1, 64),
+		MaxPrice: strconv.FormatFloat(prices[len(prices)-1], 'f', -1, 64),
+		Currency: mostCommonCurrency(products),
+	}, nil
 }
 
 var testHandler http.Handler

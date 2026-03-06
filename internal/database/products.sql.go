@@ -18,16 +18,26 @@ SELECT COUNT(*) FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
 AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+AND ($4::numeric = 0 OR price >= $4::numeric)
+AND ($5::numeric = 0 OR price <= $5::numeric)
 `
 
 type CountProductsBySourceAndCategoryParams struct {
 	Source      string
 	Category    string
 	Subcategory string
+	MinPrice    string
+	MaxPrice    string
 }
 
 func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg CountProductsBySourceAndCategoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category, arg.Subcategory)
+	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory,
+		arg.Source,
+		arg.Category,
+		arg.Subcategory,
+		arg.MinPrice,
+		arg.MaxPrice,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -92,6 +102,50 @@ func (q *Queries) GetDistinctSources(ctx context.Context) ([]sql.NullString, err
 	return items, nil
 }
 
+const getPricePercentiles = `-- name: GetPricePercentiles :one
+SELECT
+    PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY price::numeric)::text AS p25,
+    PERCENTILE_DISC(0.50) WITHIN GROUP (ORDER BY price::numeric)::text AS p50,
+    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY price::numeric)::text AS p75,
+    MIN(price::numeric)::text AS min_price,
+    MAX(price::numeric)::text AS max_price,
+    MODE() WITHIN GROUP (ORDER BY currency)::text AS currency
+FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+AND price IS NOT NULL
+`
+
+type GetPricePercentilesParams struct {
+	Source      string
+	Category    string
+	Subcategory string
+}
+
+type GetPricePercentilesRow struct {
+	P25      string
+	P50      string
+	P75      string
+	MinPrice string
+	MaxPrice string
+	Currency string
+}
+
+func (q *Queries) GetPricePercentiles(ctx context.Context, arg GetPricePercentilesParams) (GetPricePercentilesRow, error) {
+	row := q.db.QueryRowContext(ctx, getPricePercentiles, arg.Source, arg.Category, arg.Subcategory)
+	var i GetPricePercentilesRow
+	err := row.Scan(
+		&i.P25,
+		&i.P50,
+		&i.P75,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Currency,
+	)
+	return i, err
+}
+
 const getProductByID = `-- name: GetProductByID :one
 SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE id = $1
@@ -135,14 +189,18 @@ FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
 AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+AND ($4::numeric = 0 OR price >= $4::numeric)
+AND ($5::numeric = 0 OR price <= $5::numeric)
 ORDER BY crawled_at DESC
-LIMIT $5 OFFSET $4
+LIMIT $7 OFFSET $6
 `
 
 type GetProductSummariesParams struct {
 	Source      string
 	Category    string
 	Subcategory string
+	MinPrice    string
+	MaxPrice    string
 	PageOffset  int32
 	PageLimit   int32
 }
@@ -169,6 +227,8 @@ func (q *Queries) GetProductSummaries(ctx context.Context, arg GetProductSummari
 		arg.Source,
 		arg.Category,
 		arg.Subcategory,
+		arg.MinPrice,
+		arg.MaxPrice,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
