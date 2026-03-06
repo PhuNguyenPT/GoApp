@@ -74,7 +74,7 @@ func TestContactFormHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("empty form still returns success view", func(t *testing.T) {
+	t.Run("empty form returns fail view", func(t *testing.T) {
 		form := url.Values{}
 
 		req, err := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
@@ -87,6 +87,94 @@ func TestContactFormHandler(t *testing.T) {
 
 		if rr.Code != http.StatusOK {
 			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		if !strings.Contains(rr.Body.String(), "Something went wrong") {
+			t.Errorf("expected error message in body")
+		}
+	})
+
+	t.Run("name too long returns fail view", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", strings.Repeat("a", 101))
+		form.Set("email", "test@example.com")
+		form.Set("subject", "Test Subject")
+		form.Set("message", "Test message")
+
+		req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "Something went wrong") {
+			t.Errorf("expected error message for name too long")
+		}
+	})
+
+	t.Run("email too long returns fail view", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test Name")
+		form.Set("email", strings.Repeat("a", 250)+"@x.com") // > 254 bytes
+		form.Set("subject", "Test Subject")
+		form.Set("message", "Test message")
+
+		req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "Something went wrong") {
+			t.Errorf("expected error message for email too long")
+		}
+	})
+
+	t.Run("subject too long returns fail view", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test Name")
+		form.Set("email", "test@example.com")
+		form.Set("subject", strings.Repeat("a", 151))
+		form.Set("message", "Test message")
+
+		req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "Something went wrong") {
+			t.Errorf("expected error message for subject too long")
+		}
+	})
+
+	t.Run("message too long returns fail view", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", "Test Name")
+		form.Set("email", "test@example.com")
+		form.Set("subject", "Test Subject")
+		form.Set("message", strings.Repeat("a", 5001))
+
+		req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "Something went wrong") {
+			t.Errorf("expected error message for message too long")
+		}
+	})
+
+	t.Run("unicode name at boundary is valid", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("name", strings.Repeat("中", 100)) // 100 runes, but 300 bytes
+		form.Set("email", "test@example.com")
+		form.Set("subject", "Test Subject")
+		form.Set("message", "Test message")
+
+		req, _ := http.NewRequest(http.MethodPost, "/contact", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if !strings.Contains(rr.Body.String(), "中") {
+			t.Errorf("expected success for 100 unicode runes in name")
 		}
 	})
 
