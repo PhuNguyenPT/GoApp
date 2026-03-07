@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -218,7 +219,7 @@ func (m *mockDB) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg da
 }
 
 func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {
-	ids := make(uuid.UUIDs, 4)
+	ids := make(uuid.UUIDs, 6)
 	for i := range ids {
 		id, err := uuid.NewV7()
 		if err != nil {
@@ -374,6 +375,54 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			CreatedAt: crawledAt,
 			UpdatedAt: crawledAt,
 		},
+		{
+			ID:              ids[4],
+			Url:             "https://www.thegioididong.com/cap-dien-thoai/cap-type-c-type-c-1m-ugreen-us557-15267",
+			Source:          sql.NullString{String: "thegioididong", Valid: true},
+			Sku:             sql.NullString{String: "332242", Valid: true},
+			Name:            sql.NullString{String: "Cáp sạc nhanh và truyền dữ liệu Type-C - Type-C 100W 1m Ugreen US557 15267", Valid: true},
+			Description:     sql.NullString{String: "Cáp Type C - Type C 1m Ugreen US557 15267 được thiết kế để tối ưu hóa hiệu suất sạc và truyền dữ liệu, mang đến sự tiện lợi cho người dùng công nghệ.", Valid: true},
+			Brand:           sql.NullString{String: "Ugreen", Valid: true},
+			Category:        sql.NullString{String: "Cáp sạc", Valid: true},
+			Subcategory:     sql.NullString{String: "Cáp sạc Ugreen", Valid: true},
+			Price:           sql.NullString{String: "170000", Valid: true},
+			OriginalPrice:   sql.NullString{String: "190000", Valid: true},
+			DiscountPercent: sql.NullInt32{Int32: 11, Valid: true},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
+			Rating:          sql.NullString{String: "5.0", Valid: true},
+			ReviewCount:     sql.NullInt32{Valid: false},
+			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/58/332242/cap-type-c-type-c-1m-ugreen-us557-15267-1-638678084226985556-750x500.jpg"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: []byte(`{"Công suất tối đa":"100 W","Độ dài dây":"1 m","Đầu vào":"USB Type-C","Đầu ra":"Type C: 100 W"}`), Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
+		},
+		{
+			ID:              ids[5],
+			Url:             "https://www.thegioididong.com/ban-phim/ban-phim-co-bluetooth-akko-monsgeek-mg108b-bun-wonderland",
+			Source:          sql.NullString{String: "thegioididong", Valid: true},
+			Sku:             sql.NullString{String: "331864", Valid: true},
+			Name:            sql.NullString{String: "Bàn Phím Cơ Bluetooth Akko MonsGeek MG108B Bun Wonderland", Valid: true},
+			Description:     sql.NullString{String: "Bàn phím cơ Bluetooth Akko MonsGeek MG108B Bun Wonderland mang đến một sự kết hợp thú vị giữa thiết kế dễ thương và hiệu năng mạnh mẽ.", Valid: true},
+			Brand:           sql.NullString{String: "Akko", Valid: true},
+			Category:        sql.NullString{String: "Bàn phím", Valid: true},
+			Subcategory:     sql.NullString{String: "Bàn phím Akko", Valid: true},
+			Price:           sql.NullString{String: "1700000", Valid: true},
+			OriginalPrice:   sql.NullString{Valid: false},
+			DiscountPercent: sql.NullInt32{Valid: false},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
+			Rating:          sql.NullString{String: "4.8", Valid: true},
+			ReviewCount:     sql.NullInt32{Valid: false},
+			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/4547/331864/ban-phim-co-bluetooth-akko-monsgeek-mg108b-bun-wonderland-1-638671755663195560-750x500.jpg"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: []byte(`{"Cách kết nối":"USB Receiver (đầu thu USB)","Loại switch":"Akko V3 Piano Pro","Số phím":"108 Phím"}`), Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
+		},
 	}
 
 	// filter by source and category
@@ -441,16 +490,53 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Pro
 }
 
 func (m *mockDB) GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error) {
-	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams(database.GetProductsBySourceAndCategoryParams{
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
 		Source:      arg.Source,
 		Category:    arg.Category,
 		Subcategory: arg.Subcategory,
 		PageLimit:   arg.PageLimit,
 		PageOffset:  arg.PageOffset,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(products, func(i, j int) bool {
+		a, b := products[i], products[j]
+		asc := arg.SortDir == "asc"
+		switch arg.SortField {
+		case "price":
+			ap, _ := strconv.ParseFloat(a.Price.String, 64)
+			bp, _ := strconv.ParseFloat(b.Price.String, 64)
+			if asc {
+				return ap < bp
+			}
+			return ap > bp
+		case "rating":
+			if !a.Rating.Valid {
+				return false // nulls last
+			}
+			if !b.Rating.Valid {
+				return true
+			}
+			ar, _ := strconv.ParseFloat(a.Rating.String, 64)
+			br, _ := strconv.ParseFloat(b.Rating.String, 64)
+			if asc {
+				return ar < br
+			}
+			return ar > br
+		case "name":
+			if asc {
+				return a.Name.String < b.Name.String
+			}
+			return a.Name.String > b.Name.String
+		default: // crawled_at
+			if asc {
+				return a.CrawledAt.Time.Before(b.CrawledAt.Time)
+			}
+			return a.CrawledAt.Time.After(b.CrawledAt.Time)
+		}
+	})
 
 	rows := make([]database.GetProductSummariesRow, len(products))
 	for i, p := range products {
