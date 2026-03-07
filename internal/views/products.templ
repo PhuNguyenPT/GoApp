@@ -353,7 +353,8 @@ templ ProductGrid(data ProductsPageData, lang string) {
 				hx-target="#product-results"
 				hx-push-url="true"
 				hx-include="[name='sort']"
-				hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+				hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "%.0f", "max_price": "%.0f"}`,
+					data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice) }
 				class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer hover:border-gray-300"
 			>
 				<option value="crawled_at,desc" selected?={ data.SelectedSort == "crawled_at,desc" || data.SelectedSort == "" }>{ T(lang).SortNewest }</option>
