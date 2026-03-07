@@ -2,15 +2,32 @@ package server
 
 import (
 	"GoApp/internal/database"
+	"GoApp/internal/paging"
 	"GoApp/internal/views"
 	"log"
-	"math"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+type ProductSortField string
+
+const (
+	ProductSortDefault   ProductSortField = ""
+	ProductSortPrice     ProductSortField = "price"
+	ProductSortCrawledAt ProductSortField = "crawled_at"
+	ProductSortRating    ProductSortField = "rating"
+	ProductSortName      ProductSortField = "name"
+)
+
+var allowedProductSorts = map[ProductSortField]string{
+	ProductSortPrice:     "price::numeric",
+	ProductSortCrawledAt: "crawled_at",
+	ProductSortRating:    "rating::numeric",
+	ProductSortName:      "name",
+}
 
 func (s *Server) productsPageHandler(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -19,6 +36,7 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	selectedCategory := c.Query("category")
 	selectedSubcategory := c.Query("subcategory")
 	log.Printf("selected: source=%q category=%q subcategory=%q", selectedSource, selectedCategory, selectedSubcategory)
+
 	minPriceStr := c.DefaultQuery("min_price", "0")
 	maxPriceStr := c.DefaultQuery("max_price", "0")
 	minPrice, err := strconv.ParseFloat(minPriceStr, 64)
@@ -40,14 +58,13 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		selectedSubcategory = ""
 	}
 
-	pageStr := c.DefaultQuery("page", "1")
-	pageNumber, err := strconv.Atoi(pageStr)
-	if err != nil {
-		log.Printf("error parsing pageNumber: %v", err)
-		pageNumber = 1
-	}
-	if pageNumber < 1 {
-		pageNumber = 1
+	pageable := resolvePageable[ProductSortField](c, s.cfg.PageSize, s.cfg.MaxPageSize)
+	sortExpr, ok := allowedProductSorts[pageable.Sort.Field]
+	selectedSort := ""
+	if ok {
+		selectedSort = string(pageable.Sort.Field) + "," + string(pageable.Sort.Direction)
+	} else {
+		sortExpr = "crawled_at"
 	}
 
 	sources, err := s.db.GetDistinctSources(ctx)
@@ -79,21 +96,22 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		log.Printf("error counting products: %v", err)
 	}
 
-	totalPages := int(math.Ceil(float64(total) / float64(s.cfg.PageSize)))
-	offset := (pageNumber - 1) * s.cfg.PageSize
-
 	products, err := s.db.GetProductSummaries(ctx, database.GetProductSummariesParams{
 		Source:      selectedSource,
 		Category:    selectedCategory,
 		Subcategory: selectedSubcategory,
 		MinPrice:    minPriceParam,
 		MaxPrice:    maxPriceParam,
-		PageLimit:   int32(s.cfg.PageSize),
-		PageOffset:  int32(offset),
+		SortField:   sortExpr,
+		SortDir:     string(pageable.Sort.Direction),
+		PageLimit:   int32(pageable.Size),
+		PageOffset:  int32(pageable.Offset()),
 	})
 	if err != nil {
 		log.Printf("error getting products: %v", err)
 	}
+
+	page := paging.NewPage(products, total, pageable)
 
 	percentiles, err := s.db.GetPricePercentiles(ctx, database.GetPricePercentilesParams{
 		Source:      selectedSource,
@@ -125,13 +143,14 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		MaxPrice:            maxPrice,
 		PricePercentiles:    [5]float64{globalMinPrice, p25, p50, p75, globalMaxPrice},
 		Currency:            currency,
-		Products:            products,
+		Products:            page.Content,
 		SelectedSource:      selectedSource,
 		SelectedCategory:    selectedCategory,
 		SelectedSubcategory: selectedSubcategory,
-		Page:                pageNumber,
-		TotalPages:          totalPages,
-		TotalCount:          total,
+		SelectedSort:        selectedSort,
+		Page:                page.Pageable.Page,
+		TotalPages:          page.TotalPages,
+		TotalCount:          page.TotalElements,
 	}
 
 	userName, _ := c.Get("userName")
@@ -172,8 +191,6 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
-	log.Printf("DEBUG render: source=%q category=%q subcategory=%q", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory)
-
 	if err := views.ProductsPage(userNameStr, data, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering ProductsPage: %v", err)
 	}
@@ -198,6 +215,8 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 		Subcategory: c.Query("subcategory"),
 		MinPrice:    "0",
 		MaxPrice:    "0",
+		SortField:   "crawled_at",
+		SortDir:     string(paging.Desc),
 		PageLimit:   int32(limit),
 		PageOffset:  0,
 	})

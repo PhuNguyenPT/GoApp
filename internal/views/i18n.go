@@ -57,6 +57,13 @@ type Translations struct {
 	Brand               string
 	Price               string
 	AllPrices           string
+	// Products - Sort
+	SortBy        string
+	SortNewest    string
+	SortPriceLow  string
+	SortPriceHigh string
+	SortRating    string
+	SortNameAZ    string
 	// Product Details
 	Source         string
 	ViewOnStore    string
@@ -182,6 +189,13 @@ func T(lang string) Translations {
 			Brand:               "Thương hiệu",
 			Price:               "Giá",
 			AllPrices:           "Tất cả giá",
+			// Products - Sort
+			SortBy:        "Sắp xếp",
+			SortNewest:    "Mới nhất",
+			SortPriceLow:  "Giá thấp đến cao",
+			SortPriceHigh: "Giá cao đến thấp",
+			SortRating:    "Đánh giá cao nhất",
+			SortNameAZ:    "Tên A–Z",
 			// Product Details
 			Source:         "Nguồn",
 			ViewOnStore:    "Xem trên cửa hàng",
@@ -300,6 +314,13 @@ func T(lang string) Translations {
 		Brand:               "Brand",
 		Price:               "Price",
 		AllPrices:           "All Prices",
+		// Products - Sorts
+		SortBy:        "Sort by",
+		SortNewest:    "Newest",
+		SortPriceLow:  "Price: Low to High",
+		SortPriceHigh: "Price: High to Low",
+		SortRating:    "Top Rated",
+		SortNameAZ:    "Name A–Z",
 		// Product Details
 		Source:         "Source",
 		ViewOnStore:    "View on store",

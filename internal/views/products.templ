@@ -12,12 +12,13 @@ type ProductsPageData struct {
 	Subcategories       []sql.NullString
 	MinPrice            float64
 	MaxPrice            float64
-	PricePercentiles    [5]float64 // min, p25, p50, p75, max
+	PricePercentiles    [5]float64
 	Currency            string
 	Products            []database.GetProductSummariesRow
 	SelectedSource      string
 	SelectedCategory    string
 	SelectedSubcategory string
+	SelectedSort        string
 	Page                int
 	TotalPages          int
 	TotalCount          int64
@@ -343,7 +344,25 @@ templ ProductGrid(data ProductsPageData, lang string) {
 	if len(data.Products) == 0 {
 		<p class="text-gray-500">{ T(lang).NoProducts }</p>
 	} else {
-		<p class="text-sm text-gray-500 mb-4">{ fmt.Sprintf("%d %s", data.TotalCount, T(lang).ProductsFound) }</p>
+		<div class="flex items-center justify-between mb-4">
+			<p class="text-sm text-gray-500">{ fmt.Sprintf("%d %s", data.TotalCount, T(lang).ProductsFound) }</p>
+			<select
+				name="sort"
+				hx-get="/products"
+				hx-trigger="change"
+				hx-target="#product-results"
+				hx-push-url="true"
+				hx-include="[name='sort']"
+				hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+				class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer hover:border-gray-300"
+			>
+				<option value="crawled_at,desc" selected?={ data.SelectedSort == "crawled_at,desc" || data.SelectedSort == "" }>{ T(lang).SortNewest }</option>
+				<option value="price,asc" selected?={ data.SelectedSort == "price,asc" }>{ T(lang).SortPriceLow }</option>
+				<option value="price,desc" selected?={ data.SelectedSort == "price,desc" }>{ T(lang).SortPriceHigh }</option>
+				<option value="rating,desc" selected?={ data.SelectedSort == "rating,desc" }>{ T(lang).SortRating }</option>
+				<option value="name,asc" selected?={ data.SelectedSort == "name,asc" }>{ T(lang).SortNameAZ }</option>
+			</select>
+		</div>
 		<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-5">
 			for _, p := range data.Products {
 				@ProductCard(p)

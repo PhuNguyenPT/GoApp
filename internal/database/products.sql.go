@@ -191,8 +191,17 @@ AND ($2::text = '' OR lower(category) = lower($2::text))
 AND ($3::text = '' OR lower(subcategory) = lower($3::text))
 AND ($4::numeric = 0 OR price >= $4::numeric)
 AND ($5::numeric = 0 OR price <= $5::numeric)
-ORDER BY crawled_at DESC
-LIMIT $7 OFFSET $6
+ORDER BY
+  CASE WHEN $6::text = 'price::numeric'   AND $7::text = 'asc'  THEN price::numeric END ASC,
+  CASE WHEN $6::text = 'price::numeric'   AND $7::text = 'desc' THEN price::numeric END DESC,
+  CASE WHEN $6::text = 'rating::numeric'  AND $7::text = 'asc'  THEN rating::numeric END ASC,
+  CASE WHEN $6::text = 'rating::numeric'  AND $7::text = 'desc' THEN rating::numeric END DESC,
+  CASE WHEN $6::text = 'name'             AND $7::text = 'asc'  THEN name END ASC,
+  CASE WHEN $6::text = 'name'             AND $7::text = 'desc' THEN name END DESC,
+  CASE WHEN $6::text = 'crawled_at'       AND $7::text = 'asc'  THEN crawled_at END ASC,
+  CASE WHEN $6::text = 'crawled_at'       AND $7::text = 'desc' THEN crawled_at END DESC,
+  crawled_at DESC
+LIMIT $9 OFFSET $8
 `
 
 type GetProductSummariesParams struct {
@@ -201,6 +210,8 @@ type GetProductSummariesParams struct {
 	Subcategory string
 	MinPrice    string
 	MaxPrice    string
+	SortField   string
+	SortDir     string
 	PageOffset  int32
 	PageLimit   int32
 }
@@ -229,6 +240,8 @@ func (q *Queries) GetProductSummaries(ctx context.Context, arg GetProductSummari
 		arg.Subcategory,
 		arg.MinPrice,
 		arg.MaxPrice,
+		arg.SortField,
+		arg.SortDir,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
