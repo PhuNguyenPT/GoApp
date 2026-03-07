@@ -192,15 +192,23 @@ AND ($3::text = '' OR lower(subcategory) = lower($3::text))
 AND ($4::numeric = 0 OR price >= $4::numeric)
 AND ($5::numeric = 0 OR price <= $5::numeric)
 ORDER BY
-  CASE WHEN $6::text = 'price::numeric'   AND $7::text = 'asc'  THEN price::numeric END ASC,
-  CASE WHEN $6::text = 'price::numeric'   AND $7::text = 'desc' THEN price::numeric END DESC,
-  CASE WHEN $6::text = 'rating::numeric'  AND $7::text = 'asc'  THEN rating::numeric END ASC,
-  CASE WHEN $6::text = 'rating::numeric'  AND $7::text = 'desc' THEN rating::numeric END DESC,
-  CASE WHEN $6::text = 'name'             AND $7::text = 'asc'  THEN name END ASC,
-  CASE WHEN $6::text = 'name'             AND $7::text = 'desc' THEN name END DESC,
-  CASE WHEN $6::text = 'crawled_at'       AND $7::text = 'asc'  THEN crawled_at END ASC,
-  CASE WHEN $6::text = 'crawled_at'       AND $7::text = 'desc' THEN crawled_at END DESC,
-  crawled_at DESC
+    CASE WHEN $6::text = 'price' AND $7::text = 'asc'
+    THEN price END ASC NULLS LAST,
+    CASE WHEN $6::text = 'price' AND $7::text = 'desc'
+    THEN price END DESC NULLS LAST,
+    CASE WHEN $6::text = 'rating' AND $7::text = 'asc'
+    THEN rating END ASC NULLS LAST,
+    CASE WHEN $6::text = 'rating' AND $7::text = 'desc'
+    THEN rating END DESC NULLS LAST,
+    CASE WHEN $6::text = 'name' AND $7::text = 'asc'
+    THEN name END ASC NULLS LAST,
+    CASE WHEN $6::text = 'name' AND $7::text = 'desc'
+    THEN name END DESC NULLS LAST,
+    CASE WHEN $6::text = 'crawled_at' AND $7::text = 'asc'
+    THEN crawled_at END ASC NULLS LAST,
+    CASE WHEN $6::text = 'crawled_at' AND $7::text = 'desc'
+    THEN crawled_at END DESC NULLS LAST,
+    crawled_at DESC
 LIMIT $9 OFFSET $8
 `
 

@@ -47,15 +47,23 @@ AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(sub
 AND (sqlc.arg(min_price)::numeric = 0 OR price >= sqlc.arg(min_price)::numeric)
 AND (sqlc.arg(max_price)::numeric = 0 OR price <= sqlc.arg(max_price)::numeric)
 ORDER BY
-  CASE WHEN sqlc.arg(sort_field)::text = 'price::numeric'   AND sqlc.arg(sort_dir)::text = 'asc'  THEN price::numeric END ASC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'price::numeric'   AND sqlc.arg(sort_dir)::text = 'desc' THEN price::numeric END DESC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'rating::numeric'  AND sqlc.arg(sort_dir)::text = 'asc'  THEN rating::numeric END ASC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'rating::numeric'  AND sqlc.arg(sort_dir)::text = 'desc' THEN rating::numeric END DESC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'name'             AND sqlc.arg(sort_dir)::text = 'asc'  THEN name END ASC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'name'             AND sqlc.arg(sort_dir)::text = 'desc' THEN name END DESC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'crawled_at'       AND sqlc.arg(sort_dir)::text = 'asc'  THEN crawled_at END ASC,
-  CASE WHEN sqlc.arg(sort_field)::text = 'crawled_at'       AND sqlc.arg(sort_dir)::text = 'desc' THEN crawled_at END DESC,
-  crawled_at DESC
+    CASE WHEN sqlc.arg(sort_field)::text = 'price' AND sqlc.arg(sort_dir)::text = 'asc'
+    THEN price END ASC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'price' AND sqlc.arg(sort_dir)::text = 'desc'
+    THEN price END DESC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'rating' AND sqlc.arg(sort_dir)::text = 'asc'
+    THEN rating END ASC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'rating' AND sqlc.arg(sort_dir)::text = 'desc'
+    THEN rating END DESC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'name' AND sqlc.arg(sort_dir)::text = 'asc'
+    THEN name END ASC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'name' AND sqlc.arg(sort_dir)::text = 'desc'
+    THEN name END DESC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'crawled_at' AND sqlc.arg(sort_dir)::text = 'asc'
+    THEN crawled_at END ASC NULLS LAST,
+    CASE WHEN sqlc.arg(sort_field)::text = 'crawled_at' AND sqlc.arg(sort_dir)::text = 'desc'
+    THEN crawled_at END DESC NULLS LAST,
+    crawled_at DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: GetPricePercentiles :one

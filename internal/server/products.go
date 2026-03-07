@@ -23,9 +23,9 @@ const (
 )
 
 var allowedProductSorts = map[ProductSortField]string{
-	ProductSortPrice:     "price::numeric",
+	ProductSortPrice:     "price",
 	ProductSortCrawledAt: "crawled_at",
-	ProductSortRating:    "rating::numeric",
+	ProductSortRating:    "rating",
 	ProductSortName:      "name",
 }
 
