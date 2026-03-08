@@ -79,3 +79,18 @@ WHERE (sqlc.arg(source)::text = '' OR lower(source) = lower(sqlc.arg(source)::te
 AND (sqlc.arg(category)::text = '' OR lower(category) = lower(sqlc.arg(category)::text))
 AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
 AND price IS NOT NULL;
+
+-- name: GetProductPriceHistory :many
+SELECT
+    history_id,
+    product_id,
+    price,
+    original_price,
+    discount_percent,
+    currency,
+    in_stock,
+    crawled_at,
+    changed_at
+FROM products_history
+WHERE product_id = sqlc.arg(product_id)::uuid
+ORDER BY crawled_at ASC;

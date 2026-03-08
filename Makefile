@@ -29,8 +29,8 @@ tailwind-build:
 
 # Minify JS
 js-build:
-	@echo "Minifying JS..."
-	@cd frontend-template && npm run minify:js
+	@echo "Bundling JS..."
+	@cd frontend-template && npm run bundle:js
 
 # Build all frontend assets
 frontend-build: tailwind-build js-build

@@ -69,6 +69,44 @@ def upsert_product(cur, data):
     return cur.fetchone()[0]
 
 
+def insert_product_history(cur, product_id, data):
+    cur.execute(
+        """
+        INSERT INTO products_history (
+            product_id, url, source, name, brand, category, subcategory,
+            price, original_price, discount_percent, currency,
+            in_stock, quantity, rating, review_count,
+            images, specs, crawled_at
+        ) VALUES (
+            %(product_id)s, %(url)s, %(source)s, %(name)s, %(brand)s, %(category)s, %(subcategory)s,
+            %(price)s, %(original_price)s, %(discount_percent)s, %(currency)s,
+            %(in_stock)s, %(quantity)s, %(rating)s, %(review_count)s,
+            %(images)s, %(specs)s, %(crawled_at)s
+        )
+        """,
+        {
+            "product_id": product_id,
+            "url": data.get("url"),
+            "source": data.get("source"),
+            "name": data.get("name"),
+            "brand": data.get("brand"),
+            "category": data.get("category"),
+            "subcategory": data.get("subcategory"),
+            "price": data.get("price"),
+            "original_price": data.get("original_price"),
+            "discount_percent": data.get("discount_percent"),
+            "currency": data.get("currency"),
+            "in_stock": data.get("in_stock"),
+            "quantity": data.get("quantity"),
+            "rating": data.get("rating"),
+            "review_count": data.get("review_count"),
+            "images": json.dumps(data.get("images", [])),
+            "specs": json.dumps(data.get("specs", {})),
+            "crawled_at": data.get("crawled_at"),
+        },
+    )
+
+
 def upsert_source(cur, data):
     source = data.get("source") or "unknown"
     domain = SOURCE_DOMAIN.get(source)
@@ -178,6 +216,7 @@ def insert_fact_snapshot(cur, dim_product_id, source_id, date_id, data):
 def save_item(cur, data):
     """Run the full insert sequence for one item. Returns True if fact snapshot was inserted."""
     product_id = upsert_product(cur, data)
+    insert_product_history(cur, product_id, data)
     source_id = upsert_source(cur, data)
     dim_product_id = upsert_dim_product(cur, product_id, data)
     date_id = get_date_id(cur, data.get("crawled_at"))

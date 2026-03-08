@@ -8,6 +8,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sqlc-dev/pqtype"
@@ -179,6 +180,67 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getProductPriceHistory = `-- name: GetProductPriceHistory :many
+SELECT
+    history_id,
+    product_id,
+    price,
+    original_price,
+    discount_percent,
+    currency,
+    in_stock,
+    crawled_at,
+    changed_at
+FROM products_history
+WHERE product_id = $1::uuid
+ORDER BY crawled_at ASC
+`
+
+type GetProductPriceHistoryRow struct {
+	HistoryID       uuid.UUID
+	ProductID       uuid.UUID
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullString
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	CrawledAt       sql.NullTime
+	ChangedAt       time.Time
+}
+
+func (q *Queries) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]GetProductPriceHistoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, getProductPriceHistory, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductPriceHistoryRow
+	for rows.Next() {
+		var i GetProductPriceHistoryRow
+		if err := rows.Scan(
+			&i.HistoryID,
+			&i.ProductID,
+			&i.Price,
+			&i.OriginalPrice,
+			&i.DiscountPercent,
+			&i.Currency,
+			&i.InStock,
+			&i.CrawledAt,
+			&i.ChangedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getProductSummaries = `-- name: GetProductSummaries :many

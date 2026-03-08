@@ -11,7 +11,7 @@ export default defineConfig([
     files: ["public/scripts/**/*.js"],
     languageOptions: {
       ecmaVersion: 2025,
-      sourceType: "script",
+      sourceType: "module",
       globals: {
         ...globals.browser,
       },

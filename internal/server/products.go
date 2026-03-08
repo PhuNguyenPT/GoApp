@@ -256,3 +256,26 @@ func (s *Server) productDetailPageHandler(c *gin.Context) {
 		log.Printf("error rendering ProductDetailPage: %v", err)
 	}
 }
+
+func (s *Server) productPriceHistoryHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	history, err := s.db.GetProductPriceHistory(c.Request.Context(), id)
+	if err != nil {
+		log.Printf("error getting price history for product %s: %v", id, err)
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	lang := getLangStr(c)
+
+	c.Header("Content-Type", "text/html")
+	if err := views.PriceHistoryPanel(history, lang).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering PriceHistoryPanel: %v", err)
+	}
+}

@@ -74,6 +74,16 @@ type Translations struct {
 	Description    string
 	ShowMore       string
 	ShowLess       string
+	// Price History
+	PriceHistory         string
+	NoPriceHistory       string
+	NoPriceHistoryDesc   string
+	HistoryLowest        string
+	HistoryHighest       string
+	HistoryAverage       string
+	HistoryPrice         string
+	HistoryOriginalPrice string
+	HistoryDiscount      string
 	// Dashboard
 	DashboardTitle       string
 	DashboardDescription string
@@ -206,6 +216,16 @@ func T(lang string) Translations {
 			Description:    "Mô tả sản phẩm",
 			ShowMore:       "Xem thêm",
 			ShowLess:       "Thu gọn",
+			// Price History
+			PriceHistory:         "Lịch sử giá",
+			NoPriceHistory:       "Chưa có lịch sử giá",
+			NoPriceHistoryDesc:   "Biến động giá sẽ hiển thị tại đây khi có dữ liệu.",
+			HistoryLowest:        "Giá thấp nhất",
+			HistoryHighest:       "Giá cao nhất",
+			HistoryAverage:       "Giá trung bình",
+			HistoryPrice:         "Giá bán",
+			HistoryOriginalPrice: "Giá gốc",
+			HistoryDiscount:      "Giảm giá",
 			// Dashboard
 			DashboardTitle:       "Bảng điều khiển",
 			DashboardDescription: "Trang quản lý của bạn",
@@ -314,7 +334,7 @@ func T(lang string) Translations {
 		Brand:               "Brand",
 		Price:               "Price",
 		AllPrices:           "All Prices",
-		// Products - Sorts
+		// Products - Sort
 		SortBy:        "Sort by",
 		SortNewest:    "Newest",
 		SortPriceLow:  "Price: Low to High",
@@ -331,6 +351,16 @@ func T(lang string) Translations {
 		Description:    "Description",
 		ShowMore:       "Show more",
 		ShowLess:       "Show less",
+		// Price History
+		PriceHistory:         "Price History",
+		NoPriceHistory:       "No price history yet",
+		NoPriceHistoryDesc:   "Price changes will appear here once tracked.",
+		HistoryLowest:        "Lowest Price",
+		HistoryHighest:       "Highest Price",
+		HistoryAverage:       "Average Price",
+		HistoryPrice:         "Price",
+		HistoryOriginalPrice: "Original Price",
+		HistoryDiscount:      "Discount",
 		// Dashboard
 		DashboardTitle:       "Dashboard",
 		DashboardDescription: "Your dashboard",

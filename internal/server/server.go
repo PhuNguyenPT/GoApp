@@ -44,6 +44,7 @@ type DB interface {
 	GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error)
 	GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error)
 	GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error)
+	GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -144,6 +145,10 @@ func (s *sqlDB) GetProductSummaries(ctx context.Context, arg database.GetProduct
 
 func (s *sqlDB) GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error) {
 	return s.queries.GetPricePercentiles(ctx, arg)
+}
+
+func (s *sqlDB) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error) {
+	return s.queries.GetProductPriceHistory(ctx, productID)
 }
 
 type Server struct {

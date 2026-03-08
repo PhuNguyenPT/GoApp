@@ -1,0 +1,133 @@
+package views
+
+import (
+	"GoApp/internal/database"
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+func priceHistoryLabels(history []database.GetProductPriceHistoryRow) string {
+	parts := make([]string, len(history))
+	for i, h := range history {
+		t := h.ChangedAt
+		if h.CrawledAt.Valid {
+			t = h.CrawledAt.Time
+		}
+		parts[i] = fmt.Sprintf("%q", t.Format("2006-01-02"))
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func priceHistoryPrices(history []database.GetProductPriceHistoryRow) string {
+	parts := make([]string, len(history))
+	for i, h := range history {
+		v, _ := strconv.ParseFloat(h.Price.String, 64)
+		parts[i] = strconv.FormatFloat(v, 'f', -1, 64)
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func priceHistoryOriginals(history []database.GetProductPriceHistoryRow) string {
+	parts := make([]string, len(history))
+	for i, h := range history {
+		if h.OriginalPrice.Valid && h.OriginalPrice.String != "" {
+			v, _ := strconv.ParseFloat(h.OriginalPrice.String, 64)
+			parts[i] = strconv.FormatFloat(v, 'f', -1, 64)
+		} else {
+			parts[i] = "null"
+		}
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func priceHistoryDiscounts(history []database.GetProductPriceHistoryRow) string {
+	parts := make([]string, len(history))
+	for i, h := range history {
+		if h.DiscountPercent.Valid && h.DiscountPercent.String != "" {
+			v, _ := strconv.ParseFloat(h.DiscountPercent.String, 64)
+			parts[i] = strconv.FormatFloat(v, 'f', -1, 64)
+		} else {
+			parts[i] = "null"
+		}
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+templ PriceHistoryPanel(history []database.GetProductPriceHistoryRow, lang string) {
+	if len(history) == 0 {
+		<div class="flex flex-col items-center justify-center py-16 text-gray-400">
+			<svg class="w-12 h-12 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+			</svg>
+			<p class="text-sm font-medium">{ T(lang).NoPriceHistory }</p>
+			<p class="text-xs mt-1 text-gray-400">{ T(lang).NoPriceHistoryDesc }</p>
+		</div>
+	} else {
+		<div class="px-6 py-6">
+			<!-- Summary stats row -->
+			<div class="grid grid-cols-3 gap-4 mb-6">
+				<div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+					<p class="text-xs text-gray-500 mb-1">{ T(lang).HistoryLowest }</p>
+					<p class="text-base font-bold text-green-600" id="stat-low">—</p>
+				</div>
+				<div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+					<p class="text-xs text-gray-500 mb-1">{ T(lang).HistoryHighest }</p>
+					<p class="text-base font-bold text-red-500" id="stat-high">—</p>
+				</div>
+				<div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+					<p class="text-xs text-gray-500 mb-1">{ T(lang).HistoryAverage }</p>
+					<p class="text-base font-bold text-blue-600" id="stat-avg">—</p>
+				</div>
+			</div>
+			<!-- Chart — data passed via data-* attributes, rendered by product-detail.js -->
+			<div class="relative h-64">
+				<canvas
+					id="price-history-chart"
+					data-labels={ priceHistoryLabels(history) }
+					data-prices={ priceHistoryPrices(history) }
+					data-originals={ priceHistoryOriginals(history) }
+					data-discounts={ priceHistoryDiscounts(history) }
+				></canvas>
+			</div>
+			<!-- Legend -->
+			<div class="flex flex-wrap gap-5 mt-4 text-xs text-gray-500 justify-center">
+				<span class="flex items-center gap-1.5">
+					<span class="inline-block w-6 h-0.5 bg-blue-500 rounded"></span>
+					{ T(lang).HistoryPrice }
+				</span>
+				<span class="flex items-center gap-1.5">
+					<span class="inline-block w-6 h-0.5 bg-gray-300 rounded" style="border-top: 2px dashed #d1d5db; height: 0;"></span>
+					{ T(lang).HistoryOriginalPrice }
+				</span>
+				<span class="flex items-center gap-1.5">
+					<span class="inline-block w-6 h-0.5 bg-orange-400 rounded"></span>
+					{ T(lang).HistoryDiscount } (%)
+				</span>
+			</div>
+		</div>
+	}
+}
+
+templ PriceHistoryTabButton(lang string, productID string) {
+	<button
+		id="tab-history"
+		class="px-8 py-4 text-sm font-semibold text-gray-500 hover:text-gray-700 border-b-2 border-transparent"
+		data-tab="history"
+		hx-get={ fmt.Sprintf("/products/%s/history", productID) }
+		hx-target="#panel-history"
+		hx-swap="innerHTML"
+		hx-trigger="click once"
+	>{ T(lang).PriceHistory }</button>
+}
+
+templ PriceHistoryTabPanel() {
+	<div id="panel-history" class="hidden">
+		<div class="flex items-center justify-center py-16 text-gray-400">
+			<svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+				<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+				<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+			</svg>
+		</div>
+	</div>
+}

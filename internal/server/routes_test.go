@@ -626,6 +626,33 @@ func (m *mockDB) GetPricePercentiles(ctx context.Context, arg database.GetPriceP
 	}, nil
 }
 
+func (m *mockDB) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error) {
+	return []database.GetProductPriceHistoryRow{
+		{
+			HistoryID:       uuid.Must(uuid.NewV7()),
+			ProductID:       productID,
+			Price:           sql.NullString{String: "34990000.0", Valid: true},
+			OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
+			DiscountPercent: sql.NullString{String: "0", Valid: true},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			CrawledAt:       sql.NullTime{Time: time.Now().Add(-72 * time.Hour), Valid: true},
+			ChangedAt:       time.Now().Add(-48 * time.Hour),
+		},
+		{
+			HistoryID:       uuid.Must(uuid.NewV7()),
+			ProductID:       productID,
+			Price:           sql.NullString{String: "33990000.0", Valid: true},
+			OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
+			DiscountPercent: sql.NullString{String: "3", Valid: true},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			CrawledAt:       sql.NullTime{Time: time.Now().Add(-24 * time.Hour), Valid: true},
+			ChangedAt:       time.Now().Add(-24 * time.Hour),
+		},
+	}, nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {
