@@ -373,8 +373,8 @@ templ ProductGrid(data ProductsPageData, lang string) {
 			<div class="flex gap-1 mt-8 justify-center items-center flex-wrap">
 				if data.Page > 1 {
 					<a
-						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&page=%d",
-							data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.Page-1)) }
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f&sort=%s&page=%d",
+							data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice, data.SelectedSort, data.Page-1)) }
 						class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm"
 					>←</a>
 				}
@@ -385,14 +385,16 @@ templ ProductGrid(data ProductsPageData, lang string) {
 						<span class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">{ fmt.Sprintf("%d", p) }</span>
 					} else {
 						<a
-							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, p)) }
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f&sort=%s&page=%d",
+								data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice, data.SelectedSort, p)) }
 							class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm"
 						>{ fmt.Sprintf("%d", p) }</a>
 					}
 				}
 				if data.Page < data.TotalPages {
 					<a
-						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page+1)) }
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f&sort=%s&page=%d",
+							data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice, data.SelectedSort, data.Page+1)) }
 						class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm"
 					>→</a>
 				}
