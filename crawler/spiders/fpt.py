@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import psycopg2
 import scrapy
+from scrapy.spidermiddlewares.httperror import HttpError
 
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
@@ -248,4 +249,8 @@ class FptSpider(scrapy.Spider):
         yield item
 
     def handle_error(self, failure):
-        self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))
+        if failure.check(HttpError):
+            response = failure.value.response
+            self.logger.error("HTTP %s for %s", response.status, failure.request.url)
+        else:
+            self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))
