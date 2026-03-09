@@ -32,6 +32,14 @@ EXCLUDED_NAV = {
 
 FALLBACK_URLS = [
     "/dtdd",
+    "/dtdd-samsung",
+    "/dtdd-apple-iphone",
+    "/dtdd-xiaomi",
+    "/dtdd-oppo",
+    "/dtdd-vivo",
+    "/dtdd-realme",
+    "/dtdd-honor",
+    "/dtdd-nokia",
     "/laptop",
     "/may-tinh-bang",
     "/may-tinh-de-ban",
@@ -77,7 +85,7 @@ class ThegioididongSpider(scrapy.Spider):
 
     async def start(self):
         if hasattr(self, "start_url"):
-            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            yield scrapy.Request(self.start_url, callback=self.parse)
             return
         yield scrapy.Request(
             "https://www.thegioididong.com",
