@@ -217,10 +217,14 @@ class FptSpider(scrapy.Spider):
         item["original_price"] = listing.get("originalPrice") or parse_price(
             response.css("span.line-through::text").get() or ""
         )
-        if item["original_price"] and item["original_price"] == item["price"]:
+        if item["original_price"] is not None and item["original_price"] == item["price"]:
             item["original_price"] = None
 
-        if item["original_price"] and item["price"] and item["original_price"] > item["price"]:
+        if (
+            item["original_price"] is not None
+            and item["price"] is not None
+            and item["original_price"] > item["price"]
+        ):
             item["discount_percent"] = round(
                 (item["original_price"] - item["price"]) / item["original_price"] * 100
             )
@@ -229,7 +233,12 @@ class FptSpider(scrapy.Spider):
                 "".join(response.css("span.text-red-red-7::text").getall()[:2])
             )
 
-        if item["price"] and item["discount_percent"] and not item["original_price"]:
+        if (
+            item["price"] is not None
+            and item["discount_percent"] is not None
+            and item["discount_percent"] < 100
+            and item["original_price"] is None
+        ):
             item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
 
         # Stock: check skus array for any inventory
@@ -243,7 +252,7 @@ class FptSpider(scrapy.Spider):
         item["quantity"] = total_inv or None
 
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
-        item["review_count"] = int(agg["reviewCount"]) if agg.get("reviewCount") else None
+        item["review_count"] = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
 
         # Description
         desc_el = response.css("[class*='description-container']")
@@ -266,7 +275,11 @@ class FptSpider(scrapy.Spider):
             )
         )
         if not product_images:
-            ld_image = product_data.get("image") or listing.get("image", {}).get("src")
+            ld_image = product_data.get("image") or (
+                listing.get("image", {}).get("src")
+                if isinstance(listing.get("image"), dict)
+                else listing.get("image")
+            )
             if isinstance(ld_image, list):
                 product_images = ld_image
             elif ld_image:
@@ -278,7 +291,6 @@ class FptSpider(scrapy.Spider):
             for prop in (product_data.get("additionalProperty") or [])
             if prop.get("name") and str(prop.get("value", "")).strip()
         }
-        item["quantity"] = None
 
         yield item
 
