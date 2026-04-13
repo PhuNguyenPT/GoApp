@@ -90,7 +90,6 @@ class FptSpider(scrapy.Spider):
                         "sortMethod": "noi-bat",
                         "slug": slug,
                         "categoryType": "category",
-                        "location": {},
                     }
                 ),
                 headers=API_HEADERS,
