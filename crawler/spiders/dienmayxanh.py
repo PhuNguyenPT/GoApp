@@ -78,6 +78,13 @@ FALLBACK_URLS = [
     "/may-bom-nuoc",
 ]
 
+PAGE_SIZE = 20
+
+API_HEADERS = {
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "X-Requested-With": "XMLHttpRequest",
+}
+
 
 def strip_html(text):
     return re.sub(r"<[^>]+>", "", text).strip() if text else text
@@ -113,16 +120,14 @@ class DienmayxanhSpider(scrapy.Spider):
     def parse_categories(self, response):
         hrefs = []
         for h in response.css("[class*='main'] a::attr(href)").getall():
-            if not h:
-                continue
-            if not h.startswith("/"):  # skip bare slugs and external URLs
+            if not h or not h.startswith("/"):
                 continue
             if h.startswith("javascript"):
                 continue
             if "?" in h or "#" in h:
                 continue
             parts = h.lstrip("/").split("/")
-            if len(parts) > 1:  # skip product-level paths e.g. /may-lanh/product-slug
+            if len(parts) > 1:
                 continue
             slug = parts[0]
             if any(slug.startswith(ex) for ex in EXCLUDED_NAV):
@@ -140,20 +145,63 @@ class DienmayxanhSpider(scrapy.Spider):
             seen.add(href)
             yield response.follow(
                 href,
-                callback=self.parse,
+                callback=self.parse_category_page,
                 errback=self.handle_error,
             )
 
-    def parse(self, response):
-        for link in response.css("ul.listproduct li.item a.main-contain::attr(href)").getall():
+    def parse_category_page(self, response):
+        cate_id = next(
+            (
+                v
+                for v in response.css("[data-cate]::attr(data-cate)").getall()
+                if v.isdigit() and int(v) > 0
+            ),
+            None,
+        )
+        if not cate_id:
+            self.logger.debug("No cate_id found at %s — skipping", response.url)
+            return
+
+        self.logger.debug("Discovered cate_id=%s for %s", cate_id, response.url)
+
+        yield scrapy.Request(
+            f"https://www.dienmayxanh.com/Category/FilterProductBox?c={cate_id}&o=13&pi=1",
+            method="POST",
+            body="IsParentCate=false&prevent=true",
+            headers={**API_HEADERS, "Referer": response.url},
+            callback=self.parse_listing,
+            errback=self.handle_error,
+            meta={"cate_id": cate_id, "page": 1, "referer": response.url},
+        )
+
+    def parse_listing(self, response):
+        data = response.json()
+        total = data.get("total", 0)
+        html = data.get("listproducts", "")
+        sel = scrapy.Selector(text=html)
+
+        for href in sel.css("li.item a.main-contain::attr(href)").getall():
             yield response.follow(
-                link.split("?")[0],
+                href.split("?")[0],
                 callback=self.parse_product,
                 errback=self.handle_error,
             )
-        next_page = response.css("a.next::attr(href)").get()
-        if next_page:
-            yield response.follow(next_page, callback=self.parse, errback=self.handle_error)
+
+        page = response.meta["page"]
+        cate_id = response.meta["cate_id"]
+        referer = response.meta["referer"]
+
+        if page * PAGE_SIZE < total:
+            next_page = page + 1
+            yield scrapy.Request(
+                f"https://www.dienmayxanh.com/Category/FilterProductBox?c={cate_id}&o=13&pi={next_page}",
+                method="POST",
+                body="IsParentCate=false&prevent=true",
+                headers={**API_HEADERS, "Referer": referer},
+                callback=self.parse_listing,
+                errback=self.handle_error,
+                meta={"cate_id": cate_id, "page": next_page, "referer": referer},
+            )
 
     def parse_product(self, response):
         ld_product = {}
@@ -181,13 +229,11 @@ class DienmayxanhSpider(scrapy.Spider):
         item["sku"] = ld_product.get("sku")
         item["description"] = ld_product.get("description")
 
-        # Brand: name may be a list e.g. ["Sony"]
         brand_raw = ld_product.get("brand", {}).get("name")
         if isinstance(brand_raw, list):
             brand_raw = brand_raw[0] if brand_raw else None
         item["brand"] = brand_raw or (item["name"].split()[0] if item["name"] else None)
 
-        # Category from BreadcrumbList (skip position 1 = site name)
         if ld_breadcrumbs:
             if len(ld_breadcrumbs) >= 3:
                 item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
@@ -234,13 +280,11 @@ class DienmayxanhSpider(scrapy.Spider):
         )
         item["quantity"] = None
 
-        # aggregateRating uses lowercase "reviewcount" on dienmayxanh
         item["rating"] = rating.get("ratingValue") or parse_rating(
             response.css("[class*='rank'] span::text").get()
         )
         item["review_count"] = rating.get("reviewcount") or rating.get("reviewCount")
 
-        # Images: prefer data-src (lazy-loaded), filter to /Products/ URLs only
         src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(src)").getall()
@@ -258,7 +302,6 @@ class DienmayxanhSpider(scrapy.Spider):
             product_images = [ld_image_url] if ld_image_url else []
         item["images"] = product_images
 
-        # Specs from additionalProperty, strip HTML and skip placeholder values
         item["specs"] = {
             prop["name"]: re.sub(
                 r"\.\s*Xem thông tin hãng\s*$", "", strip_html(prop["value"])
