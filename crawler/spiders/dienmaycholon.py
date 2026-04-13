@@ -106,6 +106,8 @@ class DienmaycholonSpider(scrapy.Spider):
         cate_id = response.meta["cate_id"]
 
         for product in data["data"]:
+            if not isinstance(product, dict):
+                continue
             yield scrapy.Request(
                 f"https://dienmaycholon.com/{alias}/{product['alias']}",
                 callback=self.parse_product,
