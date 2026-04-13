@@ -25,7 +25,8 @@ type Config struct {
 	DBPassword string `validate:"required,min=8"`
 	DBSchema   string `validate:"required"`
 	// Pagination
-	PageSize int
+	PageSize    int
+	MaxPageSize int
 	// mTLS cert paths (optional — defaults to Docker secrets paths)
 	TLSCertPath string
 	TLSKeyPath  string
@@ -61,6 +62,7 @@ func LoadConfig() (*Config, error) {
 		DBPassword:  os.Getenv("POSTGRES_PASSWORD"),
 		DBSchema:    os.Getenv("POSTGRES_SCHEMA"),
 		PageSize:    getEnvOrDefaultInt("PAGE_SIZE", 20),
+		MaxPageSize: getEnvOrDefaultInt("MAX_PAGE_SIZE", 100),
 		TLSCertPath: getEnvOrDefaultStr("TLS_CERT_PATH", "/run/secrets/go_crt"),
 		TLSKeyPath:  getEnvOrDefaultStr("TLS_KEY_PATH", "/run/secrets/go_key"),
 		TLSCAPath:   getEnvOrDefaultStr("TLS_CA_PATH", "/run/secrets/backend_ca"),

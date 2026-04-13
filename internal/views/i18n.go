@@ -54,6 +54,16 @@ type Translations struct {
 	Filters             string
 	ClearAll            string
 	Category            string
+	Brand               string
+	Price               string
+	AllPrices           string
+	// Products - Sort
+	SortBy        string
+	SortNewest    string
+	SortPriceLow  string
+	SortPriceHigh string
+	SortRating    string
+	SortNameAZ    string
 	// Product Details
 	Source         string
 	ViewOnStore    string
@@ -64,6 +74,16 @@ type Translations struct {
 	Description    string
 	ShowMore       string
 	ShowLess       string
+	// Price History
+	PriceHistory         string
+	NoPriceHistory       string
+	NoPriceHistoryDesc   string
+	HistoryLowest        string
+	HistoryHighest       string
+	HistoryAverage       string
+	HistoryPrice         string
+	HistoryOriginalPrice string
+	HistoryDiscount      string
 	// Dashboard
 	DashboardTitle       string
 	DashboardDescription string
@@ -110,7 +130,7 @@ type Translations struct {
 	// Home
 	HomeWelcome        string
 	HomeSubtitle       string
-	HomeGetInTouch     string
+	HomeProducts       string
 	HomeLatestProducts string
 	HomeViewAll        string
 }
@@ -176,6 +196,16 @@ func T(lang string) Translations {
 			Filters:             "Bộ lọc",
 			ClearAll:            "Xoá tất cả",
 			Category:            "Danh mục",
+			Brand:               "Thương hiệu",
+			Price:               "Giá",
+			AllPrices:           "Tất cả giá",
+			// Products - Sort
+			SortBy:        "Sắp xếp",
+			SortNewest:    "Mới nhất",
+			SortPriceLow:  "Giá thấp đến cao",
+			SortPriceHigh: "Giá cao đến thấp",
+			SortRating:    "Đánh giá cao nhất",
+			SortNameAZ:    "Tên A–Z",
 			// Product Details
 			Source:         "Nguồn",
 			ViewOnStore:    "Xem trên cửa hàng",
@@ -186,6 +216,16 @@ func T(lang string) Translations {
 			Description:    "Mô tả sản phẩm",
 			ShowMore:       "Xem thêm",
 			ShowLess:       "Thu gọn",
+			// Price History
+			PriceHistory:         "Lịch sử giá",
+			NoPriceHistory:       "Chưa có lịch sử giá",
+			NoPriceHistoryDesc:   "Biến động giá sẽ hiển thị tại đây khi có dữ liệu.",
+			HistoryLowest:        "Giá thấp nhất",
+			HistoryHighest:       "Giá cao nhất",
+			HistoryAverage:       "Giá trung bình",
+			HistoryPrice:         "Giá bán",
+			HistoryOriginalPrice: "Giá gốc",
+			HistoryDiscount:      "Giảm giá",
 			// Dashboard
 			DashboardTitle:       "Bảng điều khiển",
 			DashboardDescription: "Trang quản lý của bạn",
@@ -214,7 +254,7 @@ func T(lang string) Translations {
 			Page: "Trang",
 			Of:   "của",
 			// Footer
-			FooterDesc:        "Ứng dụng web hiện đại được xây dựng với Go, Templ và HTMX.",
+			FooterDesc:        "So sánh giá thông minh trên các trang thương mại hàng đầu Việt Nam.",
 			QuickLinks:        "Liên kết nhanh",
 			AllRightsReserved: "Bảo lưu mọi quyền.",
 			FooterEmail:       "Email",
@@ -230,9 +270,9 @@ func T(lang string) Translations {
 			ErrAllRequired:      "Vui lòng điền đầy đủ thông tin.",
 			ErrInvalidPassword:  "Email hoặc mật khẩu không đúng.",
 			// Home
-			HomeWelcome:        "Chào mừng đến GoApp",
-			HomeSubtitle:       "Ứng dụng web hiệu năng cao với Go và Templ",
-			HomeGetInTouch:     "Liên hệ ngay",
+			HomeWelcome:        "Prizm",
+			HomeSubtitle:       "Xem mọi giá. Mua sắm tự tin.",
+			HomeProducts:       "So sánh ngay",
 			HomeLatestProducts: "Sản phẩm mới nhất",
 			HomeViewAll:        "Xem tất cả →",
 		}
@@ -291,6 +331,16 @@ func T(lang string) Translations {
 		Filters:             "Filters",
 		ClearAll:            "Clear all",
 		Category:            "Category",
+		Brand:               "Brand",
+		Price:               "Price",
+		AllPrices:           "All Prices",
+		// Products - Sort
+		SortBy:        "Sort by",
+		SortNewest:    "Newest",
+		SortPriceLow:  "Price: Low to High",
+		SortPriceHigh: "Price: High to Low",
+		SortRating:    "Top Rated",
+		SortNameAZ:    "Name A–Z",
 		// Product Details
 		Source:         "Source",
 		ViewOnStore:    "View on store",
@@ -301,6 +351,16 @@ func T(lang string) Translations {
 		Description:    "Description",
 		ShowMore:       "Show more",
 		ShowLess:       "Show less",
+		// Price History
+		PriceHistory:         "Price History",
+		NoPriceHistory:       "No price history yet",
+		NoPriceHistoryDesc:   "Price changes will appear here once tracked.",
+		HistoryLowest:        "Lowest Price",
+		HistoryHighest:       "Highest Price",
+		HistoryAverage:       "Average Price",
+		HistoryPrice:         "Price",
+		HistoryOriginalPrice: "Original Price",
+		HistoryDiscount:      "Discount",
 		// Dashboard
 		DashboardTitle:       "Dashboard",
 		DashboardDescription: "Your dashboard",
@@ -329,7 +389,7 @@ func T(lang string) Translations {
 		Page: "Page",
 		Of:   "of",
 		// Footer
-		FooterDesc:        "A modern web application built with Go, Templ, and HTMX.",
+		FooterDesc:        "Smart price comparison across Vietnam's top stores.",
 		QuickLinks:        "Quick Links",
 		AllRightsReserved: "All rights reserved.",
 		FooterEmail:       "Email",
@@ -345,9 +405,9 @@ func T(lang string) Translations {
 		ErrAllRequired:      "All fields are required.",
 		ErrInvalidPassword:  "Invalid email or password.",
 		// Home
-		HomeWelcome:        "Welcome to GoApp",
-		HomeSubtitle:       "High performance web app built with Go and Templ",
-		HomeGetInTouch:     "Get in Touch",
+		HomeWelcome:        "Prizm",
+		HomeSubtitle:       "See every price. Buy with confidence.",
+		HomeProducts:       "Start Comparing",
 		HomeLatestProducts: "Latest Products",
 		HomeViewAll:        "View all →",
 	}

@@ -8,6 +8,7 @@ class ProductItem(scrapy.Item):
     name = scrapy.Field()
     brand = scrapy.Field()
     category = scrapy.Field()
+    subcategory = scrapy.Field()
     description = scrapy.Field()
     sku = scrapy.Field()
     images = scrapy.Field()

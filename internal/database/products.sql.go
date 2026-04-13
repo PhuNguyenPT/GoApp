@@ -8,23 +8,37 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const countProductsBySourceAndCategory = `-- name: CountProductsBySourceAndCategory :one
 SELECT COUNT(*) FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+AND ($4::numeric = 0 OR price >= $4::numeric)
+AND ($5::numeric = 0 OR price <= $5::numeric)
 `
 
 type CountProductsBySourceAndCategoryParams struct {
-	Source   string
-	Category string
+	Source      string
+	Category    string
+	Subcategory string
+	MinPrice    string
+	MaxPrice    string
 }
 
 func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg CountProductsBySourceAndCategoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory, arg.Source, arg.Category)
+	row := q.db.QueryRowContext(ctx, countProductsBySourceAndCategory,
+		arg.Source,
+		arg.Category,
+		arg.Subcategory,
+		arg.MinPrice,
+		arg.MaxPrice,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -89,8 +103,52 @@ func (q *Queries) GetDistinctSources(ctx context.Context) ([]sql.NullString, err
 	return items, nil
 }
 
+const getPricePercentiles = `-- name: GetPricePercentiles :one
+SELECT
+    PERCENTILE_DISC(0.25) WITHIN GROUP (ORDER BY price::numeric)::text AS p25,
+    PERCENTILE_DISC(0.50) WITHIN GROUP (ORDER BY price::numeric)::text AS p50,
+    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY price::numeric)::text AS p75,
+    MIN(price::numeric)::text AS min_price,
+    MAX(price::numeric)::text AS max_price,
+    MODE() WITHIN GROUP (ORDER BY currency)::text AS currency
+FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+AND price IS NOT NULL
+`
+
+type GetPricePercentilesParams struct {
+	Source      string
+	Category    string
+	Subcategory string
+}
+
+type GetPricePercentilesRow struct {
+	P25      string
+	P50      string
+	P75      string
+	MinPrice string
+	MaxPrice string
+	Currency string
+}
+
+func (q *Queries) GetPricePercentiles(ctx context.Context, arg GetPricePercentilesParams) (GetPricePercentilesRow, error) {
+	row := q.db.QueryRowContext(ctx, getPricePercentiles, arg.Source, arg.Category, arg.Subcategory)
+	var i GetPricePercentilesRow
+	err := row.Scan(
+		&i.P25,
+		&i.P50,
+		&i.P75,
+		&i.MinPrice,
+		&i.MaxPrice,
+		&i.Currency,
+	)
+	return i, err
+}
+
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, url, source, sku, name, brand, category, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
 WHERE id = $1
 `
 
@@ -105,6 +163,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.Name,
 		&i.Brand,
 		&i.Category,
+		&i.Subcategory,
 		&i.Description,
 		&i.Price,
 		&i.OriginalPrice,
@@ -123,25 +182,197 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 	return i, err
 }
 
-const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
-SELECT id, url, source, sku, name, brand, category, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+const getProductPriceHistory = `-- name: GetProductPriceHistory :many
+SELECT
+    history_id,
+    product_id,
+    price,
+    original_price,
+    discount_percent,
+    currency,
+    in_stock,
+    crawled_at,
+    changed_at
+FROM products_history
+WHERE product_id = $1::uuid
+ORDER BY crawled_at ASC
+`
+
+type GetProductPriceHistoryRow struct {
+	HistoryID       uuid.UUID
+	ProductID       uuid.UUID
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullString
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	CrawledAt       sql.NullTime
+	ChangedAt       time.Time
+}
+
+func (q *Queries) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]GetProductPriceHistoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, getProductPriceHistory, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductPriceHistoryRow
+	for rows.Next() {
+		var i GetProductPriceHistoryRow
+		if err := rows.Scan(
+			&i.HistoryID,
+			&i.ProductID,
+			&i.Price,
+			&i.OriginalPrice,
+			&i.DiscountPercent,
+			&i.Currency,
+			&i.InStock,
+			&i.CrawledAt,
+			&i.ChangedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductSummaries = `-- name: GetProductSummaries :many
+SELECT id, source, name, brand, category,
+       price, original_price, discount_percent, currency,
+       in_stock, quantity, rating, review_count, images
+FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
+AND ($4::numeric = 0 OR price >= $4::numeric)
+AND ($5::numeric = 0 OR price <= $5::numeric)
+ORDER BY
+    CASE WHEN $6::text = 'price' AND $7::text = 'asc'
+    THEN price END ASC NULLS LAST,
+    CASE WHEN $6::text = 'price' AND $7::text = 'desc'
+    THEN price END DESC NULLS LAST,
+    CASE WHEN $6::text = 'rating' AND $7::text = 'asc'
+    THEN rating END ASC NULLS LAST,
+    CASE WHEN $6::text = 'rating' AND $7::text = 'desc'
+    THEN rating END DESC NULLS LAST,
+    CASE WHEN $6::text = 'name' AND $7::text = 'asc'
+    THEN name END ASC NULLS LAST,
+    CASE WHEN $6::text = 'name' AND $7::text = 'desc'
+    THEN name END DESC NULLS LAST,
+    CASE WHEN $6::text = 'crawled_at' AND $7::text = 'asc'
+    THEN crawled_at END ASC NULLS LAST,
+    CASE WHEN $6::text = 'crawled_at' AND $7::text = 'desc'
+    THEN crawled_at END DESC NULLS LAST,
+    crawled_at DESC
+LIMIT $9 OFFSET $8
+`
+
+type GetProductSummariesParams struct {
+	Source      string
+	Category    string
+	Subcategory string
+	MinPrice    string
+	MaxPrice    string
+	SortField   string
+	SortDir     string
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type GetProductSummariesRow struct {
+	ID              uuid.UUID
+	Source          sql.NullString
+	Name            sql.NullString
+	Brand           sql.NullString
+	Category        sql.NullString
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullInt32
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	Quantity        sql.NullInt32
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	Images          pqtype.NullRawMessage
+}
+
+func (q *Queries) GetProductSummaries(ctx context.Context, arg GetProductSummariesParams) ([]GetProductSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getProductSummaries,
+		arg.Source,
+		arg.Category,
+		arg.Subcategory,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.SortField,
+		arg.SortDir,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProductSummariesRow
+	for rows.Next() {
+		var i GetProductSummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.Name,
+			&i.Brand,
+			&i.Category,
+			&i.Price,
+			&i.OriginalPrice,
+			&i.DiscountPercent,
+			&i.Currency,
+			&i.InStock,
+			&i.Quantity,
+			&i.Rating,
+			&i.ReviewCount,
+			&i.Images,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
+SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
+AND ($3::text = '' OR lower(subcategory) = lower($3::text))
 ORDER BY crawled_at DESC
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type GetProductsBySourceAndCategoryParams struct {
-	Source     string
-	Category   string
-	PageOffset int32
-	PageLimit  int32
+	Source      string
+	Category    string
+	Subcategory string
+	PageOffset  int32
+	PageLimit   int32
 }
 
 func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetProductsBySourceAndCategoryParams) ([]Product, error) {
 	rows, err := q.db.QueryContext(ctx, getProductsBySourceAndCategory,
 		arg.Source,
 		arg.Category,
+		arg.Subcategory,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -160,6 +391,7 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 			&i.Name,
 			&i.Brand,
 			&i.Category,
+			&i.Subcategory,
 			&i.Description,
 			&i.Price,
 			&i.OriginalPrice,
@@ -178,6 +410,42 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubcategoriesBySourceAndCategory = `-- name: GetSubcategoriesBySourceAndCategory :many
+SELECT DISTINCT subcategory FROM products
+WHERE ($1::text = '' OR lower(source) = lower($1::text))
+AND ($2::text = '' OR lower(category) = lower($2::text))
+AND subcategory IS NOT NULL
+ORDER BY subcategory
+`
+
+type GetSubcategoriesBySourceAndCategoryParams struct {
+	Source   string
+	Category string
+}
+
+func (q *Queries) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getSubcategoriesBySourceAndCategory, arg.Source, arg.Category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var subcategory sql.NullString
+		if err := rows.Scan(&subcategory); err != nil {
+			return nil, err
+		}
+		items = append(items, subcategory)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

@@ -27,6 +27,7 @@ templ ContactPage(userName string, lang string) {
 									id="name"
 									name="name"
 									autocomplete="name"
+									maxlength="100"
 									required
 									placeholder={ T(lang).PlaceholderName }
 									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -39,6 +40,7 @@ templ ContactPage(userName string, lang string) {
 									id="email"
 									name="email"
 									autocomplete="email"
+									maxlength="254"
 									required
 									placeholder={ T(lang).PlaceholderEmail }
 									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -50,6 +52,7 @@ templ ContactPage(userName string, lang string) {
 									type="text"
 									id="subject"
 									name="subject"
+									maxlength="150"
 									autocomplete="off"
 									required
 									placeholder={ T(lang).PlaceholderSubject }
@@ -63,6 +66,7 @@ templ ContactPage(userName string, lang string) {
 									name="message"
 									rows="5"
 									autocomplete="off"
+									maxlength="5000"
 									required
 									placeholder={ T(lang).PlaceholderMessage }
 									class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"

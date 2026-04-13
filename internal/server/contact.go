@@ -5,6 +5,8 @@ import (
 	"GoApp/internal/views"
 	"log"
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,10 +42,28 @@ func (s *Server) contactFormHandler(c *gin.Context) {
 	}
 
 	ip := c.ClientIP()
-	name := c.PostForm("name")
-	email := c.PostForm("email")
-	subject := c.PostForm("subject")
-	message := c.PostForm("message")
+	name := strings.TrimSpace(c.PostForm("name"))
+	email := strings.TrimSpace(c.PostForm("email"))
+	subject := strings.TrimSpace(c.PostForm("subject"))
+	message := strings.TrimSpace(c.PostForm("message"))
+
+	// Validate field lengths
+	if n := utf8.RuneCountInString(name); n == 0 || n > 100 {
+		renderError()
+		return
+	}
+	if len(email) == 0 || len(email) > 254 { // 254 is the max valid email length per RFC 5321
+		renderError()
+		return
+	}
+	if n := utf8.RuneCountInString(subject); n == 0 || n > 150 {
+		renderError()
+		return
+	}
+	if n := utf8.RuneCountInString(message); n == 0 || n > 5000 {
+		renderError()
+		return
+	}
 
 	ipCount, err := s.db.CountContactsByIPToday(c.Request.Context(), ip)
 	if err != nil {

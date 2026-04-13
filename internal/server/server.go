@@ -38,9 +38,13 @@ type DB interface {
 
 	GetDistinctSources(ctx context.Context) ([]sql.NullString, error)
 	GetCategoriesBySource(ctx context.Context, source string) ([]sql.NullString, error)
+	GetSubcategoriesBySourceAndCategory(ctx context.Context, arg database.GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error)
 	GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error)
 	CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error)
 	GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error)
+	GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error)
+	GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error)
+	GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -119,6 +123,10 @@ func (s *sqlDB) GetCategoriesBySource(ctx context.Context, source string) ([]sql
 	return s.queries.GetCategoriesBySource(ctx, source)
 }
 
+func (s *sqlDB) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg database.GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error) {
+	return s.queries.GetSubcategoriesBySourceAndCategory(ctx, arg)
+}
+
 func (s *sqlDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {
 	return s.queries.GetProductsBySourceAndCategory(ctx, arg)
 }
@@ -129,6 +137,18 @@ func (s *sqlDB) CountProductsBySourceAndCategory(ctx context.Context, arg databa
 
 func (s *sqlDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Product, error) {
 	return s.queries.GetProductByID(ctx, id)
+}
+
+func (s *sqlDB) GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error) {
+	return s.queries.GetProductSummaries(ctx, arg)
+}
+
+func (s *sqlDB) GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error) {
+	return s.queries.GetPricePercentiles(ctx, arg)
+}
+
+func (s *sqlDB) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error) {
+	return s.queries.GetProductPriceHistory(ctx, productID)
 }
 
 type Server struct {

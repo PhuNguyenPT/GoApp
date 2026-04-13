@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS products_history (
     name             TEXT,
     brand            TEXT,
     category         TEXT,
+    subcategory      TEXT,
     price            NUMERIC,
     original_price   NUMERIC,
     discount_percent NUMERIC,
@@ -23,28 +24,6 @@ CREATE TABLE IF NOT EXISTS products_history (
     crawled_at       TIMESTAMPTZ,
     changed_at       TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
-
-CREATE OR REPLACE FUNCTION record_product_history()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO products_history (
-        product_id, url, source, name, brand, category,
-        price, original_price, discount_percent, currency,
-        in_stock, quantity, rating, review_count,
-        images, specs, crawled_at
-    ) VALUES (
-        OLD.id, OLD.url, OLD.source, OLD.name, OLD.brand, OLD.category,
-        OLD.price, OLD.original_price, OLD.discount_percent, OLD.currency,
-        OLD.in_stock, OLD.quantity, OLD.rating, OLD.review_count,
-        OLD.images, OLD.specs, OLD.crawled_at
-    );
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_products_history
-BEFORE UPDATE ON products
-FOR EACH ROW EXECUTE FUNCTION record_product_history();
 
 CREATE TABLE IF NOT EXISTS warehouse.dim_date (
     date_id     INT     PRIMARY KEY,  -- YYYYMMDD
@@ -89,6 +68,7 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_product (
     name       TEXT,
     brand      TEXT,
     category   TEXT,
+    subcategory TEXT,
     currency   TEXT,
     images     JSONB,
     specs      JSONB,
@@ -119,8 +99,6 @@ DROP TABLE    IF EXISTS warehouse.fact_product_snapshot;
 DROP TABLE    IF EXISTS warehouse.dim_product;
 DROP TABLE    IF EXISTS warehouse.dim_source;
 DROP TABLE    IF EXISTS warehouse.dim_date;
-DROP TRIGGER  IF EXISTS trg_products_history ON products;
-DROP FUNCTION IF EXISTS record_product_history;
 DROP TABLE    IF EXISTS products_history;
 DROP SCHEMA IF EXISTS warehouse;
 -- +goose StatementEnd

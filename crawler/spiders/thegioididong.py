@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import psycopg2
 import scrapy
+from scrapy.spidermiddlewares.httperror import HttpError
 
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
@@ -31,6 +32,14 @@ EXCLUDED_NAV = {
 
 FALLBACK_URLS = [
     "/dtdd",
+    "/dtdd-samsung",
+    "/dtdd-apple-iphone",
+    "/dtdd-xiaomi",
+    "/dtdd-oppo",
+    "/dtdd-vivo",
+    "/dtdd-realme",
+    "/dtdd-honor",
+    "/dtdd-nokia",
     "/laptop",
     "/may-tinh-bang",
     "/may-tinh-de-ban",
@@ -76,7 +85,7 @@ class ThegioididongSpider(scrapy.Spider):
 
     async def start(self):
         if hasattr(self, "start_url"):
-            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            yield scrapy.Request(self.start_url, callback=self.parse)
             return
         yield scrapy.Request(
             "https://www.thegioididong.com",
@@ -234,9 +243,16 @@ class ThegioididongSpider(scrapy.Spider):
             item["sku"] = gtm.get("sku")
             item["description"] = None
             item["brand"] = gtm.get("brand") or ((gtm.get("name") or "").split()[0] or None)
-            item["category"] = (
-                ld_breadcrumbs[-1].get("item", {}).get("name") if ld_breadcrumbs else None
-            )
+            if ld_breadcrumbs:
+                if len(ld_breadcrumbs) >= 3:
+                    item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
+                    item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                else:
+                    item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                    item["subcategory"] = None
+            else:
+                item["category"] = None
+                item["subcategory"] = None
             item["price"] = gtm.get("price")
             item["original_price"] = None
             item["discount_percent"] = None
@@ -297,10 +313,20 @@ class ThegioididongSpider(scrapy.Spider):
 
         # Category from breadcrumb JSON-LD (last item)
         if ld_breadcrumbs:
-            item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+            if len(ld_breadcrumbs) >= 3:
+                item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
+                item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+            else:
+                item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                item["subcategory"] = None
         else:
             breadcrumbs = response.css("[class*='breadcrumb'] a::text").getall()
-            item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
+            if len(breadcrumbs) >= 2:
+                item["category"] = clean_text(breadcrumbs[-2])
+                item["subcategory"] = clean_text(breadcrumbs[-1])
+            else:
+                item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
+                item["subcategory"] = None
 
         item["price"] = offers.get("price") or parse_price(
             response.css("[class*='price-present']::text").get()
@@ -360,4 +386,8 @@ class ThegioididongSpider(scrapy.Spider):
         yield item
 
     def handle_error(self, failure):
-        self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))
+        if failure.check(HttpError):
+            response = failure.value.response
+            self.logger.error("HTTP %s for %s", response.status, failure.request.url)
+        else:
+            self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))

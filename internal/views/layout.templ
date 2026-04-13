@@ -2,24 +2,29 @@ package views
 
 templ Header(currentPage string, userName string, lang string) {
 	<header class="bg-white shadow-sm">
-		<div class="max-w-4xl mx-auto px-8 py-4">
+		<div class="max-w-4xl mx-auto px-4 py-3">
 			<nav class="flex items-center justify-between">
-				<a href="/" class="text-2xl font-bold text-gray-900 hover:text-gray-700">GoApp</a>
-				<div class="flex items-center space-x-6">
-					<a href="/" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "home"), templ.KV("text-gray-600", currentPage != "home") }>{ T(lang).Home }</a>
-					<a href="/contact" class={ "hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "contact"), templ.KV("text-gray-600", currentPage != "contact") }>{ T(lang).Contact }</a>
-					if userName != "" {
-						<a href="/dashboard">
-							<div class="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center uppercase cursor-pointer">
-								{ string([]rune(userName)[0:1]) }
-							</div>
-						</a>
-						<a href="/logout" class="text-sm text-red-600 hover:underline">{ T(lang).SignOut }</a>
-					} else {
-						<a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">{ T(lang).GetStarted }</a>
-					}
+				<a href="/" class="text-xl font-bold text-gray-900 hover:text-gray-700 shrink-0">Prizm</a>
+				<div class="flex items-center gap-3">
+					<!-- Desktop nav - hidden on mobile -->
+					<div class="hidden md:flex items-center gap-4">
+						<a href="/" class={ "text-sm hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "home"), templ.KV("text-gray-600", currentPage != "home") }>{ T(lang).Home }</a>
+						<a href="/contact" class={ "text-sm hover:text-blue-600", templ.KV("text-blue-600 font-semibold", currentPage == "contact"), templ.KV("text-gray-600", currentPage != "contact") }>{ T(lang).Contact }</a>
+						if userName != "" {
+							<a href="/dashboard" class="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
+								<div class="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center uppercase">
+									{ string([]rune(userName)[0:1]) }
+								</div>
+								{ userName }
+							</a>
+							<a href="/logout" class="text-sm text-red-600 hover:underline">{ T(lang).SignOut }</a>
+						} else {
+							<a href="/register" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-semibold whitespace-nowrap">{ T(lang).GetStarted }</a>
+						}
+					</div>
+					<!-- Language selector - always visible -->
 					<div class="relative group">
-						<button class="text-xs border rounded px-2 py-1 text-gray-500 hover:text-blue-600 font-medium flex items-center gap-1">
+						<button class="text-xs border rounded px-2 py-1 text-gray-500 hover:text-blue-600 font-medium flex items-center gap-1 whitespace-nowrap">
 							if lang == "vi" {
 								🇻🇳 VI
 							} else {
@@ -29,13 +34,41 @@ templ Header(currentPage string, userName string, lang string) {
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
 							</svg>
 						</button>
-						<div class="absolute left-0 mt-0 pt-1 bg-white border border-gray-200 rounded shadow-lg z-50 hidden group-hover:block min-w-max">
+						<div class="absolute right-0 mt-0 pt-1 bg-white border border-gray-200 rounded shadow-lg z-50 hidden group-hover:block min-w-max">
 							<a href="?lang=en" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">🇬🇧 English</a>
 							<a href="?lang=vi" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">🇻🇳 Tiếng Việt</a>
 						</div>
 					</div>
+					<!-- Hamburger - mobile only -->
+					<button
+						id="mobile-menu-btn"
+						data-target="mobile-menu"
+						class="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+					>
+						<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+						</svg>
+					</button>
 				</div>
 			</nav>
+			<!-- Mobile dropdown - hidden on desktop -->
+			<div id="mobile-menu" class="hidden md:hidden mt-2 py-2 border-t border-gray-100">
+				<div class="flex flex-col gap-1">
+					<a href="/" class={ "px-2 py-2 rounded-lg text-sm hover:bg-gray-50", templ.KV("text-blue-600 font-semibold", currentPage == "home"), templ.KV("text-gray-600", currentPage != "home") }>{ T(lang).Home }</a>
+					<a href="/contact" class={ "px-2 py-2 rounded-lg text-sm hover:bg-gray-50", templ.KV("text-blue-600 font-semibold", currentPage == "contact"), templ.KV("text-gray-600", currentPage != "contact") }>{ T(lang).Contact }</a>
+					if userName != "" {
+						<a href="/dashboard" class="px-2 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+							<div class="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center uppercase">
+								{ string([]rune(userName)[0:1]) }
+							</div>
+							{ userName }
+						</a>
+						<a href="/logout" class="px-2 py-2 rounded-lg text-sm text-red-600 hover:bg-gray-50">{ T(lang).SignOut }</a>
+					} else {
+						<a href="/register" class="mt-1 text-center text-sm bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">{ T(lang).GetStarted }</a>
+					}
+				</div>
+			</div>
 		</div>
 	</header>
 }
@@ -45,7 +78,7 @@ templ Footer(lang string) {
 		<div class="max-w-4xl mx-auto px-8">
 			<div class="grid md:grid-cols-3 gap-8">
 				<div>
-					<h3 class="text-lg font-semibold mb-3">GoApp</h3>
+					<h3 class="text-lg font-semibold mb-3">Prizm</h3>
 					<p class="text-gray-400">{ T(lang).FooterDesc }</p>
 				</div>
 				<div>
@@ -59,13 +92,13 @@ templ Footer(lang string) {
 				<div>
 					<h3 class="text-lg font-semibold mb-3">{ T(lang).Contact }</h3>
 					<ul class="space-y-2 text-gray-400">
-						<li>{ T(lang).FooterEmail }: info@goapp.com</li>
+						<li>{ T(lang).FooterEmail }: info@yourdomain.com</li>
 						<li>{ T(lang).FooterPhone }: +1 234 567 890</li>
 					</ul>
 				</div>
 			</div>
 			<div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-				<p>&copy; 2026 GoApp. { T(lang).AllRightsReserved }</p>
+				<p>&copy; 2026 Prizm. { T(lang).AllRightsReserved }</p>
 			</div>
 		</div>
 	</footer>
@@ -98,6 +131,7 @@ templ Head(seo SEOMeta) {
 		<link rel="manifest" href="/public/site.webmanifest"/>
 		<link href="/public/output.css" rel="stylesheet"/>
 		<script src="/public/htmx.min.js"></script>
+		<script src="/public/header.min.js"></script>
 	</head>
 }
 

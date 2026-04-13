@@ -7,14 +7,21 @@ import (
 )
 
 type ProductsPageData struct {
-	Sources          []sql.NullString
-	Categories       []sql.NullString
-	Products         []database.Product
-	SelectedSource   string
-	SelectedCategory string
-	Page             int
-	TotalPages       int
-	TotalCount       int64
+	Sources             []sql.NullString
+	Categories          []sql.NullString
+	Subcategories       []sql.NullString
+	MinPrice            float64
+	MaxPrice            float64
+	PricePercentiles    [5]float64
+	Currency            string
+	Products            []database.GetProductSummariesRow
+	SelectedSource      string
+	SelectedCategory    string
+	SelectedSubcategory string
+	SelectedSort        string
+	Page                int
+	TotalPages          int
+	TotalCount          int64
 }
 
 templ ProductsPage(userName string, data ProductsPageData, lang string) {
@@ -27,9 +34,19 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
 		<body class="min-h-screen bg-gray-50 flex flex-col">
 			@Header("products", userName, lang)
 			<main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+				<!-- Mobile filter drawer overlay -->
+				<div id="filter-overlay" class="fixed inset-0 bg-black/40 z-30 hidden" data-target="filter-drawer"></div>
+				<!-- Mobile filter drawer -->
+				<div id="filter-drawer" class="fixed top-0 left-0 h-full w-72 bg-white z-40 shadow-xl transform -translate-x-full transition-transform duration-300 overflow-y-auto lg:hidden">
+					<div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+						<span class="font-semibold text-sm text-gray-700">{ T(lang).Filters }</span>
+						<button id="close-filter-drawer" class="p-1 rounded hover:bg-gray-100 text-gray-500">✕</button>
+					</div>
+					@FilterPanel(data, lang)
+				</div>
 				<div class="flex gap-6">
-					<!-- Side Filter Panel -->
-					<aside class="w-64 flex-shrink-0">
+					<!-- Sidebar - desktop only -->
+					<aside class="hidden lg:block w-64 flex-shrink-0">
 						@FilterPanel(data, lang)
 					</aside>
 					<!-- Main Content -->
@@ -38,8 +55,8 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
 							<h1 class="text-2xl font-bold">{ T(lang).Products }</h1>
 							<!-- Mobile filter toggle -->
 							<button
+								id="open-filter-drawer"
 								class="lg:hidden flex items-center gap-2 text-sm border rounded-lg px-3 py-2 hover:bg-gray-100"
-								onclick="document.getElementById('mobile-filter').classList.toggle('hidden')"
 							>
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 12h12M9 20h6"></path>
@@ -48,49 +65,38 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
 							</button>
 						</div>
 						<!-- Active filter chips -->
-						if data.SelectedSource != "" || data.SelectedCategory != "" {
-							<div class="flex flex-wrap gap-2 mb-4">
-								if data.SelectedSource != "" {
-									<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
-										{ data.SelectedSource }
-										<a
-											href={ templ.SafeURL(fmt.Sprintf("/products?category=%s", data.SelectedCategory)) }
-											hx-get={ fmt.Sprintf("/products?category=%s", data.SelectedCategory) }
-											hx-target="#product-results"
-											hx-push-url="true"
-											class="hover:text-blue-900 ml-1"
-										>✕</a>
-									</span>
-								}
-								if data.SelectedCategory != "" {
-									<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
-										{ data.SelectedCategory }
-										<a
-											href={ templ.SafeURL(fmt.Sprintf("/products?source=%s", data.SelectedSource)) }
-											hx-get={ fmt.Sprintf("/products?source=%s", data.SelectedSource) }
-											hx-target="#product-results"
-											hx-push-url="true"
-											class="hover:text-blue-900 ml-1"
-										>✕</a>
-									</span>
-								}
-								<a
-									href="/products"
-									hx-get="/products"
-									hx-target="#product-results"
-									hx-push-url="true"
-									class="text-xs text-gray-500 hover:text-gray-700 underline self-center"
-								>
-									{ T(lang).ClearAll }
-								</a>
-							</div>
-						}
+						<div id="active-chips">
+							if data.SelectedSource != "" || data.SelectedCategory != "" || data.SelectedSubcategory != "" {
+								<div class="flex flex-wrap gap-2 mb-4">
+									if data.SelectedSource != "" {
+										<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
+											{ data.SelectedSource }
+											<a href={ templ.SafeURL(fmt.Sprintf("/products?category=%s&subcategory=%s", data.SelectedCategory, data.SelectedSubcategory)) } class="hover:text-blue-900 ml-1">✕</a>
+										</span>
+									}
+									if data.SelectedCategory != "" {
+										<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
+											{ data.SelectedCategory }
+											<a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&subcategory=%s", data.SelectedSource, data.SelectedSubcategory)) } class="hover:text-blue-900 ml-1">✕</a>
+										</span>
+									}
+									if data.SelectedSubcategory != "" {
+										<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
+											{ data.SelectedSubcategory }
+											<a href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", data.SelectedSource, data.SelectedCategory)) } class="hover:text-blue-900 ml-1">✕</a>
+										</span>
+									}
+									<a href="/products" class="text-xs text-gray-500 hover:text-gray-700 underline self-center">{ T(lang).ClearAll }</a>
+								</div>
+							}
+						</div>
 						<div id="product-results">
 							@ProductGrid(data, lang)
 						</div>
 					</div>
 				</div>
 			</main>
+			<script src="/public/filter-drawer.min.js"></script>
 			@Footer(lang)
 		</body>
 	</html>
@@ -98,14 +104,11 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
 
 templ FilterPanel(data ProductsPageData, lang string) {
 	<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-4">
-		<div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+		<div id="filter-header" class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
 			<span class="font-semibold text-sm text-gray-700">{ T(lang).Filters }</span>
-			if data.SelectedSource != "" || data.SelectedCategory != "" {
+			if data.SelectedSource != "" || data.SelectedCategory != "" || data.SelectedSubcategory != "" {
 				<a
 					href="/products"
-					hx-get="/products"
-					hx-target="#product-results"
-					hx-push-url="true"
 					class="text-xs text-blue-600 hover:text-blue-800"
 				>
 					{ T(lang).ClearAll }
@@ -113,17 +116,17 @@ templ FilterPanel(data ProductsPageData, lang string) {
 			}
 		</div>
 		<!-- Source Filter -->
-		<div class="px-4 py-4 border-b border-gray-100">
+		<div id="source-filter" class="px-4 py-4 border-b border-gray-100">
 			<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Source }</h3>
 			<ul class="space-y-1">
 				<li>
 					<a
-						href="/products?category="
+						href="/products"
 						hx-get="/products"
 						hx-target="#product-results"
-						hx-vals='{"source": "", "category": "", "trigger": "source"}'
+						hx-vals='{"source": "", "category": "", "subcategory": "", "trigger": "source"}'
 						hx-push-url="true"
-						class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + sourceItemClass("", data.SelectedSource) }
+						class={ filterItemClass("", data.SelectedSource) }
 					>
 						<span class="flex-1">{ T(lang).AllSources }</span>
 					</a>
@@ -135,9 +138,9 @@ templ FilterPanel(data ProductsPageData, lang string) {
 								href={ templ.SafeURL(fmt.Sprintf("/products?source=%s", s.String)) }
 								hx-get="/products"
 								hx-target="#product-results"
-								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "trigger": "source"}`, s.String) }
+								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "source"}`, s.String) }
 								hx-push-url="true"
-								class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + sourceItemClass(s.String, data.SelectedSource) }
+								class={ filterItemClass(s.String, data.SelectedSource) }
 							>
 								<span class="flex-1">{ s.String }</span>
 							</a>
@@ -148,7 +151,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 		</div>
 		<!-- Category Filter -->
 		if len(data.Categories) > 0 {
-			<div id="category-filter" class="px-4 py-4">
+			<div id="category-filter" class="px-4 py-4 border-b border-gray-100">
 				<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Category }</h3>
 				<ul class="space-y-1 max-h-72 overflow-y-auto">
 					<li>
@@ -156,9 +159,9 @@ templ FilterPanel(data ProductsPageData, lang string) {
 							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s", data.SelectedSource)) }
 							hx-get="/products"
 							hx-target="#product-results"
-							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": ""}`, data.SelectedSource) }
+							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "category"}`, data.SelectedSource) }
 							hx-push-url="true"
-							class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass("", data.SelectedCategory) }
+							class={ filterItemClass("", data.SelectedCategory) }
 						>
 							<span class="flex-1">{ T(lang).AllCategories }</span>
 						</a>
@@ -170,9 +173,9 @@ templ FilterPanel(data ProductsPageData, lang string) {
 									href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", data.SelectedSource, cat.String)) }
 									hx-get="/products"
 									hx-target="#product-results"
-									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s"}`, data.SelectedSource, cat.String) }
+									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "", "trigger": "category"}`, data.SelectedSource, cat.String) }
 									hx-push-url="true"
-									class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass(cat.String, data.SelectedCategory) }
+									class={ filterItemClass(cat.String, data.SelectedCategory) }
 								>
 									<span class="flex-1 leading-tight">{ cat.String }</span>
 								</a>
@@ -182,11 +185,87 @@ templ FilterPanel(data ProductsPageData, lang string) {
 				</ul>
 			</div>
 		}
+		<!-- Subcategory Filter -->
+		if data.SelectedCategory != "" && len(data.Subcategories) > 0 {
+			<div id="subcategory-filter" class="px-4 py-4">
+				<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Brand }</h3>
+				<ul class="space-y-1 max-h-60 overflow-y-auto">
+					<li>
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", data.SelectedSource, data.SelectedCategory)) }
+							hx-get="/products"
+							hx-target="#product-results"
+							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": ""}`, data.SelectedSource, data.SelectedCategory) }
+							hx-push-url="true"
+							class={ filterItemClass("", data.SelectedSubcategory) }
+						>
+							<span class="flex-1">{ T(lang).AllCategories }</span>
+						</a>
+					</li>
+					for _, sub := range data.Subcategories {
+						if sub.Valid {
+							<li>
+								<a
+									href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", data.SelectedSource, data.SelectedCategory, sub.String)) }
+									hx-get="/products"
+									hx-target="#product-results"
+									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, data.SelectedSource, data.SelectedCategory, sub.String) }
+									hx-push-url="true"
+									class={ filterItemClass(sub.String, data.SelectedSubcategory) }
+								>
+									<span class="flex-1 leading-tight">{ sub.String }</span>
+								</a>
+							</li>
+						}
+					}
+				</ul>
+			</div>
+		} else {
+			<div id="subcategory-filter"></div>
+		}
+		<!-- Price Filter -->
+		<div id="price-filter" class="px-4 py-4 border-b border-gray-100">
+			<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Price }</h3>
+			<ul class="space-y-1">
+				<li>
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory)) }
+						hx-get="/products"
+						hx-target="#product-results"
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "0", "max_price": "0"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+						hx-push-url="true"
+						class={ priceItemClass(0, 0, data.MinPrice, data.MaxPrice) }
+					>
+						<span class="flex-1">{ T(lang).AllPrices }</span>
+					</a>
+				</li>
+				for _, b := range priceBucketsFromPercentiles(
+					data.PricePercentiles[0],
+					data.PricePercentiles[1],
+					data.PricePercentiles[2],
+					data.PricePercentiles[3],
+					data.PricePercentiles[4],
+				) {
+					<li>
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1])) }
+							hx-get="/products"
+							hx-target="#product-results"
+							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "%.0f", "max_price": "%.0f"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1]) }
+							hx-push-url="true"
+							class={ priceItemClass(b[0], b[1], data.MinPrice, data.MaxPrice) }
+						>
+							<span class="flex-1">{ formatPrice(fmt.Sprintf("%.0f", b[0]), data.Currency) } — { formatPrice(fmt.Sprintf("%.0f", b[1]), data.Currency) }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		</div>
 	</div>
 }
 
 templ CategoryFilterOOB(categories []sql.NullString, selectedSource string, selectedCategory string, lang string) {
-	<div id="category-filter" class="px-4 py-4" hx-swap-oob="true">
+	<div id="category-filter" class="px-4 py-4 border-b border-gray-100" hx-swap-oob="true">
 		if len(categories) > 0 {
 			<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Category }</h3>
 			<ul class="space-y-1 max-h-72 overflow-y-auto">
@@ -195,9 +274,9 @@ templ CategoryFilterOOB(categories []sql.NullString, selectedSource string, sele
 						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s", selectedSource)) }
 						hx-get="/products"
 						hx-target="#product-results"
-						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": ""}`, selectedSource) }
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "category"}`, selectedSource) }
 						hx-push-url="true"
-						class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass("", selectedCategory) }
+						class={ filterItemClass("", selectedCategory) }
 					>
 						<span class="flex-1">{ T(lang).AllCategories }</span>
 					</a>
@@ -209,11 +288,49 @@ templ CategoryFilterOOB(categories []sql.NullString, selectedSource string, sele
 								href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", selectedSource, cat.String)) }
 								hx-get="/products"
 								hx-target="#product-results"
-								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s"}`, selectedSource, cat.String) }
+								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "", "trigger": "category"}`, selectedSource, cat.String) }
 								hx-push-url="true"
-								class={ "flex items-center gap-2 text-sm rounded-lg px-2 py-1.5 w-full transition-colors " + categoryItemClass(cat.String, selectedCategory) }
+								class={ filterItemClass(cat.String, selectedCategory) }
 							>
 								<span class="flex-1 leading-tight">{ cat.String }</span>
+							</a>
+						</li>
+					}
+				}
+			</ul>
+		}
+	</div>
+}
+
+templ SubcategoryFilterOOB(subcategories []sql.NullString, selectedSource string, selectedCategory string, selectedSubcategory string, lang string) {
+	<div id="subcategory-filter" class="px-4 py-4" hx-swap-oob="true">
+		if selectedCategory != "" && len(subcategories) > 0 {
+			<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Brand }</h3>
+			<ul class="space-y-1 max-h-60 overflow-y-auto">
+				<li>
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", selectedSource, selectedCategory)) }
+						hx-get="/products"
+						hx-target="#product-results"
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": ""}`, selectedSource, selectedCategory) }
+						hx-push-url="true"
+						class={ filterItemClass("", selectedSubcategory) }
+					>
+						<span class="flex-1">{ T(lang).AllCategories }</span>
+					</a>
+				</li>
+				for _, sub := range subcategories {
+					if sub.Valid {
+						<li>
+							<a
+								href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", selectedSource, selectedCategory, sub.String)) }
+								hx-get="/products"
+								hx-target="#product-results"
+								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, selectedSource, selectedCategory, sub.String) }
+								hx-push-url="true"
+								class={ filterItemClass(sub.String, selectedSubcategory) }
+							>
+								<span class="flex-1 leading-tight">{ sub.String }</span>
 							</a>
 						</li>
 					}
@@ -227,8 +344,27 @@ templ ProductGrid(data ProductsPageData, lang string) {
 	if len(data.Products) == 0 {
 		<p class="text-gray-500">{ T(lang).NoProducts }</p>
 	} else {
-		<p class="text-sm text-gray-500 mb-4">{ fmt.Sprintf("%d %s", data.TotalCount, T(lang).ProductsFound) }</p>
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+		<div class="flex items-center justify-between mb-4">
+			<p class="text-sm text-gray-500">{ fmt.Sprintf("%d %s", data.TotalCount, T(lang).ProductsFound) }</p>
+			<select
+				name="sort"
+				hx-get="/products"
+				hx-trigger="change"
+				hx-target="#product-results"
+				hx-push-url="true"
+				hx-include="[name='sort']"
+				hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "%.0f", "max_price": "%.0f"}`,
+					data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice) }
+				class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer hover:border-gray-300"
+			>
+				<option value="crawled_at,desc" selected?={ data.SelectedSort == "crawled_at,desc" || data.SelectedSort == "" }>{ T(lang).SortNewest }</option>
+				<option value="price,asc" selected?={ data.SelectedSort == "price,asc" }>{ T(lang).SortPriceLow }</option>
+				<option value="price,desc" selected?={ data.SelectedSort == "price,desc" }>{ T(lang).SortPriceHigh }</option>
+				<option value="rating,desc" selected?={ data.SelectedSort == "rating,desc" }>{ T(lang).SortRating }</option>
+				<option value="name,asc" selected?={ data.SelectedSort == "name,asc" }>{ T(lang).SortNameAZ }</option>
+			</select>
+		</div>
+		<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-5">
 			for _, p := range data.Products {
 				@ProductCard(p)
 			}
@@ -237,7 +373,8 @@ templ ProductGrid(data ProductsPageData, lang string) {
 			<div class="flex gap-1 mt-8 justify-center items-center flex-wrap">
 				if data.Page > 1 {
 					<a
-						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page-1)) }
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f&sort=%s&page=%d",
+							data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice, data.SelectedSort, data.Page-1)) }
 						class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm"
 					>←</a>
 				}
@@ -248,14 +385,16 @@ templ ProductGrid(data ProductsPageData, lang string) {
 						<span class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">{ fmt.Sprintf("%d", p) }</span>
 					} else {
 						<a
-							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, p)) }
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f&sort=%s&page=%d",
+								data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice, data.SelectedSort, p)) }
 							class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm"
 						>{ fmt.Sprintf("%d", p) }</a>
 					}
 				}
 				if data.Page < data.TotalPages {
 					<a
-						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&page=%d", data.SelectedSource, data.SelectedCategory, data.Page+1)) }
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f&sort=%s&page=%d",
+							data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.MinPrice, data.MaxPrice, data.SelectedSort, data.Page+1)) }
 						class="px-3 py-2 rounded-lg border hover:bg-gray-100 text-sm"
 					>→</a>
 				}
@@ -267,7 +406,7 @@ templ ProductGrid(data ProductsPageData, lang string) {
 	}
 }
 
-templ ProductCard(p database.Product) {
+templ ProductCard(p database.GetProductSummariesRow) {
 	<a
 		href={ templ.SafeURL(fmt.Sprintf("/products/%s", p.ID.String())) }
 		class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
@@ -340,13 +479,13 @@ templ ProductCard(p database.Product) {
 					</div>
 			}
 			<!-- Price row -->
-			<div class="flex items-baseline gap-2 mt-auto">
+			<div class="flex items-baseline gap-1 mt-auto flex-wrap">
 				switch [2]bool{p.Price.Valid, p.OriginalPrice.Valid && p.OriginalPrice.String != "" && p.OriginalPrice.String != p.Price.String} {
 					case [2]bool{true, true}:
-						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
-						<span class="text-xs text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String) }</span>
+						<span class="text-sm sm:text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
+						<span class="text-xs text-gray-400 line-through">{ formatPrice(p.OriginalPrice.String, p.Currency.String) }</span>
 					case [2]bool{true, false}:
-						<span class="text-base font-bold text-gray-900">{ formatPrice(p.Price.String) }</span>
+						<span class="text-sm sm:text-base font-bold text-gray-900">{ formatPrice(p.Price.String, p.Currency.String) }</span>
 				}
 			</div>
 			<!-- Source -->
@@ -355,4 +494,131 @@ templ ProductCard(p database.Product) {
 			}
 		</div>
 	</a>
+}
+
+templ SourceFilterOOB(sources []sql.NullString, selectedSource string, lang string) {
+	<div id="source-filter" class="px-4 py-4 border-b border-gray-100" hx-swap-oob="true">
+		<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Source }</h3>
+		<ul class="space-y-1">
+			<li>
+				<a
+					href="/products"
+					hx-get="/products"
+					hx-target="#product-results"
+					hx-vals='{"source": "", "category": "", "subcategory": "", "trigger": "source"}'
+					hx-push-url="true"
+					class={ filterItemClass("", selectedSource) }
+				>
+					<span class="flex-1">{ T(lang).AllSources }</span>
+				</a>
+			</li>
+			for _, s := range sources {
+				if s.Valid {
+					<li>
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s", s.String)) }
+							hx-get="/products"
+							hx-target="#product-results"
+							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "", "subcategory": "", "trigger": "source"}`, s.String) }
+							hx-push-url="true"
+							class={ filterItemClass(s.String, selectedSource) }
+						>
+							<span class="flex-1">{ s.String }</span>
+						</a>
+					</li>
+				}
+			}
+		</ul>
+	</div>
+}
+
+templ ActiveChipsOOB(data ProductsPageData, lang string) {
+	<div id="active-chips" hx-swap-oob="true">
+		if data.SelectedSource != "" || data.SelectedCategory != "" || data.SelectedSubcategory != "" {
+			<div class="flex flex-wrap gap-2 mb-4">
+				if data.SelectedSource != "" {
+					<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
+						{ data.SelectedSource }
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?category=%s&subcategory=%s", data.SelectedCategory, data.SelectedSubcategory)) }
+							class="hover:text-blue-900 ml-1"
+						>✕</a>
+					</span>
+				}
+				if data.SelectedCategory != "" {
+					<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
+						{ data.SelectedCategory }
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&subcategory=%s", data.SelectedSource, data.SelectedSubcategory)) }
+							class="hover:text-blue-900 ml-1"
+						>✕</a>
+					</span>
+				}
+				if data.SelectedSubcategory != "" {
+					<span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 rounded-full px-3 py-1 font-medium">
+						{ data.SelectedSubcategory }
+						<a
+							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", data.SelectedSource, data.SelectedCategory)) }
+							class="hover:text-blue-900 ml-1"
+						>✕</a>
+					</span>
+				}
+				<a
+					href="/products"
+					class="text-xs text-gray-500 hover:text-gray-700 underline self-center"
+				>
+					{ T(lang).ClearAll }
+				</a>
+			</div>
+		}
+	</div>
+}
+
+templ PriceFilterOOB(data ProductsPageData, lang string) {
+	<div id="price-filter" class="px-4 py-4 border-b border-gray-100" hx-swap-oob="true">
+		<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{ T(lang).Price }</h3>
+		<ul class="space-y-1">
+			<li>
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory)) }
+					hx-get="/products"
+					hx-target="#product-results"
+					hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "0", "max_price": "0"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+					hx-push-url="true"
+					class={ priceItemClass(0, 0, data.MinPrice, data.MaxPrice) }
+				>
+					<span class="flex-1">{ T(lang).AllPrices }</span>
+				</a>
+			</li>
+			for _, b := range priceBucketsFromPercentiles(
+                data.PricePercentiles[0],
+                data.PricePercentiles[1],
+                data.PricePercentiles[2],
+                data.PricePercentiles[3],
+                data.PricePercentiles[4],
+            ) {
+				<li>
+					<a
+						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s&min_price=%.0f&max_price=%.0f", data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1])) }
+						hx-get="/products"
+						hx-target="#product-results"
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "min_price": "%.0f", "max_price": "%.0f"}`, data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, b[0], b[1]) }
+						hx-push-url="true"
+						class={ priceItemClass(b[0], b[1], data.MinPrice, data.MaxPrice) }
+					>
+						<span class="flex-1">{ formatPrice(fmt.Sprintf("%.0f", b[0]), data.Currency) } — { formatPrice(fmt.Sprintf("%.0f", b[1]), data.Currency) }</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ FilterHeaderOOB(data ProductsPageData, lang string) {
+	<div id="filter-header" class="px-4 py-3 border-b border-gray-100 flex items-center justify-between" hx-swap-oob="true">
+		<span class="font-semibold text-sm text-gray-700">{ T(lang).Filters }</span>
+		if data.SelectedSource != "" || data.SelectedCategory != "" || data.SelectedSubcategory != "" {
+			<a href="/products" class="text-xs text-blue-600 hover:text-blue-800">{ T(lang).ClearAll }</a>
+		}
+	</div>
 }

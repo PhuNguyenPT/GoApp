@@ -4,7 +4,7 @@ templ HomePage(userName string, lang string) {
 	<!DOCTYPE html>
 	<html lang={ lang }>
 		@Head(SEOMeta{
-			Title:        T(lang).HomeWelcome,
+			Title:        "Prizm",
 			Description:  T(lang).HomeSubtitle,
 			CanonicalURL: "https://yourdomain.com/",
 		})
@@ -17,8 +17,8 @@ templ HomePage(userName string, lang string) {
 						<p class="text-xl text-gray-600">{ T(lang).HomeSubtitle }</p>
 					</div>
 					<div class="text-center space-x-4">
-						<a href="/contact" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold">
-							{ T(lang).HomeGetInTouch }
+						<a href="/products" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold">
+							{ T(lang).HomeProducts }
 						</a>
 					</div>
 				</div>

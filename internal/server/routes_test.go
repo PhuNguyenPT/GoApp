@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -195,8 +197,29 @@ func (m *mockDB) GetCategoriesBySource(ctx context.Context, source string) ([]sq
 	return result, nil
 }
 
+func (m *mockDB) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg database.GetSubcategoriesBySourceAndCategoryParams) ([]sql.NullString, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:   arg.Source,
+		Category: arg.Category,
+	})
+	if err != nil {
+		return []sql.NullString{}, err
+	}
+	unique := make(map[string]sql.NullString)
+	for _, p := range products {
+		if p.Subcategory.Valid {
+			unique[p.Subcategory.String] = p.Subcategory
+		}
+	}
+	var result []sql.NullString
+	for _, s := range unique {
+		result = append(result, s)
+	}
+	return result, nil
+}
+
 func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg database.GetProductsBySourceAndCategoryParams) ([]database.Product, error) {
-	ids := make(uuid.UUIDs, 4)
+	ids := make(uuid.UUIDs, 6)
 	for i := range ids {
 		id, err := uuid.NewV7()
 		if err != nil {
@@ -265,6 +288,7 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Name:            sql.NullString{String: "iPhone 17 Pro", Valid: true},
 			Brand:           sql.NullString{String: "Apple", Valid: true},
 			Category:        sql.NullString{String: "Điện thoại", Valid: true},
+			Subcategory:     sql.NullString{String: "Apple", Valid: true},
 			Price:           sql.NullString{String: "33590000.0", Valid: true},
 			OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
 			DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},
@@ -285,7 +309,8 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Source:          sql.NullString{String: "thegioididong", Valid: true},
 			Name:            sql.NullString{String: "Điện thoại iPhone 17 Pro Max 256GB", Valid: true},
 			Brand:           sql.NullString{String: "Apple", Valid: true},
-			Category:        sql.NullString{String: "Điện thoại iPhone (Apple)", Valid: true},
+			Category:        sql.NullString{String: "Điện thoại", Valid: true},
+			Subcategory:     sql.NullString{String: "Điện thoại iPhone (Apple)", Valid: true},
 			Price:           sql.NullString{String: "37590000.0", Valid: true},
 			OriginalPrice:   sql.NullString{Valid: false},
 			DiscountPercent: sql.NullInt32{Valid: false},
@@ -307,6 +332,7 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Name:            sql.NullString{String: "Acer Predator Helios 18 Gaming AI PH18-73-98AQ U9 275HX", Valid: true},
 			Brand:           sql.NullString{String: "Acer", Valid: true},
 			Category:        sql.NullString{String: "Laptop", Valid: true},
+			Subcategory:     sql.NullString{String: "Acer", Valid: true},
 			Price:           sql.NullString{String: "168990000.0", Valid: true},
 			OriginalPrice:   sql.NullString{String: "171690000.0", Valid: true},
 			DiscountPercent: sql.NullInt32{Int32: 2, Valid: true},
@@ -327,7 +353,8 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			Source:          sql.NullString{String: "thegioididong", Valid: true},
 			Name:            sql.NullString{String: "Laptop Acer Gaming Nitro V 15 ANV15 41 R2UP - NH.QPGSV.004", Valid: true},
 			Brand:           sql.NullString{String: "Acer", Valid: true},
-			Category:        sql.NullString{String: "Laptop Acer", Valid: true},
+			Category:        sql.NullString{String: "Laptop", Valid: true},
+			Subcategory:     sql.NullString{String: "Laptop Acer", Valid: true},
 			Price:           sql.NullString{String: "18690000.0", Valid: true},
 			OriginalPrice:   sql.NullString{String: "20190000.0", Valid: true},
 			DiscountPercent: sql.NullInt32{Int32: 7, Valid: true},
@@ -348,17 +375,67 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 			CreatedAt: crawledAt,
 			UpdatedAt: crawledAt,
 		},
+		{
+			ID:              ids[4],
+			Url:             "https://www.thegioididong.com/cap-dien-thoai/cap-type-c-type-c-1m-ugreen-us557-15267",
+			Source:          sql.NullString{String: "thegioididong", Valid: true},
+			Sku:             sql.NullString{String: "332242", Valid: true},
+			Name:            sql.NullString{String: "Cáp sạc nhanh và truyền dữ liệu Type-C - Type-C 100W 1m Ugreen US557 15267", Valid: true},
+			Description:     sql.NullString{String: "Cáp Type C - Type C 1m Ugreen US557 15267 được thiết kế để tối ưu hóa hiệu suất sạc và truyền dữ liệu, mang đến sự tiện lợi cho người dùng công nghệ.", Valid: true},
+			Brand:           sql.NullString{String: "Ugreen", Valid: true},
+			Category:        sql.NullString{String: "Cáp sạc", Valid: true},
+			Subcategory:     sql.NullString{String: "Cáp sạc Ugreen", Valid: true},
+			Price:           sql.NullString{String: "170000", Valid: true},
+			OriginalPrice:   sql.NullString{String: "190000", Valid: true},
+			DiscountPercent: sql.NullInt32{Int32: 11, Valid: true},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
+			Rating:          sql.NullString{String: "5.0", Valid: true},
+			ReviewCount:     sql.NullInt32{Valid: false},
+			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/58/332242/cap-type-c-type-c-1m-ugreen-us557-15267-1-638678084226985556-750x500.jpg"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: []byte(`{"Công suất tối đa":"100 W","Độ dài dây":"1 m","Đầu vào":"USB Type-C","Đầu ra":"Type C: 100 W"}`), Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
+		},
+		{
+			ID:              ids[5],
+			Url:             "https://www.thegioididong.com/ban-phim/ban-phim-co-bluetooth-akko-monsgeek-mg108b-bun-wonderland",
+			Source:          sql.NullString{String: "thegioididong", Valid: true},
+			Sku:             sql.NullString{String: "331864", Valid: true},
+			Name:            sql.NullString{String: "Bàn Phím Cơ Bluetooth Akko MonsGeek MG108B Bun Wonderland", Valid: true},
+			Description:     sql.NullString{String: "Bàn phím cơ Bluetooth Akko MonsGeek MG108B Bun Wonderland mang đến một sự kết hợp thú vị giữa thiết kế dễ thương và hiệu năng mạnh mẽ.", Valid: true},
+			Brand:           sql.NullString{String: "Akko", Valid: true},
+			Category:        sql.NullString{String: "Bàn phím", Valid: true},
+			Subcategory:     sql.NullString{String: "Bàn phím Akko", Valid: true},
+			Price:           sql.NullString{String: "1700000", Valid: true},
+			OriginalPrice:   sql.NullString{Valid: false},
+			DiscountPercent: sql.NullInt32{Valid: false},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			Quantity:        sql.NullInt32{Valid: false},
+			Rating:          sql.NullString{String: "4.8", Valid: true},
+			ReviewCount:     sql.NullInt32{Valid: false},
+			Images:          pqtype.NullRawMessage{RawMessage: []byte(`["https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/4547/331864/ban-phim-co-bluetooth-akko-monsgeek-mg108b-bun-wonderland-1-638671755663195560-750x500.jpg"]`), Valid: true},
+			Specs:           pqtype.NullRawMessage{RawMessage: []byte(`{"Cách kết nối":"USB Receiver (đầu thu USB)","Loại switch":"Akko V3 Piano Pro","Số phím":"108 Phím"}`), Valid: true},
+			CrawledAt:       crawledAt,
+			CreatedAt:       crawledAt,
+			UpdatedAt:       crawledAt,
+		},
 	}
 
 	// filter by source and category
 	src := arg.Source
 	cat := arg.Category
+	sub := arg.Subcategory
 
 	var result []database.Product
 	for _, p := range all {
 		sourceMatch := src == "" || strings.EqualFold(p.Source.String, src)
 		categoryMatch := cat == "" || strings.EqualFold(p.Category.String, cat)
-		if sourceMatch && categoryMatch {
+		subcategoryMatch := sub == "" || strings.EqualFold(p.Subcategory.String, sub)
+		if sourceMatch && categoryMatch && subcategoryMatch {
 			result = append(result, p)
 		}
 	}
@@ -367,8 +444,9 @@ func (m *mockDB) GetProductsBySourceAndCategory(ctx context.Context, arg databas
 
 func (m *mockDB) CountProductsBySourceAndCategory(ctx context.Context, arg database.CountProductsBySourceAndCategoryParams) (int64, error) {
 	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
-		Source:   arg.Source,
-		Category: arg.Category,
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
 	})
 	if err != nil {
 		return 0, err
@@ -394,6 +472,7 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Pro
 		Name:            sql.NullString{String: "iPhone 17 Pro", Valid: true},
 		Brand:           sql.NullString{String: "Apple", Valid: true},
 		Category:        sql.NullString{String: "Điện thoại", Valid: true},
+		Subcategory:     sql.NullString{String: "Apple", Valid: true},
 		Price:           sql.NullString{String: "33590000.0", Valid: true},
 		OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
 		DiscountPercent: sql.NullInt32{Int32: 4, Valid: true},
@@ -407,6 +486,170 @@ func (m *mockDB) GetProductByID(ctx context.Context, id uuid.UUID) (database.Pro
 		CrawledAt:       crawledAt,
 		UpdatedAt:       crawledAt,
 		CreatedAt:       crawledAt,
+	}, nil
+}
+
+func (m *mockDB) GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
+		PageLimit:   arg.PageLimit,
+		PageOffset:  arg.PageOffset,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(products, func(i, j int) bool {
+		a, b := products[i], products[j]
+		asc := arg.SortDir == "asc"
+		switch arg.SortField {
+		case "price":
+			ap, _ := strconv.ParseFloat(a.Price.String, 64)
+			bp, _ := strconv.ParseFloat(b.Price.String, 64)
+			if asc {
+				return ap < bp
+			}
+			return ap > bp
+		case "rating":
+			if !a.Rating.Valid {
+				return false // nulls last
+			}
+			if !b.Rating.Valid {
+				return true
+			}
+			ar, _ := strconv.ParseFloat(a.Rating.String, 64)
+			br, _ := strconv.ParseFloat(b.Rating.String, 64)
+			if asc {
+				return ar < br
+			}
+			return ar > br
+		case "name":
+			if asc {
+				return a.Name.String < b.Name.String
+			}
+			return a.Name.String > b.Name.String
+		default: // crawled_at
+			if asc {
+				return a.CrawledAt.Time.Before(b.CrawledAt.Time)
+			}
+			return a.CrawledAt.Time.After(b.CrawledAt.Time)
+		}
+	})
+
+	rows := make([]database.GetProductSummariesRow, len(products))
+	for i, p := range products {
+		rows[i] = database.GetProductSummariesRow{
+			ID:              p.ID,
+			Source:          p.Source,
+			Name:            p.Name,
+			Brand:           p.Brand,
+			Category:        p.Category,
+			Price:           p.Price,
+			OriginalPrice:   p.OriginalPrice,
+			DiscountPercent: p.DiscountPercent,
+			Currency:        p.Currency,
+			InStock:         p.InStock,
+			Quantity:        p.Quantity,
+			Rating:          p.Rating,
+			ReviewCount:     p.ReviewCount,
+			Images:          p.Images,
+		}
+	}
+	return rows, nil
+}
+
+func mostCommonCurrency(products []database.Product) string {
+	counts := make(map[string]int)
+	for _, p := range products {
+		if p.Currency.Valid && p.Currency.String != "" {
+			counts[p.Currency.String]++
+		}
+	}
+	best, bestCount := "VND", 0
+	for c, n := range counts {
+		if n > bestCount {
+			best, bestCount = c, n
+		}
+	}
+	return best
+}
+
+func (m *mockDB) GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
+	})
+	if err != nil {
+		return database.GetPricePercentilesRow{}, err
+	}
+
+	var prices []float64
+	for _, p := range products {
+		if !p.Price.Valid {
+			continue
+		}
+		price, err := strconv.ParseFloat(strings.TrimSpace(p.Price.String), 64)
+		if err != nil {
+			continue
+		}
+		prices = append(prices, price)
+	}
+
+	if len(prices) == 0 {
+		return database.GetPricePercentilesRow{}, nil
+	}
+
+	// sort ascending
+	for i := 0; i < len(prices); i++ {
+		for j := i + 1; j < len(prices); j++ {
+			if prices[j] < prices[i] {
+				prices[i], prices[j] = prices[j], prices[i]
+			}
+		}
+	}
+
+	percentile := func(p float64) float64 {
+		idx := int(p * float64(len(prices)-1))
+		return prices[idx]
+	}
+
+	return database.GetPricePercentilesRow{
+		MinPrice: strconv.FormatFloat(prices[0], 'f', -1, 64),
+		P25:      strconv.FormatFloat(percentile(0.25), 'f', -1, 64),
+		P50:      strconv.FormatFloat(percentile(0.50), 'f', -1, 64),
+		P75:      strconv.FormatFloat(percentile(0.75), 'f', -1, 64),
+		MaxPrice: strconv.FormatFloat(prices[len(prices)-1], 'f', -1, 64),
+		Currency: mostCommonCurrency(products),
+	}, nil
+}
+
+func (m *mockDB) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error) {
+	return []database.GetProductPriceHistoryRow{
+		{
+			HistoryID:       uuid.Must(uuid.NewV7()),
+			ProductID:       productID,
+			Price:           sql.NullString{String: "34990000.0", Valid: true},
+			OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
+			DiscountPercent: sql.NullString{String: "0", Valid: true},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			CrawledAt:       sql.NullTime{Time: time.Now().Add(-72 * time.Hour), Valid: true},
+			ChangedAt:       time.Now().Add(-48 * time.Hour),
+		},
+		{
+			HistoryID:       uuid.Must(uuid.NewV7()),
+			ProductID:       productID,
+			Price:           sql.NullString{String: "33990000.0", Valid: true},
+			OriginalPrice:   sql.NullString{String: "34990000.0", Valid: true},
+			DiscountPercent: sql.NullString{String: "3", Valid: true},
+			Currency:        sql.NullString{String: "VND", Valid: true},
+			InStock:         sql.NullBool{Bool: true, Valid: true},
+			CrawledAt:       sql.NullTime{Time: time.Now().Add(-24 * time.Hour), Valid: true},
+			ChangedAt:       time.Now().Add(-24 * time.Hour),
+		},
 	}, nil
 }
 

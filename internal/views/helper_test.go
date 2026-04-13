@@ -7,19 +7,25 @@ import (
 
 func TestFormatPrice(t *testing.T) {
 	tests := []struct {
-		input    string
+		price    string
+		currency string
 		expected string
 	}{
-		{"33590000.0", "33,590,000 ₫"},
-		{"1000.0", "1,000 ₫"},
-		{"0.0", "0 ₫"},
-		{"invalid", "invalid"},
-		{"  18690000.0  ", "18,690,000 ₫"},
+		{"33590000.0", "VND", "33,590,000 ₫"},
+		{"1000.0", "VND", "1,000 ₫"},
+		{"0.0", "VND", "0 ₫"},
+		{"invalid", "VND", "invalid"},
+		{"  18690000.0  ", "VND", "18,690,000 ₫"},
+		{"99.99", "USD", "$99.99"},
+		{"49.99", "EUR", "€49.99"},
+		{"29.99", "GBP", "£29.99"},
+		{"100.00", "JPY", "JPY 100.00"},
+		{"100.00", "", " 100.00"},
 	}
 	for _, tt := range tests {
-		got := formatPrice(tt.input)
+		got := formatPrice(tt.price, tt.currency)
 		if got != tt.expected {
-			t.Errorf("formatPrice(%q) = %q, want %q", tt.input, got, tt.expected)
+			t.Errorf("formatPrice(%q, %q) = %q, want %q", tt.price, tt.currency, got, tt.expected)
 		}
 	}
 }

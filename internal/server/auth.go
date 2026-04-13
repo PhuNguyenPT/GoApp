@@ -18,9 +18,9 @@ import (
 var validate = validator.New()
 
 type RegisterInput struct {
-	Name     string `form:"name"     validate:"required"`
-	Email    string `form:"email"    validate:"required,email"`
-	Password string `form:"password" validate:"required,min=8"`
+	Name     string `form:"name"     validate:"required,max=100"`
+	Email    string `form:"email"    validate:"required,email,max=254"`
+	Password string `form:"password" validate:"required,min=8,max=72"`
 }
 
 func getClientIP(c *gin.Context) string {
@@ -50,6 +50,8 @@ func validationMessage(e validator.FieldError) string {
 		return "Please enter a valid email address."
 	case "min":
 		return e.Field() + " must be at least " + e.Param() + " characters."
+	case "max":
+		return e.Field() + " must be at most " + e.Param() + " characters."
 	default:
 		return "Invalid input."
 	}

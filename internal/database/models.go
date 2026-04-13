@@ -30,6 +30,7 @@ type Product struct {
 	Name            sql.NullString
 	Brand           sql.NullString
 	Category        sql.NullString
+	Subcategory     sql.NullString
 	Description     sql.NullString
 	Price           sql.NullString
 	OriginalPrice   sql.NullString
@@ -54,6 +55,7 @@ type ProductsHistory struct {
 	Name            sql.NullString
 	Brand           sql.NullString
 	Category        sql.NullString
+	Subcategory     sql.NullString
 	Price           sql.NullString
 	OriginalPrice   sql.NullString
 	DiscountPercent sql.NullString
@@ -101,18 +103,19 @@ type WarehouseDimDate struct {
 }
 
 type WarehouseDimProduct struct {
-	ID        uuid.UUID
-	ProductID uuid.UUID
-	Url       string
-	Name      sql.NullString
-	Brand     sql.NullString
-	Category  sql.NullString
-	Currency  sql.NullString
-	Images    pqtype.NullRawMessage
-	Specs     pqtype.NullRawMessage
-	ValidFrom time.Time
-	ValidTo   sql.NullTime
-	IsCurrent bool
+	ID          uuid.UUID
+	ProductID   uuid.UUID
+	Url         string
+	Name        sql.NullString
+	Brand       sql.NullString
+	Category    sql.NullString
+	Subcategory sql.NullString
+	Currency    sql.NullString
+	Images      pqtype.NullRawMessage
+	Specs       pqtype.NullRawMessage
+	ValidFrom   time.Time
+	ValidTo     sql.NullTime
+	IsCurrent   bool
 }
 
 type WarehouseDimSource struct {

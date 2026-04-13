@@ -58,6 +58,7 @@ func (s *Server) RegisterRoutes(cfg *Config) http.Handler {
 	r.GET("/products-fragment", s.productsFragmentHandler)
 	r.GET("/products", s.productsPageHandler)
 	r.GET("/products/:id", s.productDetailPageHandler)
+	r.GET("/products/:id/history", s.productPriceHistoryHandler)
 
 	protected := r.Group("/")
 	protected.Use(s.authMiddleware())

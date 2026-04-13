@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npm run minify:css && npm run lint && npm run minify:js",
+    "build": "npm run minify:css && npm run lint && npm run bundle:js",
     "minify:css": "npx tailwindcss -i ./public/styles/index.css -o ./public/output.css --minify",
-    "minify:js": "for f in public/scripts/*.js; do terser $f -o public/$(basename $f .js).min.js --compress --mangle; done",
+    "bundle:js": "for f in public/scripts/*.js; do npx esbuild $f --bundle --minify --outfile=public/$(basename $f .js).min.js; done",
     "lint": "eslint public/scripts/**/*.js",
     "lint:fix": "eslint public/scripts/**/*.js --fix",
     "fmt": "prettier --write public/scripts/**/*.js",
@@ -18,10 +18,12 @@
   "type": "module",
   "dependencies": {
     "@tailwindcss/cli": "^4.1.18",
+    "chart.js": "^4.5.1",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "esbuild": "^0.27.3",
     "eslint": "^10.0.2",
     "globals": "^17.4.0",
     "prettier": "^3.8.1",
