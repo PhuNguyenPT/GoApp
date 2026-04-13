@@ -59,6 +59,8 @@ FALLBACK_URLS = [
     "/muc-in",
 ]
 
+PAGE_SIZE = 20
+
 
 def strip_html(text):
     return re.sub(r"<[^>]+>", "", text).strip() if text else text
@@ -134,7 +136,7 @@ class ThegioididongSpider(scrapy.Spider):
             seen.add(href)
             yield response.follow(
                 href,
-                callback=self.parse,
+                callback=self.parse_category_page,
                 errback=self.handle_error,
             )
 
@@ -151,6 +153,67 @@ class ThegioididongSpider(scrapy.Spider):
                 next_page,
                 callback=self.parse,
                 errback=self.handle_error,
+            )
+
+    def parse_category_page(self, response):
+        cate_id = next(
+            (
+                v
+                for v in response.css("[data-cate]::attr(data-cate)").getall()
+                if v.isdigit() and int(v) > 0
+            ),
+            None,
+        )
+        if not cate_id:
+            self.logger.debug("No cate_id at %s — falling back to CSS pagination", response.url)
+            yield from self.parse(response)
+            return
+
+        yield scrapy.Request(
+            f"https://www.thegioididong.com/Category/FilterProductBox?c={cate_id}&o=13&pi=1",
+            method="POST",
+            body="IsParentCate=False&IsShowCompare=True&prevent=true",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": response.url,
+            },
+            callback=self.parse_listing,
+            errback=self.handle_error,
+            meta={"cate_id": cate_id, "page": 1, "referer": response.url},
+        )
+
+    def parse_listing(self, response):
+        data = response.json()
+        total = data.get("total", 0)
+        html = data.get("listproducts", "")
+        sel = scrapy.Selector(text=html)
+
+        for href in sel.css("li.item a.main-contain::attr(href)").getall():
+            yield response.follow(
+                href.split("?")[0],
+                callback=self.parse_product,
+                errback=self.handle_error,
+            )
+
+        page = response.meta["page"]
+        cate_id = response.meta["cate_id"]
+        referer = response.meta["referer"]
+
+        if page * PAGE_SIZE < total:
+            next_page = page + 1
+            yield scrapy.Request(
+                f"https://www.thegioididong.com/Category/FilterProductBox?c={cate_id}&o=13&pi={next_page}",
+                method="POST",
+                body="IsParentCate=False&IsShowCompare=True&prevent=true",
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": referer,
+                },
+                callback=self.parse_listing,
+                errback=self.handle_error,
+                meta={"cate_id": cate_id, "page": next_page, "referer": referer},
             )
 
     def _parse_gtm_fallback(self, response):
