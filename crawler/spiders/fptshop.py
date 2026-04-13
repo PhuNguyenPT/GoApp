@@ -95,6 +95,7 @@ class FptSpider(scrapy.Spider):
                 headers=API_HEADERS,
                 callback=self.parse_listing,
                 errback=self.handle_error,
+                dont_filter=True,
                 meta={"slug": slug, "skip": 0},
             )
 
@@ -148,12 +149,12 @@ class FptSpider(scrapy.Spider):
                         "sortMethod": "noi-bat",
                         "slug": slug,
                         "categoryType": "category",
-                        "location": {},
                     }
                 ),
                 headers=API_HEADERS,
                 callback=self.parse_listing,
                 errback=self.handle_error,
+                dont_filter=True,
                 meta={"slug": slug, "skip": next_skip},
             )
 
@@ -296,6 +297,11 @@ class FptSpider(scrapy.Spider):
     def handle_error(self, failure):
         if failure.check(HttpError):
             response = failure.value.response
-            self.logger.error("HTTP %s for %s", response.status, failure.request.url)
+            self.logger.error(
+                "HTTP %s for %s — body: %s",
+                response.status,
+                failure.request.url,
+                response.text[:500],
+            )
         else:
             self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))
