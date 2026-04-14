@@ -82,7 +82,6 @@ class FptSpider(scrapy.Spider):
                         url,
                         callback=self.parse_product,
                         errback=self.handle_error,
-                        dont_filter=True,
                     )
                 cur.close()
                 conn.close()
@@ -120,7 +119,6 @@ class FptSpider(scrapy.Spider):
                 headers=API_HEADERS,
                 callback=self.check_category,
                 errback=self.handle_error,
-                dont_filter=True,
                 meta={"slug": path, "dont_redirect": True},
             )
 
@@ -145,7 +143,6 @@ class FptSpider(scrapy.Spider):
             headers=API_HEADERS,
             callback=self.parse_listing,
             errback=self.handle_error,
-            dont_filter=True,
             meta={"slug": slug, "skip": 0, "dont_redirect": True},
         )
 
@@ -185,7 +182,6 @@ class FptSpider(scrapy.Spider):
                 headers=API_HEADERS,
                 callback=self.parse_listing,
                 errback=self.handle_error,
-                dont_filter=True,
                 meta={"slug": slug, "skip": next_skip, "dont_redirect": True},
             )
 

@@ -108,7 +108,6 @@ class ThegioididongSpider(scrapy.Spider):
                         url,
                         callback=self.parse_product,
                         errback=self.handle_error,
-                        dont_filter=True,
                     )
                 cur.close()
                 conn.close()
