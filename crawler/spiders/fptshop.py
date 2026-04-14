@@ -20,34 +20,18 @@ API_HEADERS = {
     "Referer": "https://fptshop.com.vn/",
 }
 
-CATEGORY_SLUGS = [
-    "dien-thoai",
-    "may-tinh-xach-tay",
-    "may-tinh-bang",
-    "may-tinh-de-ban",
-    "man-hinh",
-    "tivi",
-    "tu-lanh",
-    "may-giat",
-    "thiet-bi-bep",
-    "robot-hut-bui",
-    "may-loc-nuoc",
-    "may-loc-khong-khi",
-    "smartwatch",
-    "tai-nghe",
-    "loa",
-    "may-anh",
-    "phu-kien",
-]
-
 EXCLUDE_PATHS = {
-    "/",
-    "/gio-hang",
-    "/tim-kiem",
-    "/cua-hang",
-    "/tos",
-    "/sim-fpt",
-    "/may-doi-tra",
+    "gio-hang",
+    "tim-kiem",
+    "cua-hang",
+    "tos",
+    "sim-fpt",
+    "may-doi-tra",
+    "sim-so-dep",
+    "collection",
+    "ho-tro",
+    "dich-vu",
+    "cdn-cgi",
 }
 
 
@@ -79,27 +63,11 @@ class FptSpider(scrapy.Spider):
             yield scrapy.Request(self.start_url, callback=self.parse_product)
             return
 
-        for slug in CATEGORY_SLUGS:
-            if not slug:
-                continue
-            yield scrapy.Request(
-                API_URL,
-                method="POST",
-                body=json.dumps(
-                    {
-                        "skipCount": 0,
-                        "maxResultCount": PAGE_SIZE,
-                        "sortMethod": "noi-bat",
-                        "slug": slug,
-                        "categoryType": "category",
-                    }
-                ),
-                headers=API_HEADERS,
-                callback=self.parse_listing,
-                errback=self.handle_error,
-                dont_filter=True,
-                meta={"slug": slug, "skip": 0, "dont_redirect": True},
-            )
+        yield scrapy.Request(
+            "https://fptshop.com.vn",
+            callback=self.parse_categories,
+            errback=self.handle_error,
+        )
 
         db_url = self.settings.get("DATABASE_URL")
         if db_url:
@@ -120,6 +88,66 @@ class FptSpider(scrapy.Spider):
                 conn.close()
             except Exception as e:
                 self.logger.error("Failed to fetch stale URLs from DB: %s", e)
+
+    def parse_categories(self, response):
+        seen = set()
+        for href in response.css("a::attr(href)").getall():
+            if not href or not href.startswith("/"):
+                continue
+            path = href.strip("/")
+            if not path or "?" in path or "#" in path:
+                continue
+            if path.count("/") > 1:
+                continue
+            top = path.split("/")[0]
+            if top in EXCLUDE_PATHS:
+                continue
+            if path in seen:
+                continue
+            seen.add(path)
+            yield scrapy.Request(
+                API_URL,
+                method="POST",
+                body=json.dumps(
+                    {
+                        "skipCount": 0,
+                        "maxResultCount": 1,
+                        "sortMethod": "noi-bat",
+                        "slug": path,
+                        "categoryType": "category",
+                    }
+                ),
+                headers=API_HEADERS,
+                callback=self.check_category,
+                errback=self.handle_error,
+                dont_filter=True,
+                meta={"slug": path, "dont_redirect": True},
+            )
+
+    def check_category(self, response):
+        data = response.json()
+        if not data.get("validSlug") or not data.get("totalCount", 0):
+            return
+        slug = response.meta["slug"]
+        self.logger.debug("Valid category found: %s (%d items)", slug, data["totalCount"])
+        yield scrapy.Request(
+            API_URL,
+            method="POST",
+            body=json.dumps(
+                {
+                    "skipCount": 0,
+                    "maxResultCount": PAGE_SIZE,
+                    "sortMethod": "noi-bat",
+                    "slug": slug,
+                    "categoryType": "category",
+                }
+            ),
+            headers=API_HEADERS,
+            callback=self.parse_listing,
+            errback=self.handle_error,
+            dont_filter=True,
+            meta={"slug": slug, "skip": 0, "dont_redirect": True},
+        )
 
     def parse_listing(self, response):
         data = response.json()
@@ -189,7 +217,6 @@ class FptSpider(scrapy.Spider):
             product_data.get("brand", {}).get("name") or (listing.get("brand") or {}).get("name")
         )
 
-        # Category from breadcrumb JSON-LD
         category = subcategory = None
         raw_bc = response.css("#breadcrumb-structured-data::text").get()
         if raw_bc:
@@ -215,7 +242,6 @@ class FptSpider(scrapy.Spider):
         item["category"] = category
         item["subcategory"] = subcategory
 
-        # Prices — prefer listing API data (more reliable than scraped HTML)
         item["price"] = listing.get("currentPrice") or parse_price(str(offers.get("price", "")))
         item["original_price"] = listing.get("originalPrice") or parse_price(
             response.css("span.line-through::text").get() or ""
@@ -244,7 +270,6 @@ class FptSpider(scrapy.Spider):
         ):
             item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
 
-        # Stock: check skus array for any inventory
         skus = listing.get("skus", [])
         total_inv = listing.get("totalInventory", 0)
         item["in_stock"] = (
@@ -257,7 +282,6 @@ class FptSpider(scrapy.Spider):
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
         item["review_count"] = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
 
-        # Description
         desc_el = response.css("[class*='description-container']")
         if desc_el:
             paragraphs = [
@@ -269,7 +293,6 @@ class FptSpider(scrapy.Spider):
             raw_desc = product_data.get("description")
             item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
 
-        # Images
         product_images = list(
             dict.fromkeys(
                 url
@@ -301,9 +324,10 @@ class FptSpider(scrapy.Spider):
         if failure.check(HttpError):
             response = failure.value.response
             self.logger.error(
-                "HTTP %s for %s — body: %s",
+                "HTTP %s for %s — request body: %s — response: %s",
                 response.status,
                 failure.request.url,
+                failure.request.body,
                 response.text[:500],
             )
         else:
