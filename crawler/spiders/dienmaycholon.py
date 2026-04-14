@@ -107,9 +107,10 @@ class DienmaycholonSpider(scrapy.Spider):
 
         for product in data.get("data") or []:
             if not isinstance(product, dict):
-                self.logger.warning(
-                    "Unexpected product type %s at %s: %r", type(product), response.url, product
-                )
+                if product:
+                    self.logger.warning(
+                        "Unexpected product type %s at %s: %r", type(product), response.url, product
+                    )
                 continue
             alias_val = product.get("alias")
             if not alias_val:
