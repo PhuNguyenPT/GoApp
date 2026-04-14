@@ -80,6 +80,8 @@ class FptSpider(scrapy.Spider):
             return
 
         for slug in CATEGORY_SLUGS:
+            if not slug:
+                continue
             yield scrapy.Request(
                 API_URL,
                 method="POST",
@@ -96,7 +98,7 @@ class FptSpider(scrapy.Spider):
                 callback=self.parse_listing,
                 errback=self.handle_error,
                 dont_filter=True,
-                meta={"slug": slug, "skip": 0},
+                meta={"slug": slug, "skip": 0, "dont_redirect": True},
             )
 
         db_url = self.settings.get("DATABASE_URL")
@@ -156,7 +158,7 @@ class FptSpider(scrapy.Spider):
                 callback=self.parse_listing,
                 errback=self.handle_error,
                 dont_filter=True,
-                meta={"slug": slug, "skip": next_skip},
+                meta={"slug": slug, "skip": next_skip, "dont_redirect": True},
             )
 
     def parse_product(self, response):
