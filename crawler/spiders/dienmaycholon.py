@@ -100,16 +100,22 @@ class DienmaycholonSpider(scrapy.Spider):
 
     def parse_listing(self, response):
         data = response.json()["data"]
-        total_pages = data["Totalpage"]
-        current_page = data["getCurrentPageNumber"]
+        total_pages = data.get("Totalpage") or 0
+        current_page = data.get("getCurrentPageNumber") or 1
         alias = response.meta["alias"]
         cate_id = response.meta["cate_id"]
 
-        for product in data["data"]:
+        for product in data.get("data") or []:
             if not isinstance(product, dict):
+                self.logger.warning(
+                    "Unexpected product type %s at %s: %r", type(product), response.url, product
+                )
+                continue
+            alias_val = product.get("alias")
+            if not alias_val:
                 continue
             yield scrapy.Request(
-                f"https://dienmaycholon.com/{alias}/{product['alias']}",
+                f"https://dienmaycholon.com/{alias}/{alias_val}",
                 callback=self.parse_product,
                 errback=self.handle_error,
                 meta={"api_data": product},
@@ -129,7 +135,9 @@ class DienmaycholonSpider(scrapy.Spider):
 
     def parse_product(self, response):
         api = response.meta.get("api_data", {})
-        flag_content = api.get("flag_content") or {}
+        flag_content = api.get("flag_content")
+        if not isinstance(flag_content, dict):
+            flag_content = {}
 
         ld_product = {}
         ld_breadcrumbs = []
