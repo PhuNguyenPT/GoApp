@@ -137,8 +137,9 @@ class FptSpider(scrapy.Spider):
                 meta={"listing": item},
             )
 
+        MAX_SKIP = 1000 - PAGE_SIZE
         next_skip = skip + PAGE_SIZE
-        if next_skip < total:
+        if next_skip < total and next_skip <= MAX_SKIP:
             yield scrapy.Request(
                 API_URL,
                 method="POST",
