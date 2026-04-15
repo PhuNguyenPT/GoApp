@@ -279,17 +279,20 @@ class FptSpider(scrapy.Spider):
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
         item["review_count"] = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
 
-        desc_el = response.xpath(
+        desc_container = response.xpath(
             "//h2[contains(text(),'Mô tả sản phẩm')]/../../following-sibling::div[1]"
         )
-        if desc_el:
-            parts = [
-                re.sub(r"\s+", " ", t).strip()
-                for t in desc_el.xpath(
-                    ".//p//text() | .//h2//text() | .//h3//text() | .//li//text()"
-                ).getall()
-            ]
-            item["description"] = " ".join(p for p in parts if p and p != "Thu gọn") or None
+
+        if desc_container:
+            elements = desc_container.xpath(".//p | .//h2 | .//h3 | .//li")
+            parts = []
+
+            for el in elements:
+                text = strip_html(el.get())
+                if text and text.strip() not in ["Thu gọn", ""]:
+                    parts.append(re.sub(r"\s+", " ", text).strip())
+
+            item["description"] = "\n\n".join(parts)
         else:
             raw_desc = product_data.get("description")
             item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
