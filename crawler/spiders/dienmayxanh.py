@@ -227,7 +227,12 @@ class DienmayxanhSpider(scrapy.Spider):
 
         item["name"] = ld_product.get("name") or clean_text(response.css("h1::text").get())
         item["sku"] = ld_product.get("sku")
-        item["description"] = ld_product.get("description")
+        desc_els = response.css("div#tab-2 div.text-detail p, div#tab-2 div.text-detail h3")
+        if desc_els:
+            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
+            item["description"] = "\n\n".join(p for p in parts if p) or None
+        else:
+            item["description"] = ld_product.get("description")
 
         brand_raw = ld_product.get("brand", {}).get("name")
         if isinstance(brand_raw, list):
@@ -288,12 +293,12 @@ class DienmayxanhSpider(scrapy.Spider):
         src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(src)").getall()
-            if "/Products/" in url
+            if "/Products/" in url and "/Slider/" in url
         ]
         data_src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(data-src)").getall()
-            if "/Products/" in url
+            if "/Products/" in url and "/Slider/" in url
         ]
         product_images = list(dict.fromkeys(src_images + data_src_images))
         if not product_images:
