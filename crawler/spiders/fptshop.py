@@ -187,7 +187,8 @@ class FptSpider(scrapy.Spider):
 
     def parse_product(self, response):
         listing = response.meta.get("listing", {})
-
+        if not listing and response.css("h1.product-name, #detail-product-script").get() is None:
+            return
         item = ProductItem()
         item["source"] = "fptshop"
         item["url"] = response.url.split("?")[0]
@@ -278,13 +279,17 @@ class FptSpider(scrapy.Spider):
         item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
         item["review_count"] = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
 
-        desc_el = response.css("[class*='description-container']")
+        desc_el = response.xpath(
+            "//h2[contains(text(),'Mô tả sản phẩm')]/../../following-sibling::div[1]"
+        )
         if desc_el:
-            paragraphs = [
-                re.sub(r"\s+", " ", strip_html(block)).strip()
-                for block in desc_el.css("p, h2, h3, li").getall()
+            parts = [
+                re.sub(r"\s+", " ", t).strip()
+                for t in desc_el.xpath(
+                    ".//p//text() | .//h2//text() | .//h3//text() | .//li//text()"
+                ).getall()
             ]
-            item["description"] = "\n\n".join(p for p in paragraphs if p and p != "Thu gọn") or None
+            item["description"] = " ".join(p for p in parts if p and p != "Thu gọn") or None
         else:
             raw_desc = product_data.get("description")
             item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
