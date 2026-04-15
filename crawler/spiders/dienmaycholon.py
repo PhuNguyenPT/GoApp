@@ -43,6 +43,10 @@ EXCLUDED_SLUGS = {
 }
 
 
+def strip_html(text):
+    return re.sub(r"<[^>]+>", "", text).strip() if text else text
+
+
 class DienmaycholonSpider(scrapy.Spider):
     name = "dienmaycholon"
     allowed_domains = ["dienmaycholon.com"]
@@ -164,7 +168,17 @@ class DienmaycholonSpider(scrapy.Spider):
 
         item["name"] = ld_product.get("name") or api.get("name")
         item["sku"] = ld_product.get("sku") or api.get("sap_code")
-        item["description"] = ld_product.get("description")
+
+        desc_els = response.css(
+            "div.tab_feature p:not([style*='center']):not(.see_feature), "
+            "div.tab_feature h2, "
+            "div.tab_feature h3"
+        )
+        if desc_els:
+            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
+            item["description"] = "\n\n".join(p for p in parts if p) or None
+        else:
+            item["description"] = ld_product.get("description")
 
         brand_raw = ld_product.get("brand", {}).get("name")
         if isinstance(brand_raw, list):
@@ -183,11 +197,9 @@ class DienmaycholonSpider(scrapy.Spider):
             item["category"] = None
             item["subcategory"] = None
 
-        # Prices from CSS (confirmed selectors) with API fallback
         item["price"] = parse_price(response.css("strong.price_sale::text").get()) or parse_price(
             str(api.get("discount", ""))
         )
-
         item["original_price"] = parse_price(
             response.css("div.price_giaban span::text").get()
         ) or parse_price(str(api.get("saleprice", "")))
@@ -221,24 +233,17 @@ class DienmaycholonSpider(scrapy.Spider):
             or flag_content.get("totalrate_customer")
         )
 
-        data_src = [
-            u
-            for u in response.css("[class*='product'] img::attr(data-src)").getall()
-            if "data:image" not in u and "/Apro/Apro_product_" in u
-        ]
-        src = [
-            u
-            for u in response.css("[class*='product'] img::attr(src)").getall()
-            if "data:image" not in u and "/Apro/Apro_product_" in u
-        ]
-        product_images = list(dict.fromkeys(data_src + src))
+        product_images = list(
+            dict.fromkeys(
+                u
+                for u in response.css("div.box_pro-images img::attr(data-src)").getall()
+                if not u.startswith("data:image")
+            )
+        )
         if not product_images:
             ld_images = ld_product.get("image", [])
             product_images = [ld_images] if isinstance(ld_images, str) else (ld_images or [])
         item["images"] = product_images
-
-        def strip_html(text):
-            return re.sub(r"<[^>]+>", "", text).strip() if text else text
 
         item["specs"] = {
             prop["name"]: re.sub(
