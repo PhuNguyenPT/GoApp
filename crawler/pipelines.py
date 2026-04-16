@@ -74,6 +74,7 @@ class PostgresPipeline:
                 self.conn.commit()
         except Exception as e:
             self.conn.rollback()
+            self.cur = self.conn.cursor()
             logger.warning(f"Failed to save item (url={data.get('url')}): {e}")
 
         return item
