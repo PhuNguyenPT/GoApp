@@ -20,7 +20,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 50
+BATCH_SIZE = 500
 
 
 def get_files():
