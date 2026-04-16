@@ -67,6 +67,7 @@ def reimport_file(conn, filepath):
 
     conn.commit()
     cur.close()
+    logger.info(f"  Done: {count} imported, {errors} skipped.")
     return count, errors
 
 
