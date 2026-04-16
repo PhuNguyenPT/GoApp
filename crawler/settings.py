@@ -35,6 +35,7 @@ RETRY_HTTP_CODES = [500, 502, 503, 504, 408, 429]
 DOWNLOAD_TIMEOUT = 30
 
 DOWNLOADER_MIDDLEWARES = {
+    "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
     "middlewares.RandomUserAgentMiddleware": 400,
 }
 
