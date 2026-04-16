@@ -292,136 +292,17 @@ class ThegioididongSpider(scrapy.Spider):
         offers = ld_product.get("offers") or {}
         rating = ld_product.get("aggregateRating") or {}
 
-        item = ProductItem()
-        item["source"] = "thegioididong"
-        item["url"] = ld_product.get("url") or response.url.split("?")[0]
-        item["crawled_at"] = datetime.now(timezone.utc).isoformat()
-        item["currency"] = offers.get("priceCurrency", "VND")
+        product_url = ld_product.get("url") or response.url.split("?")[0]
 
-        # --- Fallback for pages without Product LD+JSON (landing/pre-order pages) ---
-        if not ld_product:
-            gtm = self._parse_gtm_fallback(response)
-            item["name"] = gtm.get("name")
-            item["sku"] = gtm.get("sku")
-            item["description"] = None
-            item["brand"] = gtm.get("brand") or ((gtm.get("name") or "").split()[0] or None)
-            if ld_breadcrumbs:
-                if len(ld_breadcrumbs) >= 3:
-                    item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
-                    item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
-                else:
-                    item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
-                    item["subcategory"] = None
-            else:
-                item["category"] = None
-                item["subcategory"] = None
-            item["price"] = gtm.get("price")
-            item["original_price"] = None
-            item["discount_percent"] = None
-            item["in_stock"] = gtm.get("in_stock", False)
-            item["quantity"] = None
-            item["rating"] = None
-            item["review_count"] = None
-
-            # Product images are JS-rendered and not in static HTML on landing pages.
-            # Use og:image (product reveal/press image) as best available fallback.
-            src_images = [
-                url
-                for url in response.css("div.owl-carousel img::attr(src)").getall()
-                if "/Products/" in url
-            ]
-            data_src_images = [
-                url
-                for url in response.css("div.owl-carousel img::attr(data-src)").getall()
-                if "/Products/" in url
-            ]
-            product_images = list(dict.fromkeys(src_images + data_src_images))
-            if not product_images:
-                og_image = response.css("meta[property='og:image']::attr(content)").get()
-                product_images = [og_image.split("#")[0]] if og_image else []
-            item["images"] = product_images
-
-            item["specs"] = self._parse_gtm_specs(response)
-            yield item
+        if not product_url:
+            self.logger.error(f"Could not find URL for product at {response.url}")
             return
 
-        # --- Normal path: Product LD+JSON present ---
-        item["name"] = ld_product.get("name") or clean_text(response.css("h1::text").get())
-        item["sku"] = ld_product.get("sku")
+        item = ProductItem(url=product_url)
 
-        # Long description from article body, fall back to JSON-LD SEO summary
-        desc_el = response.css("div.description div.text-detail")
-        if desc_el:
-            paragraphs = [
-                re.sub(r"\s+", " ", strip_html(block)).strip()
-                for block in desc_el.css("p, h2, h3, li").getall()
-            ]
-            item["description"] = (
-                "\n\n".join(p for p in paragraphs if p and p != "Xem thêm") or None
-            )
-        else:
-            item["description"] = ld_product.get("description")
-
-        # Brand: {"@type": "Brand", "name": ["iPhone (Apple)"]} — name is a list
-        brand_raw = ld_product.get("brand", {}).get("name")
-        if isinstance(brand_raw, list):
-            brand_raw = brand_raw[0] if brand_raw else None
-        brand_match = re.search(r"\((.+?)\)", brand_raw) if brand_raw else None
-        item["brand"] = brand_match.group(1) if brand_match else brand_raw
-
-        # Last resort: derive brand from first word of product name
-        if not item["brand"] and item["name"]:
-            item["brand"] = item["name"].split()[0] if item["name"].split() else None
-
-        # Category from breadcrumb JSON-LD (last item)
-        if ld_breadcrumbs:
-            if len(ld_breadcrumbs) >= 3:
-                item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
-                item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
-            else:
-                item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
-                item["subcategory"] = None
-        else:
-            breadcrumbs = response.css("[class*='breadcrumb'] a::text").getall()
-            if len(breadcrumbs) >= 2:
-                item["category"] = clean_text(breadcrumbs[-2])
-                item["subcategory"] = clean_text(breadcrumbs[-1])
-            else:
-                item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
-                item["subcategory"] = None
-
-        item["price"] = offers.get("price") or parse_price(
-            response.css("[class*='price-present']::text").get()
-        )
-        item["original_price"] = parse_price(response.css("p.box-price-old::text").get())
-
-        if item["original_price"] and item["price"] and item["original_price"] > item["price"]:
-            diff = item["original_price"] - item["price"]
-            item["discount_percent"] = round((diff / item["original_price"]) * 100)
-        else:
-            item["discount_percent"] = parse_discount(
-                response.css("p.box-price-percent::text").get()
-            )
-
-        if item["price"] and item["discount_percent"] and not item["original_price"]:
-            discount = item["discount_percent"]
-            item["original_price"] = (
-                round(item["price"] / (1 - discount / 100)) if 0 < discount < 100 else None
-            )
-
-        availability = offers.get("availability", "")
-        item["in_stock"] = "InStock" in availability or bool(
-            response.css("[class*='btn-buynow']").get()
-        )
-        item["quantity"] = None
-
-        item["rating"] = rating.get("ratingValue") or parse_rating(
-            response.css(".point-average-score::text").get()
-        )
-        item["review_count"] = rating.get("reviewCount")
-
-        ld_image = ld_product.get("image", {})
-        ld_image_url = ld_image.get("contentUrl") if isinstance(ld_image, dict) else ld_image
+        item.source = "thegioididong"
+        item.crawled_at = datetime.now(timezone.utc).isoformat()
+        item.currency = offers.get("priceCurrency", "VND")
         src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(src)").getall()
@@ -433,9 +314,93 @@ class ThegioididongSpider(scrapy.Spider):
             if "/Products/" in url
         ]
         product_images = list(dict.fromkeys(src_images + data_src_images))
-        item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
 
-        item["specs"] = {
+        # --- Fallback Path ---
+        if not ld_product:
+            gtm = self._parse_gtm_fallback(response)
+            item.name = gtm.get("name")
+            item.sku = gtm.get("sku")
+            item.description = None
+            item.brand = gtm.get("brand") or ((gtm.get("name") or "").split()[0] or None)
+
+            if ld_breadcrumbs:
+                if len(ld_breadcrumbs) >= 3:
+                    item.category = ld_breadcrumbs[-2].get("item", {}).get("name")
+                    item.subcategory = ld_breadcrumbs[-1].get("item", {}).get("name")
+                else:
+                    item.category = ld_breadcrumbs[-1].get("item", {}).get("name")
+                    item.subcategory = None
+
+            item.price = gtm.get("price")
+            item.in_stock = gtm.get("in_stock", False)
+            if not product_images:
+                og_image = response.css("meta[property='og:image']::attr(content)").get()
+                product_images = [og_image.split("#")[0]] if og_image else []
+            item.images = product_images
+
+            item.specs = self._parse_gtm_specs(response)
+            yield item
+            return
+
+        # --- Normal Path ---
+        item.name = ld_product.get("name") or clean_text(response.css("h1::text").get())
+        item.sku = ld_product.get("sku")
+
+        desc_el = response.css("div.description div.text-detail")
+        if desc_el:
+            paragraphs = [
+                re.sub(r"\s+", " ", strip_html(block)).strip()
+                for block in desc_el.css("p, h2, h3, li").getall()
+            ]
+            item.description = "\n\n".join(p for p in paragraphs if p and p != "Xem thêm") or None
+        else:
+            item.description = ld_product.get("description")
+
+        brand_raw = ld_product.get("brand", {}).get("name")
+        if isinstance(brand_raw, list):
+            brand_raw = brand_raw[0] if brand_raw else None
+        brand_match = re.search(r"\((.+?)\)", brand_raw) if brand_raw else None
+        item.brand = brand_match.group(1) if brand_match else brand_raw
+
+        if not item.brand and item.name:
+            item.brand = item.name.split()[0] if item.name.split() else None
+
+        if ld_breadcrumbs:
+            if len(ld_breadcrumbs) >= 3:
+                item.category = ld_breadcrumbs[-2].get("item", {}).get("name")
+                item.subcategory = ld_breadcrumbs[-1].get("item", {}).get("name")
+            else:
+                item.category = ld_breadcrumbs[-1].get("item", {}).get("name")
+                item.subcategory = None
+
+        item.price = offers.get("price") or parse_price(
+            response.css("[class*='price-present']::text").get()
+        )
+        item.original_price = parse_price(response.css("p.box-price-old::text").get())
+
+        if item.original_price and item.price and item.original_price > item.price:
+            item.discount_percent = round(
+                ((item.original_price - item.price) / item.original_price) * 100
+            )
+        else:
+            item.discount_percent = parse_discount(response.css("p.box-price-percent::text").get())
+
+        availability = offers.get("availability", "")
+        item.in_stock = "InStock" in availability or bool(
+            response.css("[class*='btn-buynow']").get()
+        )
+
+        item.rating = rating.get("ratingValue") or parse_rating(
+            response.css(".point-average-score::text").get()
+        )
+        item.review_count = rating.get("reviewcount")
+
+        # Images
+        ld_image = ld_product.get("image", {})
+        ld_image_url = ld_image.get("contentUrl") if isinstance(ld_image, dict) else ld_image
+        item.images = product_images or ([ld_image_url] if ld_image_url else [])
+
+        item.specs = {
             prop["name"]: re.sub(
                 r"\.\s*Xem thông tin hãng\s*$", "", strip_html(prop["value"])
             ).strip()

@@ -217,79 +217,64 @@ class DienmayxanhSpider(scrapy.Spider):
                 self.logger.warning("Failed to parse LD+JSON at %s: %s", response.url, e)
 
         offers = ld_product.get("offers") or {}
-        rating = ld_product.get("aggregateRating") or {}
+        agg_rating = ld_product.get("aggregateRating") or {}
 
-        item = ProductItem()
-        item["source"] = "dienmayxanh"
-        item["url"] = ld_product.get("url") or response.url.split("?")[0]
-        item["crawled_at"] = datetime.now(timezone.utc).isoformat()
-        item["currency"] = offers.get("priceCurrency", "VND")
+        # --- name ---
+        name = ld_product.get("name") or clean_text(response.css("h1::text").get())
 
-        item["name"] = ld_product.get("name") or clean_text(response.css("h1::text").get())
-        item["sku"] = ld_product.get("sku")
-        desc_els = response.css("div#tab-2 div.text-detail p, div#tab-2 div.text-detail h3")
-        if desc_els:
-            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
-            item["description"] = "\n\n".join(p for p in parts if p) or None
-        else:
-            item["description"] = ld_product.get("description")
-
+        # --- brand ---
         brand_raw = ld_product.get("brand", {}).get("name")
         if isinstance(brand_raw, list):
             brand_raw = brand_raw[0] if brand_raw else None
-        item["brand"] = brand_raw or (item["name"].split()[0] if item["name"] else None)
+        brand = brand_raw or (name.split()[0] if name else None)
 
+        # --- category / subcategory ---
         if ld_breadcrumbs:
             if len(ld_breadcrumbs) >= 3:
-                item["category"] = ld_breadcrumbs[-2].get("item", {}).get("name")
-                item["subcategory"] = ld_breadcrumbs[-1].get("item", {}).get("name")
+                category = ld_breadcrumbs[-2].get("item", {}).get("name")
+                subcategory = ld_breadcrumbs[-1].get("item", {}).get("name")
             else:
-                item["category"] = ld_breadcrumbs[-1].get("item", {}).get("name")
-                item["subcategory"] = None
+                category = ld_breadcrumbs[-1].get("item", {}).get("name")
+                subcategory = None
         else:
             breadcrumbs = response.css("[class*='breadcrumb'] a::text").getall()
             if len(breadcrumbs) >= 2:
-                item["category"] = clean_text(breadcrumbs[-2])
-                item["subcategory"] = clean_text(breadcrumbs[-1])
+                category = clean_text(breadcrumbs[-2])
+                subcategory = clean_text(breadcrumbs[-1])
             else:
-                item["category"] = clean_text(breadcrumbs[-1]) if breadcrumbs else None
-                item["subcategory"] = None
+                category = clean_text(breadcrumbs[-1]) if breadcrumbs else None
+                subcategory = None
 
-        item["price"] = parse_price(
+        # --- description ---
+        desc_els = response.css("div#tab-2 div.text-detail p, div#tab-2 div.text-detail h3")
+        if desc_els:
+            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
+            description = "\n\n".join(p for p in parts if p) or None
+        else:
+            description = ld_product.get("description")
+
+        # --- pricing ---
+        price = parse_price(
             response.css("input#DisPriceScenrioGTM::attr(value)").get()
         ) or offers.get("price")
-        item["original_price"] = parse_price(
-            response.css("input#PriceOriginGTM::attr(value)").get()
-        )
-        if item["original_price"] and item["original_price"] == item["price"]:
-            item["original_price"] = None
+        original_price = parse_price(response.css("input#PriceOriginGTM::attr(value)").get())
+        if original_price and original_price == price:
+            original_price = None
 
-        if item["original_price"] and item["price"] and item["original_price"] > item["price"]:
-            diff = item["original_price"] - item["price"]
-            item["discount_percent"] = round((diff / item["original_price"]) * 100)
+        if original_price and price and original_price > price:
+            discount_percent = round(((original_price - price) / original_price) * 100)
         else:
             discount_raw = response.css("input#PercentScenrioGTM::attr(value)").get()
-            item["discount_percent"] = (
+            discount_percent = (
                 int(discount_raw) if discount_raw and discount_raw.strip() != "0" else None
             )
 
-        if item["price"] and item["discount_percent"] and not item["original_price"]:
-            discount = item["discount_percent"]
-            item["original_price"] = (
-                round(item["price"] / (1 - discount / 100)) if 0 < discount < 100 else None
+        if price and discount_percent and not original_price:
+            original_price = (
+                round(price / (1 - discount_percent / 100)) if 0 < discount_percent < 100 else None
             )
 
-        availability = offers.get("availability", "")
-        item["in_stock"] = "InStock" in availability or bool(
-            response.css("[class*='btn-buynow']").get()
-        )
-        item["quantity"] = None
-
-        item["rating"] = rating.get("ratingValue") or parse_rating(
-            response.css("[class*='rank'] span::text").get()
-        )
-        item["review_count"] = rating.get("reviewcount") or rating.get("reviewCount")
-
+        # --- images ---
         src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(src)").getall()
@@ -300,14 +285,14 @@ class DienmayxanhSpider(scrapy.Spider):
             for url in response.css("div.owl-carousel img::attr(data-src)").getall()
             if "/Products/" in url and "/Slider/" in url
         ]
-        product_images = list(dict.fromkeys(src_images + data_src_images))
-        if not product_images:
+        images = list(dict.fromkeys(src_images + data_src_images))
+        if not images:
             ld_image = ld_product.get("image", {})
             ld_image_url = ld_image.get("contentUrl") if isinstance(ld_image, dict) else ld_image
-            product_images = [ld_image_url] if ld_image_url else []
-        item["images"] = product_images
+            images = [ld_image_url] if ld_image_url else []
 
-        item["specs"] = {
+        # --- specs ---
+        specs = {
             prop["name"]: re.sub(
                 r"\.\s*Xem thông tin hãng\s*$", "", strip_html(prop["value"])
             ).strip()
@@ -317,7 +302,31 @@ class DienmayxanhSpider(scrapy.Spider):
             and strip_html(prop["value"]).strip() not in ("Đang cập nhật", "Hãng không công bố")
         }
 
-        yield item
+        yield ProductItem(
+            url=ld_product.get("url") or response.url.split("?")[0],
+            source="dienmayxanh",
+            crawled_at=datetime.now(timezone.utc),
+            currency=offers.get("priceCurrency", "VND"),
+            name=name,
+            sku=ld_product.get("sku"),
+            brand=brand,
+            category=category,
+            subcategory=subcategory,
+            description=description,
+            price=price,
+            original_price=original_price,
+            discount_percent=discount_percent,
+            in_stock=(
+                "InStock" in offers.get("availability", "")
+                or bool(response.css("[class*='btn-buynow']").get())
+            ),
+            quantity=None,
+            rating=agg_rating.get("ratingValue")
+            or parse_rating(response.css("[class*='rank'] span::text").get()),
+            review_count=agg_rating.get("reviewcount") or agg_rating.get("reviewCount"),
+            images=images,
+            specs=specs,
+        )
 
     def handle_error(self, failure):
         self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))

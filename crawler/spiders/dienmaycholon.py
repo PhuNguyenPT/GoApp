@@ -3,6 +3,7 @@ import re
 from datetime import datetime, timezone
 
 import scrapy
+from scrapy.spidermiddlewares.httperror import HttpError
 
 from items import ProductItem
 from utils.helpers import parse_price, parse_rating
@@ -160,92 +161,71 @@ class DienmaycholonSpider(scrapy.Spider):
         offers = ld_product.get("offers") or {}
         agg_rating = ld_product.get("aggregateRating") or {}
 
-        item = ProductItem()
-        item["source"] = "dienmaycholon"
-        item["url"] = response.url.split("?")[0]
-        item["crawled_at"] = datetime.now(timezone.utc).isoformat()
-        item["currency"] = "VND"
-
-        item["name"] = ld_product.get("name") or api.get("name")
-        item["sku"] = ld_product.get("sku") or api.get("sap_code")
-
-        desc_els = response.css(
-            "div.tab_feature p:not([style*='center']):not(.see_feature), "
-            "div.tab_feature h2, "
-            "div.tab_feature h3"
-        )
-        if desc_els:
-            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
-            item["description"] = "\n\n".join(p for p in parts if p) or None
-        else:
-            item["description"] = ld_product.get("description")
-
+        # --- brand ---
         brand_raw = ld_product.get("brand", {}).get("name")
         if isinstance(brand_raw, list):
             brand_raw = brand_raw[0] if brand_raw else None
         series = flag_content.get("series", [])
-        item["brand"] = brand_raw or (series[0] if series else None)
+        brand = brand_raw or (series[0] if series else None)
 
+        # --- category / subcategory ---
         crumbs = [e for e in ld_breadcrumbs if e.get("position", 0) > 1]
         if len(crumbs) >= 2:
-            item["category"] = crumbs[-2].get("item", {}).get("name")
-            item["subcategory"] = crumbs[-1].get("item", {}).get("name")
+            category = crumbs[-2].get("item", {}).get("name")
+            subcategory = crumbs[-1].get("item", {}).get("name")
         elif crumbs:
-            item["category"] = crumbs[-1].get("item", {}).get("name")
-            item["subcategory"] = None
+            category = crumbs[-1].get("item", {}).get("name")
+            subcategory = None
         else:
-            item["category"] = None
-            item["subcategory"] = None
+            category = subcategory = None
 
-        item["price"] = parse_price(response.css("strong.price_sale::text").get()) or parse_price(
+        # --- description ---
+        desc_els = response.css(
+            "div.tab_feature p:not([style*='center']):not(.see_feature),"
+            "div.tab_feature h2,"
+            "div.tab_feature h3"
+        )
+        if desc_els:
+            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
+            description = "\n\n".join(p for p in parts if p) or None
+        else:
+            description = ld_product.get("description")
+
+        # --- pricing ---
+        price = parse_price(response.css("strong.price_sale::text").get()) or parse_price(
             str(api.get("discount", ""))
         )
-        item["original_price"] = parse_price(
+        original_price = parse_price(
             response.css("div.price_giaban span::text").get()
         ) or parse_price(str(api.get("saleprice", "")))
 
-        if item["original_price"] and item["original_price"] == item["price"]:
-            item["original_price"] = None
+        if original_price and original_price == price:
+            original_price = None
 
-        if item["original_price"] and item["price"] and item["original_price"] > item["price"]:
-            diff = item["original_price"] - item["price"]
-            item["discount_percent"] = round((diff / item["original_price"]) * 100)
+        if original_price and price and original_price > price:
+            discount_percent = round(((original_price - price) / original_price) * 100)
         else:
             discount_raw = response.css("span.discount_percent::text").get()
             if discount_raw:
                 m = re.search(r"\d+", discount_raw)
-                item["discount_percent"] = int(m.group()) if m else None
+                discount_percent = int(m.group()) if m else None
             else:
-                item["discount_percent"] = None
+                discount_percent = None
 
-        availability = offers.get("availability", "")
-        item["in_stock"] = "InStock" in availability or bool(response.css("button.click_buy").get())
-        item["quantity"] = None
-
-        item["rating"] = (
-            agg_rating.get("ratingValue")
-            or flag_content.get("rate_customer")
-            or parse_rating(response.css("[class*='rating']::text").get())
-        )
-        item["review_count"] = (
-            agg_rating.get("reviewcount")
-            or agg_rating.get("reviewCount")
-            or flag_content.get("totalrate_customer")
-        )
-
-        product_images = list(
+        # --- images ---
+        images = list(
             dict.fromkeys(
                 u
                 for u in response.css("div.box_pro-images img::attr(data-src)").getall()
                 if not u.startswith("data:image")
             )
         )
-        if not product_images:
+        if not images:
             ld_images = ld_product.get("image", [])
-            product_images = [ld_images] if isinstance(ld_images, str) else (ld_images or [])
-        item["images"] = product_images
+            images = [ld_images] if isinstance(ld_images, str) else (ld_images or [])
 
-        item["specs"] = {
+        # --- specs ---
+        specs = {
             prop["name"]: re.sub(
                 r"\.\s*Xem thông tin hãng\s*$", "", strip_html(prop["value"])
             ).strip()
@@ -255,11 +235,36 @@ class DienmaycholonSpider(scrapy.Spider):
             and strip_html(prop["value"]).strip() not in ("Đang cập nhật", "Hãng không công bố")
         }
 
-        yield item
+        yield ProductItem(
+            url=response.url.split("?")[0],
+            source="dienmaycholon",
+            crawled_at=datetime.now(timezone.utc),
+            currency="VND",
+            name=ld_product.get("name") or api.get("name"),
+            sku=ld_product.get("sku") or api.get("sap_code"),
+            brand=brand,
+            category=category,
+            subcategory=subcategory,
+            description=description,
+            price=price,
+            original_price=original_price,
+            discount_percent=discount_percent,
+            in_stock=(
+                "InStock" in offers.get("availability", "")
+                or bool(response.css("button.click_buy").get())
+            ),
+            quantity=None,
+            rating=agg_rating.get("ratingValue")
+            or flag_content.get("rate_customer")
+            or parse_rating(response.css("[class*='rating']::text").get()),
+            review_count=agg_rating.get("reviewcount")
+            or agg_rating.get("reviewCount")
+            or flag_content.get("totalrate_customer"),
+            images=images,
+            specs=specs,
+        )
 
     def handle_error(self, failure):
-        from scrapy.spidermiddlewares.httperror import HttpError
-
         if failure.check(HttpError):
             response = failure.value.response
             if response.status == 404:

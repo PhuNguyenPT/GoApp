@@ -189,11 +189,6 @@ class FptSpider(scrapy.Spider):
         listing = response.meta.get("listing", {})
         if not listing and response.css("h1.product-name, #detail-product-script").get() is None:
             return
-        item = ProductItem()
-        item["source"] = "fptshop"
-        item["url"] = response.url.split("?")[0]
-        item["crawled_at"] = datetime.now(timezone.utc).isoformat()
-        item["currency"] = "VND"
 
         product_data = {}
         raw = response.css("#detail-product-script::text").get()
@@ -206,14 +201,16 @@ class FptSpider(scrapy.Spider):
         offers = product_data.get("offers", {})
         agg = product_data.get("aggregateRating", {})
 
-        item["name"] = clean_text(
+        # --- name / sku / brand ---
+        name = clean_text(
             product_data.get("name") or listing.get("name") or response.css("h1::text").get()
         )
-        item["sku"] = product_data.get("sku") or listing.get("code")
-        item["brand"] = clean_text(
+        sku = product_data.get("sku") or listing.get("code")
+        brand = clean_text(
             product_data.get("brand", {}).get("name") or (listing.get("brand") or {}).get("name")
         )
 
+        # --- category / subcategory ---
         category = subcategory = None
         raw_bc = response.css("#breadcrumb-structured-data::text").get()
         if raw_bc:
@@ -236,93 +233,107 @@ class FptSpider(scrapy.Spider):
         if not category:
             url_parts = response.url.split("/")
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
-        item["category"] = category
-        item["subcategory"] = subcategory
 
-        item["price"] = listing.get("currentPrice") or parse_price(str(offers.get("price", "")))
-        item["original_price"] = listing.get("originalPrice") or parse_price(
+        # --- pricing ---
+        price = listing.get("currentPrice") or parse_price(str(offers.get("price", "")))
+        original_price = listing.get("originalPrice") or parse_price(
             response.css("span.line-through::text").get() or ""
         )
-        if item["original_price"] is not None and item["original_price"] == item["price"]:
-            item["original_price"] = None
+        if original_price is not None and original_price == price:
+            original_price = None
 
-        if (
-            item["original_price"] is not None
-            and item["price"] is not None
-            and item["original_price"] > item["price"]
-        ):
-            item["discount_percent"] = round(
-                (item["original_price"] - item["price"]) / item["original_price"] * 100
-            )
+        if original_price is not None and price is not None and original_price > price:
+            discount_percent = round((original_price - price) / original_price * 100)
         else:
-            item["discount_percent"] = listing.get("discountPercentage") or parse_discount(
+            discount_percent = listing.get("discountPercentage") or parse_discount(
                 "".join(response.css("span.text-red-red-7::text").getall()[:2])
             )
 
         if (
-            item["price"] is not None
-            and item["discount_percent"] is not None
-            and item["discount_percent"] < 100
-            and item["original_price"] is None
+            price is not None
+            and discount_percent is not None
+            and discount_percent < 100
+            and original_price is None
         ):
-            item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
+            original_price = round(price / (1 - discount_percent / 100))
 
+        # --- stock ---
         skus = listing.get("skus", [])
         total_inv = listing.get("totalInventory", 0)
-        item["in_stock"] = (
+        in_stock = (
             total_inv > 0
             or any(s.get("totalInventory", 0) > 0 for s in skus)
             or offers.get("availability", "").endswith("InStock")
         )
-        item["quantity"] = total_inv or None
+        quantity = total_inv or None
 
-        item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
-        item["review_count"] = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
+        # --- rating ---
+        rating = float(agg["ratingValue"]) if agg.get("ratingValue") else None
+        review_count = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
 
+        # --- description ---
         desc_container = response.xpath(
             "//h2[contains(text(),'Mô tả sản phẩm')]/../../following-sibling::div[1]"
         )
-
         if desc_container:
             elements = desc_container.xpath(".//p | .//h2 | .//h3 | .//li")
-            parts = []
-
-            for el in elements:
-                text = strip_html(el.get())
-                if text and text.strip() not in ["Thu gọn", ""]:
-                    parts.append(re.sub(r"\s+", " ", text).strip())
-
-            item["description"] = "\n\n".join(parts)
+            parts = [
+                re.sub(r"\s+", " ", strip_html(el.get())).strip()
+                for el in elements
+                if strip_html(el.get()).strip() not in ("Thu gọn", "")
+            ]
+            description = "\n\n".join(parts)
         else:
             raw_desc = product_data.get("description")
-            item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
+            description = clean_text(raw_desc.strip('"')) if raw_desc else None
 
-        product_images = list(
+        # --- images ---
+        images = list(
             dict.fromkeys(
                 url
                 for url in response.css("[class*='swiper'] img::attr(src)").getall()
                 if "/unsafe/828x0/" in url
             )
         )
-        if not product_images:
+        if not images:
             ld_image = product_data.get("image") or (
                 listing.get("image", {}).get("src")
                 if isinstance(listing.get("image"), dict)
                 else listing.get("image")
             )
             if isinstance(ld_image, list):
-                product_images = ld_image
+                images = ld_image
             elif ld_image:
-                product_images = [ld_image]
-        item["images"] = product_images
+                images = [ld_image]
 
-        item["specs"] = {
+        # --- specs ---
+        specs = {
             prop["name"]: prop["value"]
             for prop in (product_data.get("additionalProperty") or [])
             if prop.get("name") and str(prop.get("value", "")).strip()
         }
 
-        yield item
+        yield ProductItem(
+            url=response.url.split("?")[0],
+            source="fptshop",
+            crawled_at=datetime.now(timezone.utc),
+            currency="VND",
+            name=name,
+            sku=sku,
+            brand=brand,
+            category=category,
+            subcategory=subcategory,
+            description=description,
+            price=price,
+            original_price=original_price,
+            discount_percent=discount_percent,
+            in_stock=in_stock,
+            quantity=quantity,
+            rating=rating,
+            review_count=review_count,
+            images=images,
+            specs=specs,
+        )
 
     def handle_error(self, failure):
         if failure.check(HttpError):
