@@ -228,8 +228,9 @@ class FptSpider(scrapy.Spider):
                     category = next(
                         (x.get("name") for x in elements if x.get("position") == 2), None
                     )
-            except json.JSONDecodeError, AttributeError:
-                pass
+            except (json.JSONDecodeError, AttributeError) as e:
+                self.logger.warning("Failed to parse breadcrumb at %s: %s", response.url, e)
+
         if not category:
             url_parts = response.url.split("/")
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
