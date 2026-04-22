@@ -51,13 +51,26 @@ def strip_html(text):
 class DienmaycholonSpider(scrapy.Spider):
     name = "dienmaycholon"
     allowed_domains = ["dienmaycholon.com"]
+    SEO_JUNK = re.compile(
+        r"chính hãng.*giá tốt|đặt hàng ngay|ưu đãi hấp dẫn|giao hàng nhanh"
+        r"|Siêu Thị Điện Máy.*Chợ Lớn",
+        re.IGNORECASE,
+    )
 
     async def start(self):
-        yield scrapy.Request(
-            "https://dienmaycholon.com",
-            callback=self.parse_categories,
-            errback=self.handle_error,
-        )
+        start_url = getattr(self, "start_url", None)
+        if start_url:
+            yield scrapy.Request(
+                start_url,
+                callback=self.parse_category_page,
+                errback=self.handle_error,
+            )
+        else:
+            yield scrapy.Request(
+                "https://dienmaycholon.com",
+                callback=self.parse_categories,
+                errback=self.handle_error,
+            )
 
     def parse_categories(self, response):
         seen = set()
@@ -93,14 +106,24 @@ class DienmaycholonSpider(scrapy.Spider):
             return
 
         alias = response.url.rstrip("/").split("/")[-1]
-        self.logger.debug("Discovered cate_id=%s for alias=%s", cate_id, alias)
+
+        # Read brand filter directly from the page's series attribute
+        series = response.css(".my_cate::attr(series)").get()
+        brand_filter = f"&s[]={series}" if series else ""
+
+        self.logger.debug("Discovered cate_id=%s alias=%s series=%s", cate_id, alias, series)
 
         yield scrapy.Request(
-            f"https://dienmaycholon.com/api/product/cate?page=1&offset=0&id={cate_id}",
+            f"https://dienmaycholon.com/api/product/cate?page=1&offset=0&id={cate_id}{brand_filter}",
             headers={**API_HEADERS, "Referer": response.url},
             callback=self.parse_listing,
             errback=self.handle_error,
-            meta={"alias": alias, "cate_id": int(cate_id)},
+            meta={
+                "alias": alias,
+                "cate_id": int(cate_id),
+                "brand_filter": brand_filter,
+                "cate_url": response.url,
+            },
         )
 
     def parse_listing(self, response):
@@ -109,6 +132,8 @@ class DienmaycholonSpider(scrapy.Spider):
         current_page = data.get("getCurrentPageNumber") or 1
         alias = response.meta["alias"]
         cate_id = response.meta["cate_id"]
+        brand_filter = response.meta.get("brand_filter", "")
+        cate_url = response.meta.get("cate_url", f"https://dienmaycholon.com/{alias}")
 
         for product in data.get("data") or []:
             if not isinstance(product, dict):
@@ -125,6 +150,7 @@ class DienmaycholonSpider(scrapy.Spider):
                 callback=self.parse_product,
                 errback=self.handle_error,
                 meta={"api_data": product},
+                headers={"Referer": cate_url},
             )
 
         if current_page == 1:
@@ -132,11 +158,16 @@ class DienmaycholonSpider(scrapy.Spider):
                 offset = (page - 1) * PAGE_SIZE
                 yield scrapy.Request(
                     f"https://dienmaycholon.com/api/product/cate"
-                    f"?page={page}&offset={offset}&id={cate_id}",
-                    headers={**API_HEADERS, "Referer": f"https://dienmaycholon.com/{alias}"},
+                    f"?page={page}&offset={offset}&id={cate_id}{brand_filter}",
+                    headers={**API_HEADERS, "Referer": cate_url},
                     callback=self.parse_listing,
                     errback=self.handle_error,
-                    meta={"alias": alias, "cate_id": cate_id},
+                    meta={
+                        "alias": alias,
+                        "cate_id": cate_id,
+                        "brand_filter": brand_filter,
+                        "cate_url": cate_url,
+                    },
                 )
 
     def parse_product(self, response):
@@ -180,24 +211,42 @@ class DienmaycholonSpider(scrapy.Spider):
             category = subcategory = None
 
         # --- description ---
-        desc_els = response.css(
-            "div.tab_feature p:not([style*='center']):not(.see_feature),"
-            "div.tab_feature h2,"
-            "div.tab_feature h3"
+
+        desc_els = (
+            response.css(
+                "div.tab_feature p:not([style*='center']):not(.see_feature),"
+                "div.tab_feature h2,"
+                "div.tab_feature h3"
+            )
+            or response.css("div.detail-content p, div.detail-content h2, div.detail-content h3")
+            or response.css("div#tab-description p")
+            or response.css(
+                "div.des_pro_item p:not([style*='center']),div.des_pro_item h2,div.des_pro_item h3"
+            )
         )
         if desc_els:
-            parts = [re.sub(r"\s+", " ", strip_html(el.get())).strip() for el in desc_els]
+            parts = [
+                re.sub(r"\s+", " ", strip_html(el.get())).strip()
+                for el in desc_els
+                if not self.SEO_JUNK.search(el.get())  # ← filter at element level
+            ]
             description = "\n\n".join(p for p in parts if p) or None
         else:
-            description = ld_product.get("description")
+            description = None
+
+        # Discard LD+JSON/meta SEO placeholder descriptions
+        if not description:
+            ld_desc = ld_product.get("description")
+            if ld_desc and not self.SEO_JUNK.search(ld_desc):
+                description = ld_desc
 
         # --- pricing ---
-        price = parse_price(response.css("strong.price_sale::text").get()) or parse_price(
-            str(api.get("discount", ""))
+        price = parse_price(api.get("discount")) or parse_price(
+            response.css("strong.price_sale::text").get()
         )
-        original_price = parse_price(
+        original_price = parse_price(api.get("saleprice")) or parse_price(
             response.css("div.price_giaban span::text").get()
-        ) or parse_price(str(api.get("saleprice", "")))
+        )
 
         if original_price and original_price == price:
             original_price = None
