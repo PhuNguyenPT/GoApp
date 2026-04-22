@@ -111,11 +111,19 @@ class DienmayxanhSpider(scrapy.Spider):
     }
 
     async def start(self):
-        yield scrapy.Request(
-            "https://www.dienmayxanh.com",
-            callback=self.parse_categories,
-            errback=self.handle_error,
-        )
+        start_url = getattr(self, "start_url", None)
+        if start_url:
+            yield scrapy.Request(
+                start_url,
+                callback=self.parse_category_page,
+                errback=self.handle_error,
+            )
+        else:
+            yield scrapy.Request(
+                "https://www.dienmayxanh.com",
+                callback=self.parse_categories,
+                errback=self.handle_error,
+            )
 
     def parse_categories(self, response):
         hrefs = []
@@ -254,9 +262,9 @@ class DienmayxanhSpider(scrapy.Spider):
             description = ld_product.get("description")
 
         # --- pricing ---
-        price = parse_price(
-            response.css("input#DisPriceScenrioGTM::attr(value)").get()
-        ) or offers.get("price")
+        _raw_price = parse_price(response.css("input#DisPriceScenrioGTM::attr(value)").get())
+        price = (_raw_price if _raw_price and _raw_price > 0 else None) or offers.get("price")
+
         original_price = parse_price(response.css("input#PriceOriginGTM::attr(value)").get())
         if original_price and original_price == price:
             original_price = None
@@ -275,15 +283,23 @@ class DienmayxanhSpider(scrapy.Spider):
             )
 
         # --- images ---
+        sku = ld_product.get("sku")
+
         src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(src)").getall()
-            if "/Products/" in url and "/Slider/" in url
+            if "/Products/" in url
+            and ("/Slider/" in url or "/Images/" in url)
+            and sku
+            and f"/{sku}/" in url
         ]
         data_src_images = [
             url
             for url in response.css("div.owl-carousel img::attr(data-src)").getall()
-            if "/Products/" in url and "/Slider/" in url
+            if "/Products/" in url
+            and ("/Slider/" in url or "/Images/" in url)
+            and sku
+            and f"/{sku}/" in url
         ]
         images = list(dict.fromkeys(src_images + data_src_images))
         if not images:
