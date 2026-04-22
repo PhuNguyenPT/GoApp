@@ -236,22 +236,33 @@ class FptSpider(scrapy.Spider):
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
 
         # --- pricing ---
-        price = listing.get("currentPrice") or parse_price(str(offers.get("price", "")))
-        original_price = listing.get("originalPrice") or parse_price(
-            response.css("span.line-through::text").get() or ""
-        )
-        if original_price is not None and original_price == price:
-            original_price = None
-
-        if original_price is not None and price is not None and original_price > price:
-            discount_percent = round((original_price - price) / original_price * 100)
+        if listing:
+            # API data is authoritative — use it directly
+            price = listing.get("currentPrice") or None
+            original_price = listing.get("originalPrice") or None
+            discount_percent = listing.get("discountPercentage") or None
         else:
-            discount_percent = listing.get("discountPercentage") or parse_discount(
+            # fallback to HTML for start_url / DB refresh cases
+            price = parse_price(str(offers.get("price", ""))) or None
+            original_price = (
+                parse_price(response.css("span.line-through::text").get() or "") or None
+            )
+            discount_percent = parse_discount(
                 "".join(response.css("span.text-red-red-7::text").getall()[:2])
             )
 
+        if not price:
+            price = None
+            original_price = None
+            discount_percent = None
+
+        if original_price and price and original_price == price:
+            original_price = None
+
+        # reverse-calculate original_price only for HTML fallback path
         if (
-            price is not None
+            not listing
+            and price
             and discount_percent is not None
             and discount_percent < 100
             and original_price is None
