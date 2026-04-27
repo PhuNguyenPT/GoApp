@@ -7,20 +7,12 @@ all: build test
 # Generate templ files
 templ-generate:
 	@echo "Generating templ files..."
-	@if command -v templ > /dev/null 2>&1; then \
-		templ generate; \
-	else \
-		go run github.com/a-h/templ/cmd/templ@latest generate; \
-	fi
+	@go tool templ generate
 
 # Format templ files
 templ-fmt:
 	@echo "Formatting templ files..."
-	@if command -v templ > /dev/null 2>&1; then \
-		templ fmt ./internal/views/; \
-	else \
-		go tool templ fmt ./internal/views/; \
-	fi
+	@go tool templ fmt ./internal/views/
 
 # Minify CSS
 tailwind-build:
@@ -90,29 +82,25 @@ watch:
 # Generate sqlc files
 sqlc-generate:
 	@echo "Generating sqlc files..."
-	@if command -v sqlc > /dev/null 2>&1; then \
-		sqlc generate; \
-	else \
-		go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate; \
-	fi
+	@go tool sqlc generate
 
 # Run goose migrations
 migrate-up:
 	@echo "Running migrations..."
-	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" up
+	@go tool goose -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" up
 
 migrate-down:
 	@echo "Rolling back migration..."
-	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" down
+	@go tool goose -dir internal/database/migrations postgres "postgres://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable&search_path=$(POSTGRES_SCHEMA)" down
 
 # Lint
 lint:
-	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run
+	@go tool golangci-lint run
 	@go tool sqlc compile
 	@cd frontend-template && npm run lint
 
 lint-fix:
-	@go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --fix
+	@go tool golangci-lint run --fix
 	@cd frontend-template && npm run lint:fix
 
 # Static analysis

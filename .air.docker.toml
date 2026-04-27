@@ -3,7 +3,7 @@ tmp_dir = "/tmp/air"
 
 [build]
   entrypoint = "/tmp/air/main"
-  cmd = "sqlc generate && templ generate && make tailwind-build js-build && go build -o /tmp/air/main ./cmd/api/main.go"
+  cmd = "go tool sqlc generate && go tool templ generate && make tailwind-build js-build && go build -o /tmp/air/main ./cmd/api/main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules", "frontend"]
   exclude_file = ["output.css"]
