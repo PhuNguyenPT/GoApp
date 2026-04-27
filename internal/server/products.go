@@ -6,6 +6,7 @@ import (
 	"GoApp/internal/views"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -226,8 +227,13 @@ func (s *Server) productsFragmentHandler(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
+	fragmentData := views.ProductsPageData{
+		SelectedSource:      c.Query("source"),
+		SelectedCategory:    c.Query("category"),
+		SelectedSubcategory: c.Query("subcategory"),
+	}
 	for _, p := range products {
-		if err := views.ProductCard(p).Render(ctx, c.Writer); err != nil {
+		if err := views.ProductCard(p, fragmentData).Render(ctx, c.Writer); err != nil {
 			log.Printf("error rendering ProductCard: %v", err)
 		}
 	}
@@ -247,12 +253,28 @@ func (s *Server) productDetailPageHandler(c *gin.Context) {
 		return
 	}
 
+	// build back URL
+	backURL := "/products"
+	params := url.Values{}
+	if src := c.Query("source"); src != "" {
+		params.Set("source", src)
+	}
+	if cat := c.Query("category"); cat != "" {
+		params.Set("category", cat)
+	}
+	if sub := c.Query("subcategory"); sub != "" {
+		params.Set("subcategory", sub)
+	}
+	if len(params) > 0 {
+		backURL = "/products?" + params.Encode()
+	}
+
 	userName, _ := c.Get("userName")
 	userNameStr, _ := userName.(string)
 	lang := getLangStr(c)
 
 	c.Header("Content-Type", "text/html")
-	if err := views.ProductDetailPage(userNameStr, product, lang).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := views.ProductDetailPage(userNameStr, product, backURL, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering ProductDetailPage: %v", err)
 	}
 }

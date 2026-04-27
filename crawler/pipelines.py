@@ -1,12 +1,13 @@
 import json
 import logging
 import os
+from dataclasses import asdict
 from datetime import datetime
 
 import psycopg2
-from itemadapter import ItemAdapter
 
 from db import save_item
+from items import ProductItem
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,9 @@ class JsonWriterPipeline:
         if getattr(self, "file", None):
             self.file.close()
 
-    def process_item(self, item):
-        line = json.dumps(ItemAdapter(item).asdict(), ensure_ascii=False, default=str)
+    def process_item(self, item: ProductItem):
+
+        line = json.dumps(asdict(item), ensure_ascii=False, default=str)
         self.file.write(line + "\n")
         return item
 
@@ -61,19 +63,18 @@ class PostgresPipeline:
         self.cur.close()
         self.conn.close()
 
-    def process_item(self, item):
+    def process_item(self, item: ProductItem):
         if not getattr(self, "conn", None):
             return item
 
-        data = ItemAdapter(item).asdict()
-
         try:
-            save_item(self.cur, data)
+            save_item(self.cur, item)
             self._item_count += 1
             if self._item_count % self.BATCH_SIZE == 0:
                 self.conn.commit()
         except Exception as e:
             self.conn.rollback()
-            logger.warning(f"Failed to save item (url={data.get('url')}): {e}")
+            self.cur = self.conn.cursor()
+            logger.warning(f"Failed to save item (url={item.url}): {e}")
 
         return item

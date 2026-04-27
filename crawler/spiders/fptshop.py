@@ -9,32 +9,30 @@ from scrapy.spidermiddlewares.httperror import HttpError
 from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
 
-EXCLUDE_PATHS = {
-    "/",
-    "/gio-hang",
-    "/tim-kiem",
-    "/cua-hang",
-    "/tos",
-    "/sim-fpt",
-    "/may-doi-tra",
+PAGE_SIZE = 24
+
+API_URL = "https://papi.fptshop.com.vn/gw/v1/public/fulltext-search-service/category"
+API_HEADERS = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "order-channel": "1",
+    "Origin": "https://fptshop.com.vn",
+    "Referer": "https://fptshop.com.vn/",
 }
 
-FALLBACK_URLS = [
-    "/dien-thoai",
-    "/may-tinh-xach-tay",
-    "/may-tinh-bang",
-    "/may-tinh-de-ban",
-    "/man-hinh",
-    "/tivi",
-    "/tu-lanh",
-    "/may-giat",
-    "/thiet-bi-bep",
-    "/robot-hut-bui",
-    "/may-loc-nuoc",
-    "/may-loc-khong-khi",
-    "/smartwatch",
-    "/phu-kien",  # covers /tai-nghe, /loa, /may-anh etc. via subcategory discovery
-]
+EXCLUDE_PATHS = {
+    "gio-hang",
+    "tim-kiem",
+    "cua-hang",
+    "tos",
+    "sim-fpt",
+    "may-doi-tra",
+    "sim-so-dep",
+    "collection",
+    "ho-tro",
+    "dich-vu",
+    "cdn-cgi",
+}
 
 
 def strip_html(text):
@@ -43,7 +41,7 @@ def strip_html(text):
 
 class FptSpider(scrapy.Spider):
     name = "fptshop"
-    allowed_domains = ["fptshop.com.vn"]
+    allowed_domains = ["fptshop.com.vn", "papi.fptshop.com.vn"]
 
     custom_settings = {
         "DOWNLOAD_DELAY": 1.5,
@@ -60,40 +58,16 @@ class FptSpider(scrapy.Spider):
         },
     }
 
-    def parse_categories(self, response):
-        all_links = response.css("a::attr(href)").getall()
-        hrefs = [
-            link
-            for link in all_links
-            if link.startswith("/")
-            and link.count("/") == 1
-            and link not in EXCLUDE_PATHS
-            and not link.startswith("/tim-kiem")
-        ]
-        if not hrefs:
-            self.logger.warning("Category discovery returned nothing — using fallback URLs")
-            hrefs = FALLBACK_URLS
-        seen = set()
-        for href in hrefs:
-            if href in seen:
-                continue
-            seen.add(href)
-            yield response.follow(
-                href,
-                callback=self.parse,
-                errback=self.handle_error,
-            )
-
     async def start(self):
         if hasattr(self, "start_url"):
             yield scrapy.Request(self.start_url, callback=self.parse_product)
             return
-        for href in FALLBACK_URLS:
-            yield scrapy.Request(
-                f"https://fptshop.com.vn{href}",
-                callback=self.parse,
-                errback=self.handle_error,
-            )
+
+        yield scrapy.Request(
+            "https://fptshop.com.vn",
+            callback=self.parse_categories,
+            errback=self.handle_error,
+        )
 
         db_url = self.settings.get("DATABASE_URL")
         if db_url:
@@ -108,43 +82,114 @@ class FptSpider(scrapy.Spider):
                         url,
                         callback=self.parse_product,
                         errback=self.handle_error,
-                        dont_filter=True,
                     )
                 cur.close()
                 conn.close()
             except Exception as e:
                 self.logger.error("Failed to fetch stale URLs from DB: %s", e)
 
-    def parse(self, response):
+    def parse_categories(self, response):
         seen = set()
-        for href in response.css("[class*='ProductCard_cardDefault'] a::attr(href)").getall():
-            if href in seen:
+        for href in response.css("a::attr(href)").getall():
+            if not href or not href.startswith("/"):
                 continue
-            seen.add(href)
-            yield response.follow(href, callback=self.parse_product, errback=self.handle_error)
-        base = response.url.rstrip("/").split("?")[0]
-        path = base.replace("https://fptshop.com.vn", "")
-        sub_seen = set()
-        for href in response.css(f"a[href^='{path}/']::attr(href)").getall():
-            if href.count("/") != 2:
+            path = href.strip("/")
+            if not path or "?" in path or "#" in path:
                 continue
-            if href in sub_seen:
+            if path.count("/") > 1:
                 continue
-            sub_seen.add(href)
-            yield response.follow(
-                href,
-                callback=self.parse,
+            top = path.split("/")[0]
+            if top in EXCLUDE_PATHS:
+                continue
+            if path in seen:
+                continue
+            seen.add(path)
+            yield scrapy.Request(
+                API_URL,
+                method="POST",
+                body=json.dumps(
+                    {
+                        "skipCount": 0,
+                        "maxResultCount": 1,
+                        "sortMethod": "noi-bat",
+                        "slug": path,
+                        "categoryType": "category",
+                    }
+                ),
+                headers=API_HEADERS,
+                callback=self.check_category,
                 errback=self.handle_error,
+                meta={"slug": path, "dont_redirect": True},
+            )
+
+    def check_category(self, response):
+        data = response.json()
+        if not data.get("validSlug") or not data.get("totalCount", 0):
+            return
+        slug = response.meta["slug"]
+        self.logger.debug("Valid category found: %s (%d items)", slug, data["totalCount"])
+        yield scrapy.Request(
+            API_URL,
+            method="POST",
+            body=json.dumps(
+                {
+                    "skipCount": 0,
+                    "maxResultCount": PAGE_SIZE,
+                    "sortMethod": "noi-bat",
+                    "slug": slug,
+                    "categoryType": "category",
+                }
+            ),
+            headers=API_HEADERS,
+            callback=self.parse_listing,
+            errback=self.handle_error,
+            meta={"slug": slug, "skip": 0, "dont_redirect": True},
+        )
+
+    def parse_listing(self, response):
+        data = response.json()
+        total = data.get("totalCount", 0)
+        items = data.get("items", [])
+        slug = response.meta["slug"]
+        skip = response.meta["skip"]
+
+        for item in items:
+            product_slug = item.get("slug", "")
+            if not product_slug:
+                continue
+            yield scrapy.Request(
+                f"https://fptshop.com.vn/{product_slug}",
+                callback=self.parse_product,
+                errback=self.handle_error,
+                meta={"listing": item},
+            )
+
+        MAX_SKIP = 1000 - PAGE_SIZE
+        next_skip = skip + PAGE_SIZE
+        if next_skip < total and next_skip <= MAX_SKIP:
+            yield scrapy.Request(
+                API_URL,
+                method="POST",
+                body=json.dumps(
+                    {
+                        "skipCount": next_skip,
+                        "maxResultCount": PAGE_SIZE,
+                        "sortMethod": "noi-bat",
+                        "slug": slug,
+                        "categoryType": "category",
+                    }
+                ),
+                headers=API_HEADERS,
+                callback=self.parse_listing,
+                errback=self.handle_error,
+                meta={"slug": slug, "skip": next_skip, "dont_redirect": True},
             )
 
     def parse_product(self, response):
-        item = ProductItem()
-        item["source"] = "fptshop"
-        item["url"] = response.url
-        item["crawled_at"] = datetime.now(timezone.utc).isoformat()
-        item["currency"] = "VND"
+        listing = response.meta.get("listing", {})
+        if not listing and response.css("h1.product-name, #detail-product-script").get() is None:
+            return
 
-        # Use stable script ID instead of looping all scripts
         product_data = {}
         raw = response.css("#detail-product-script::text").get()
         if raw:
@@ -153,24 +198,20 @@ class FptSpider(scrapy.Spider):
             except (json.JSONDecodeError, AttributeError) as e:
                 self.logger.warning("Failed to parse product JSON at %s: %s", response.url, e)
 
-        # Map SKU from JSON-LD
-        item["sku"] = product_data.get("sku")
+        offers = product_data.get("offers", {})
+        agg = product_data.get("aggregateRating", {})
 
-        # Long description from product content container, fall back to JSON-LD SEO summary
-        desc_el = response.css("[class*='description-container']")
-        if desc_el:
-            paragraphs = [
-                re.sub(r"\s+", " ", strip_html(block)).strip()
-                for block in desc_el.css("p, h2, h3, li").getall()
-            ]
-            item["description"] = "\n\n".join(p for p in paragraphs if p and p != "Thu gọn") or None
-        else:
-            raw_desc = product_data.get("description")
-            item["description"] = clean_text(raw_desc.strip('"')) if raw_desc else None
+        # --- name / sku / brand ---
+        name = clean_text(
+            product_data.get("name") or listing.get("name") or response.css("h1::text").get()
+        )
+        sku = product_data.get("sku") or listing.get("code")
+        brand = clean_text(
+            product_data.get("brand", {}).get("name") or (listing.get("brand") or {}).get("name")
+        )
 
-        # Category from breadcrumb JSON-LD
-        category = None
-        subcategory = None
+        # --- category / subcategory ---
+        category = subcategory = None
         raw_bc = response.css("#breadcrumb-structured-data::text").get()
         if raw_bc:
             try:
@@ -188,69 +229,133 @@ class FptSpider(scrapy.Spider):
                         (x.get("name") for x in elements if x.get("position") == 2), None
                     )
             except (json.JSONDecodeError, AttributeError) as e:
-                self.logger.warning("Failed to parse breadcrumb JSON at %s: %s", response.url, e)
+                self.logger.warning("Failed to parse breadcrumb at %s: %s", response.url, e)
 
         if not category:
             url_parts = response.url.split("/")
             category = url_parts[3].replace("-", " ").title() if len(url_parts) > 3 else None
 
-        item["category"] = category
-        item["subcategory"] = subcategory
-
-        offers = product_data.get("offers", {})
-        agg = product_data.get("aggregateRating", {})
-
-        item["name"] = clean_text(product_data.get("name") or response.css("h1::text").get())
-        item["price"] = parse_price(str(offers.get("price", "")))
-
-        original = parse_price(response.css("span.line-through::text").get() or "")
-        item["original_price"] = (
-            original if original and item["price"] and original > item["price"] else None
-        )
-
-        if item["original_price"] and item["price"]:
-            item["discount_percent"] = round(
-                (item["original_price"] - item["price"]) / item["original_price"] * 100
-            )
+        # --- pricing ---
+        if listing:
+            # API data is authoritative — use it directly
+            price = listing.get("currentPrice") or None
+            original_price = listing.get("originalPrice") or None
+            discount_percent = listing.get("discountPercentage") or None
         else:
-            # ['2', '%', '3.000.000đ'] → join first two → '2%'
-            parts = response.css("span.text-red-red-7::text").getall()
-            discount = parse_discount("".join(parts[:2])) if parts else None
-            item["discount_percent"] = discount if discount and 0 < discount < 100 else None
+            # fallback to HTML for start_url / DB refresh cases
+            price = parse_price(str(offers.get("price", ""))) or None
+            original_price = (
+                parse_price(response.css("span.line-through::text").get() or "") or None
+            )
+            discount_percent = parse_discount(
+                "".join(response.css("span.text-red-red-7::text").getall()[:2])
+            )
 
-        if item["price"] and item["discount_percent"] and not item["original_price"]:
-            item["original_price"] = round(item["price"] / (1 - item["discount_percent"] / 100))
+        if not price:
+            price = None
+            original_price = None
+            discount_percent = None
 
-        item["brand"] = clean_text(product_data.get("brand", {}).get("name"))
-        item["quantity"] = None
-        item["in_stock"] = offers.get("availability", "").endswith("InStock")
-        item["rating"] = float(agg["ratingValue"]) if agg.get("ratingValue") else None
-        item["review_count"] = int(agg["reviewCount"]) if agg.get("reviewCount") else None
+        if original_price and price and original_price == price:
+            original_price = None
 
-        product_images = list(
+        # reverse-calculate original_price only for HTML fallback path
+        if (
+            not listing
+            and price
+            and discount_percent is not None
+            and discount_percent < 100
+            and original_price is None
+        ):
+            original_price = round(price / (1 - discount_percent / 100))
+
+        # --- stock ---
+        skus = listing.get("skus", [])
+        total_inv = listing.get("totalInventory", 0)
+        in_stock = (
+            total_inv > 0
+            or any(s.get("totalInventory", 0) > 0 for s in skus)
+            or offers.get("availability", "").endswith("InStock")
+        )
+        quantity = total_inv or None
+
+        # --- rating ---
+        rating = float(agg["ratingValue"]) if agg.get("ratingValue") else None
+        review_count = int(float(agg["reviewCount"])) if agg.get("reviewCount") else None
+
+        # --- description ---
+        desc_container = response.xpath(
+            "//h2[contains(text(),'Mô tả sản phẩm')]/../../following-sibling::div[1]"
+        )
+        if desc_container:
+            elements = desc_container.xpath(".//p | .//h2 | .//h3 | .//li")
+            parts = [
+                re.sub(r"\s+", " ", strip_html(el.get())).strip()
+                for el in elements
+                if strip_html(el.get()).strip() not in ("Thu gọn", "")
+            ]
+            description = "\n\n".join(parts)
+        else:
+            raw_desc = product_data.get("description")
+            description = clean_text(raw_desc.strip('"')) if raw_desc else None
+
+        # --- images ---
+        images = list(
             dict.fromkeys(
                 url
                 for url in response.css("[class*='swiper'] img::attr(src)").getall()
                 if "/unsafe/828x0/" in url
             )
         )
-        # Single image string in SSR, wrap in list
-        ld_image = product_data.get("image")
-        ld_image_url = ld_image[0] if isinstance(ld_image, list) else ld_image
-        item["images"] = product_images or ([ld_image_url] if ld_image_url else [])
+        if not images:
+            ld_image = product_data.get("image") or (
+                listing.get("image", {}).get("src")
+                if isinstance(listing.get("image"), dict)
+                else listing.get("image")
+            )
+            if isinstance(ld_image, list):
+                images = ld_image
+            elif ld_image:
+                images = [ld_image]
 
-        # Filter empty spec values (e.g. Chip: '')
-        item["specs"] = {
+        # --- specs ---
+        specs = {
             prop["name"]: prop["value"]
             for prop in (product_data.get("additionalProperty") or [])
             if prop.get("name") and str(prop.get("value", "")).strip()
         }
 
-        yield item
+        yield ProductItem(
+            url=response.url.split("?")[0],
+            source="fptshop",
+            crawled_at=datetime.now(timezone.utc),
+            currency="VND",
+            name=name,
+            sku=sku,
+            brand=brand,
+            category=category,
+            subcategory=subcategory,
+            description=description,
+            price=price,
+            original_price=original_price,
+            discount_percent=discount_percent,
+            in_stock=in_stock,
+            quantity=quantity,
+            rating=rating,
+            review_count=review_count,
+            images=images,
+            specs=specs,
+        )
 
     def handle_error(self, failure):
         if failure.check(HttpError):
             response = failure.value.response
-            self.logger.error("HTTP %s for %s", response.status, failure.request.url)
+            self.logger.error(
+                "HTTP %s for %s — request body: %s — response: %s",
+                response.status,
+                failure.request.url,
+                failure.request.body,
+                response.text[:500],
+            )
         else:
             self.logger.error("Request failed: %s — %s", failure.request.url, repr(failure))

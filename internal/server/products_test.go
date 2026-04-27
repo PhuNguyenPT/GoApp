@@ -773,3 +773,97 @@ func TestProductsPageResponseHeaders(t *testing.T) {
 		})
 	}
 }
+
+func TestProductCardLinksCarryFilterParams(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet,
+		"/products?source=fptshop&category=Laptop&subcategory=Acer", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "source=fptshop") {
+		t.Error("expected product card links to contain source param")
+	}
+	if !strings.Contains(body, "category=Laptop") {
+		t.Error("expected product card links to contain category param")
+	}
+	if !strings.Contains(body, "subcategory=Acer") {
+		t.Error("expected product card links to contain subcategory param")
+	}
+}
+
+func TestProductDetailBackURL(t *testing.T) {
+	validID, err := uuid.NewV7()
+	if err != nil {
+		t.Fatalf("failed to generate uuid: %v", err)
+	}
+
+	t.Run("back link includes filter params", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet,
+			"/products/"+validID.String()+"?source=fptshop&category=Laptop&subcategory=Acer", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		body := rr.Body.String()
+		if !strings.Contains(body, "/products?") {
+			t.Error("expected back link to point to /products with params")
+		}
+		if !strings.Contains(body, "source=fptshop") {
+			t.Error("expected back link to contain source param")
+		}
+		if !strings.Contains(body, "category=Laptop") {
+			t.Error("expected back link to contain category param")
+		}
+	})
+
+	t.Run("back link is plain /products when no filters", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet,
+			"/products/"+validID.String(), nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		body := rr.Body.String()
+		if !strings.Contains(body, `href="/products"`) {
+			t.Error("expected back link to be plain /products")
+		}
+	})
+}
+
+func TestProductsFragmentCarriesFilterContext(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet,
+		"/products-fragment?source=fptshop&category=Laptop&subcategory=Acer", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "source=fptshop") {
+		t.Error("expected fragment card links to contain source param")
+	}
+	if !strings.Contains(body, "category=Laptop") {
+		t.Error("expected fragment card links to contain category param")
+	}
+}

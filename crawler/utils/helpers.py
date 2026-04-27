@@ -4,8 +4,11 @@ import re
 def parse_price(raw):
     if not raw:
         return None
-    cleaned = re.sub(r"[^\d]", "", raw)
-    return float(cleaned) if cleaned else None
+    try:
+        return float(raw)
+    except ValueError:
+        cleaned = re.sub(r"[^\d]", "", raw)
+        return float(cleaned) if cleaned else None
 
 
 def parse_discount(raw):
@@ -24,5 +27,5 @@ def clean_text(text):
 def parse_rating(raw):
     if not raw:
         return None
-    match = re.search(r"[\d.]+", raw)
+    match = re.search(r"\d+\.?\d*", raw)
     return float(match.group()) if match else None

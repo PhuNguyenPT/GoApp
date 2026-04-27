@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
 
+from items import ProductItem
+
 SOURCE_DOMAIN = {
     "dienmaycholon": "dienmaycholon.com",
     "dienmayxanh": "dienmayxanh.com",
@@ -9,7 +11,7 @@ SOURCE_DOMAIN = {
 }
 
 
-def upsert_product(cur, data):
+def upsert_product(cur, item: ProductItem):
     cur.execute(
         """
         INSERT INTO products (
@@ -45,31 +47,31 @@ def upsert_product(cur, data):
         RETURNING id
         """,
         {
-            "url": data.get("url"),
-            "source": data.get("source"),
-            "sku": data.get("sku"),
-            "name": data.get("name"),
-            "brand": data.get("brand"),
-            "category": data.get("category"),
-            "subcategory": data.get("subcategory"),
-            "description": data.get("description"),
-            "price": data.get("price"),
-            "original_price": data.get("original_price"),
-            "discount_percent": data.get("discount_percent"),
-            "currency": data.get("currency"),
-            "in_stock": data.get("in_stock"),
-            "quantity": data.get("quantity"),
-            "rating": data.get("rating"),
-            "review_count": data.get("review_count"),
-            "images": json.dumps(data.get("images", [])),
-            "specs": json.dumps(data.get("specs", {})),
-            "crawled_at": data.get("crawled_at"),
+            "url": item.url,
+            "source": item.source,
+            "sku": item.sku,
+            "name": item.name,
+            "brand": item.brand,
+            "category": item.category,
+            "subcategory": item.subcategory,
+            "description": item.description,
+            "price": item.price,
+            "original_price": item.original_price,
+            "discount_percent": item.discount_percent,
+            "currency": item.currency,
+            "in_stock": item.in_stock,
+            "quantity": item.quantity,
+            "rating": item.rating,
+            "review_count": item.review_count,
+            "images": json.dumps(item.images),
+            "specs": json.dumps(item.specs),
+            "crawled_at": item.crawled_at,
         },
     )
     return cur.fetchone()[0]
 
 
-def insert_product_history(cur, product_id, data):
+def insert_product_history(cur, product_id, item: ProductItem):
     cur.execute(
         """
         INSERT INTO products_history (
@@ -86,29 +88,29 @@ def insert_product_history(cur, product_id, data):
         """,
         {
             "product_id": product_id,
-            "url": data.get("url"),
-            "source": data.get("source"),
-            "name": data.get("name"),
-            "brand": data.get("brand"),
-            "category": data.get("category"),
-            "subcategory": data.get("subcategory"),
-            "price": data.get("price"),
-            "original_price": data.get("original_price"),
-            "discount_percent": data.get("discount_percent"),
-            "currency": data.get("currency"),
-            "in_stock": data.get("in_stock"),
-            "quantity": data.get("quantity"),
-            "rating": data.get("rating"),
-            "review_count": data.get("review_count"),
-            "images": json.dumps(data.get("images", [])),
-            "specs": json.dumps(data.get("specs", {})),
-            "crawled_at": data.get("crawled_at"),
+            "url": item.url,
+            "source": item.source,
+            "name": item.name,
+            "brand": item.brand,
+            "category": item.category,
+            "subcategory": item.subcategory,
+            "price": item.price,
+            "original_price": item.original_price,
+            "discount_percent": item.discount_percent,
+            "currency": item.currency,
+            "in_stock": item.in_stock,
+            "quantity": item.quantity,
+            "rating": item.rating,
+            "review_count": item.review_count,
+            "images": json.dumps(item.images),
+            "specs": json.dumps(item.specs),
+            "crawled_at": item.crawled_at,
         },
     )
 
 
-def upsert_source(cur, data):
-    source = data.get("source") or "unknown"
+def upsert_source(cur, item: ProductItem):
+    source = item.source or "unknown"
     domain = SOURCE_DOMAIN.get(source)
     cur.execute(
         """
@@ -126,7 +128,7 @@ def upsert_source(cur, data):
     return cur.fetchone()[0]
 
 
-def upsert_dim_product(cur, product_id, data):
+def upsert_dim_product(cur, product_id, item: ProductItem):
     cur.execute(
         """
         SELECT id, name, brand, category, subcategory
@@ -137,7 +139,7 @@ def upsert_dim_product(cur, product_id, data):
     )
     current = cur.fetchone()
     scd_fields = ("name", "brand", "category", "subcategory")
-    changed = current and any(data.get(f) != current[i + 1] for i, f in enumerate(scd_fields))
+    changed = current and any(getattr(item, f) != current[i + 1] for i, f in enumerate(scd_fields))
 
     if current and not changed:
         return current[0]
@@ -165,14 +167,14 @@ def upsert_dim_product(cur, product_id, data):
         """,
         {
             "product_id": product_id,
-            "url": data.get("url"),
-            "name": data.get("name"),
-            "brand": data.get("brand"),
-            "category": data.get("category"),
-            "subcategory": data.get("subcategory"),
-            "currency": data.get("currency"),
-            "images": json.dumps(data.get("images", [])),
-            "specs": json.dumps(data.get("specs", {})),
+            "url": item.url,
+            "name": item.name,
+            "brand": item.brand,
+            "category": item.category,
+            "subcategory": item.subcategory,
+            "currency": item.currency,
+            "images": json.dumps(item.images),
+            "specs": json.dumps(item.specs),
         },
     )
     return cur.fetchone()[0]
@@ -181,13 +183,17 @@ def upsert_dim_product(cur, product_id, data):
 def get_date_id(cur, crawled_at):
     if not crawled_at:
         return None
-    dt = datetime.fromisoformat(crawled_at).date()
+    dt = (
+        crawled_at.date()
+        if hasattr(crawled_at, "date")
+        else datetime.fromisoformat(crawled_at).date()
+    )
     cur.execute("SELECT date_id FROM warehouse.dim_date WHERE full_date = %s", (dt,))
     row = cur.fetchone()
     return row[0] if row else None
 
 
-def insert_fact_snapshot(cur, dim_product_id, source_id, date_id, data):
+def insert_fact_snapshot(cur, dim_product_id, source_id, date_id, item: ProductItem):
     cur.execute(
         """
         INSERT INTO warehouse.fact_product_snapshot (
@@ -201,27 +207,26 @@ def insert_fact_snapshot(cur, dim_product_id, source_id, date_id, data):
             dim_product_id,
             source_id,
             date_id,
-            data.get("price"),
-            data.get("original_price"),
-            data.get("discount_percent"),
-            data.get("quantity"),
-            data.get("in_stock"),
-            data.get("rating"),
-            data.get("review_count"),
-            data.get("crawled_at"),
+            item.price,
+            item.original_price,
+            item.discount_percent,
+            item.quantity,
+            item.in_stock,
+            item.rating,
+            item.review_count,
+            item.crawled_at,
         ),
     )
 
 
-def save_item(cur, data):
-    """Run the full insert sequence for one item. Returns True if fact snapshot was inserted."""
-    product_id = upsert_product(cur, data)
-    insert_product_history(cur, product_id, data)
-    source_id = upsert_source(cur, data)
-    dim_product_id = upsert_dim_product(cur, product_id, data)
-    date_id = get_date_id(cur, data.get("crawled_at"))
+def save_item(cur, item: ProductItem):
+    product_id = upsert_product(cur, item)
+    insert_product_history(cur, product_id, item)
+    source_id = upsert_source(cur, item)
+    dim_product_id = upsert_dim_product(cur, product_id, item)
+    date_id = get_date_id(cur, item.crawled_at)
 
     if all([dim_product_id, source_id, date_id]):
-        insert_fact_snapshot(cur, dim_product_id, source_id, date_id, data)
+        insert_fact_snapshot(cur, dim_product_id, source_id, date_id, item)
         return True
     return False

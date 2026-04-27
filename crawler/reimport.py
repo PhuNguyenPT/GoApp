@@ -9,18 +9,20 @@ import json
 import logging
 import os
 import sys
+from datetime import datetime
 
 import psycopg2
 from dotenv import load_dotenv
 
 from db import save_item
+from items import ProductItem
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 50
+BATCH_SIZE = 2000
 
 
 def get_files():
@@ -40,21 +42,28 @@ def reimport_file(conn, filepath):
     errors = 0
 
     with open(filepath, encoding="utf-8") as f:
-        items = [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            if not line.strip():
+                continue
 
-    logger.info(f"  Importing {len(items)} items from {os.path.basename(filepath)} ...")
+            try:
+                data = json.loads(line)
 
-    for data in items:
-        try:
-            save_item(cur, data)
-            count += 1
-            if count % BATCH_SIZE == 0:
-                conn.commit()
-                logger.info(f"  ... {count} items committed")
-        except Exception as e:
-            conn.rollback()
-            errors += 1
-            logger.warning(f"  Skipped item (url={data.get('url')}): {e}")
+                if data.get("crawled_at") and isinstance(data["crawled_at"], str):
+                    data["crawled_at"] = datetime.fromisoformat(data["crawled_at"])
+
+                item = ProductItem(**data)
+
+                save_item(cur, item)
+
+                count += 1
+                if count % BATCH_SIZE == 0:
+                    conn.commit()
+                    logger.info(f"  ... {count} items committed")
+            except Exception as e:
+                conn.rollback()
+                errors += 1
+                logger.warning(f"  Skipped item: {e}")
 
     conn.commit()
     cur.close()
