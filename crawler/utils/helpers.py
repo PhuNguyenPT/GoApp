@@ -12,10 +12,15 @@ def parse_price(raw):
 
 
 def parse_discount(raw):
+    """Returns discount as int (e.g. 20 for 20%), or None."""
     if not raw:
         return None
-    match = re.search(r"\d+", raw)
-    return int(match.group()) if match else None
+    try:
+        val = int(raw.strip())
+        return val if val > 0 else None
+    except ValueError:
+        match = re.search(r"\d+", raw)
+        return int(match.group()) if match else None
 
 
 def clean_text(text):

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import scrapy
 
 from items import ProductItem
-from utils.helpers import clean_text, parse_price, parse_rating
+from utils.helpers import clean_text, parse_discount, parse_price, parse_rating
 
 EXCLUDED_NAV = {
     "flashsale",
@@ -85,6 +85,8 @@ API_HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
 }
 
+UNAVAILABLE_STATUSES = ("Tin đồn", "Ngừng kinh doanh", "Hết hàng", "Không kinh doanh")
+
 
 def strip_html(text):
     return re.sub(r"<[^>]+>", "", text).strip() if text else text
@@ -113,11 +115,23 @@ class DienmayxanhSpider(scrapy.Spider):
     async def start(self):
         start_url = getattr(self, "start_url", None)
         if start_url:
-            yield scrapy.Request(
-                start_url,
-                callback=self.parse_category_page,
-                errback=self.handle_error,
-            )
+            # Product URLs have two path segments: /category/product-slug
+            path = start_url.rstrip("/").replace("https://www.dienmayxanh.com", "")
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                # Looks like a product page — go direct
+                yield scrapy.Request(
+                    start_url,
+                    callback=self.parse_product,
+                    errback=self.handle_error,
+                )
+            else:
+                # Looks like a category page
+                yield scrapy.Request(
+                    start_url,
+                    callback=self.parse_category_page,
+                    errback=self.handle_error,
+                )
         else:
             yield scrapy.Request(
                 "https://www.dienmayxanh.com",
@@ -188,11 +202,15 @@ class DienmayxanhSpider(scrapy.Spider):
         html = data.get("listproducts", "")
         sel = scrapy.Selector(text=html)
 
-        for href in sel.css("li.item a.main-contain::attr(href)").getall():
+        for a in sel.css("li.item a.main-contain"):
+            href = a.attrib.get("href", "").split("?")[0]
+            if not href:
+                continue
             yield response.follow(
-                href.split("?")[0],
+                href,
                 callback=self.parse_product,
                 errback=self.handle_error,
+                meta={"product_status": a.attrib.get("data-productstatus", "").strip()},
             )
 
         page = response.meta["page"]
@@ -263,7 +281,11 @@ class DienmayxanhSpider(scrapy.Spider):
 
         # --- pricing ---
         _raw_price = parse_price(response.css("input#DisPriceScenrioGTM::attr(value)").get())
-        price = (_raw_price if _raw_price and _raw_price > 0 else None) or offers.get("price")
+        _ld_price = offers.get("price")
+
+        price = (_raw_price if _raw_price and _raw_price > 0 else None) or (
+            _ld_price if _ld_price and float(_ld_price) > 0 else None
+        )
 
         original_price = parse_price(response.css("input#PriceOriginGTM::attr(value)").get())
         if original_price and original_price == price:
@@ -272,9 +294,8 @@ class DienmayxanhSpider(scrapy.Spider):
         if original_price and price and original_price > price:
             discount_percent = round(((original_price - price) / original_price) * 100)
         else:
-            discount_raw = response.css("input#PercentScenrioGTM::attr(value)").get()
-            discount_percent = (
-                int(discount_raw) if discount_raw and discount_raw.strip() != "0" else None
+            discount_percent = parse_discount(
+                response.css("input#PercentScenrioGTM::attr(value)").get()
             )
 
         if price and discount_percent and not original_price:
@@ -318,6 +339,16 @@ class DienmayxanhSpider(scrapy.Spider):
             and strip_html(prop["value"]).strip() not in ("Đang cập nhật", "Hãng không công bố")
         }
 
+        # --- in_stock ---
+        product_status = (
+            response.meta.get("product_status")
+            or response.css("strong.productstatus::text").get("").strip()
+        )
+
+        in_stock = not any(
+            s in product_status for s in UNAVAILABLE_STATUSES
+        ) and "InStock" in offers.get("availability", "")
+
         yield ProductItem(
             url=ld_product.get("url") or response.url.split("?")[0],
             source="dienmayxanh",
@@ -332,10 +363,7 @@ class DienmayxanhSpider(scrapy.Spider):
             price=price,
             original_price=original_price,
             discount_percent=discount_percent,
-            in_stock=(
-                "InStock" in offers.get("availability", "")
-                or bool(response.css("[class*='btn-buynow']").get())
-            ),
+            in_stock=in_stock,
             quantity=None,
             rating=agg_rating.get("ratingValue")
             or parse_rating(response.css("[class*='rank'] span::text").get()),
