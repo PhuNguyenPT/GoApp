@@ -297,6 +297,9 @@ class ThegioididongSpider(scrapy.Spider):
         offers = ld_product.get("offers") or {}
         rating = ld_product.get("aggregateRating") or {}
 
+        if ld_product and not ld_product.get("sku") and not ld_product.get("url"):
+            return
+
         product_url = response.url.split("?")[0]
 
         if not product_url:
@@ -323,6 +326,8 @@ class ThegioididongSpider(scrapy.Spider):
         # --- Fallback Path ---
         if not ld_product:
             gtm = self._parse_gtm_fallback(response)
+            if not gtm:
+                return
             item.name = gtm.get("name")
             item.sku = gtm.get("sku")
             item.description = None
