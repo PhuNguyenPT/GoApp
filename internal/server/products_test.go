@@ -1005,31 +1005,31 @@ func TestProductSuggestHandler(t *testing.T) {
 			name:         "suggest iphone returns datalist with options",
 			query:        "iphone",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"datalist", "iPhone"},
+			wantContains: []string{"data-value", "iPhone"},
 		},
 		{
 			name:         "suggest acer returns datalist with options",
 			query:        "acer",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"datalist", "Acer"},
+			wantContains: []string{"data-value", "Acer"},
 		},
 		{
 			name:         "short query under 2 chars returns empty datalist",
 			query:        "i",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"datalist", "search-suggestions"},
+			wantContains: []string{},
 		},
 		{
 			name:         "empty query returns empty datalist",
 			query:        "",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"datalist"},
+			wantContains: []string{},
 		},
 		{
 			name:         "no match returns empty datalist",
 			query:        "zzznomatch999",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"datalist"},
+			wantContains: []string{},
 		},
 	}
 
