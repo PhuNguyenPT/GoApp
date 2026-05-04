@@ -87,7 +87,7 @@ class ThegioididongSpider(scrapy.Spider):
 
     async def start(self):
         if hasattr(self, "start_url"):
-            yield scrapy.Request(self.start_url, callback=self.parse)
+            yield scrapy.Request(self.start_url, callback=self.parse_product)
             return
         yield scrapy.Request(
             "https://www.thegioididong.com",
@@ -229,12 +229,17 @@ class ThegioididongSpider(scrapy.Spider):
                 return m.group(1).strip() if m and m.group(1).strip() else None
 
             price_raw = _get("price")
+            price_val = float(price_raw) if price_raw else None
+
+            og_title = response.css("meta[property='og:title']::attr(content)").get() or ""
+            name = re.split(r"\s+ra mắt|,", og_title)[0].strip() or None
+
             return {
-                "name": _get("name"),
-                "sku": _get("id"),
-                "brand": None,
-                "price": float(price_raw) if price_raw else None,
-                "in_stock": _get("dimension55") == "Yes",
+                "name": name,
+                "sku": None,  # no reliable SKU on campaign pages
+                "brand": name.split()[0] if name else None,
+                "price": price_val if price_val else None,
+                "in_stock": False,  # price=0 means not yet on sale
             }
 
         # --- Pattern 2: GA4 dataLayer / MAddToCartAll (info/coming-soon pages) ---
@@ -292,7 +297,10 @@ class ThegioididongSpider(scrapy.Spider):
         offers = ld_product.get("offers") or {}
         rating = ld_product.get("aggregateRating") or {}
 
-        product_url = ld_product.get("url") or response.url.split("?")[0]
+        if ld_product and not ld_product.get("sku") and not ld_product.get("url"):
+            return
+
+        product_url = response.url.split("?")[0]
 
         if not product_url:
             self.logger.error(f"Could not find URL for product at {response.url}")
@@ -318,6 +326,8 @@ class ThegioididongSpider(scrapy.Spider):
         # --- Fallback Path ---
         if not ld_product:
             gtm = self._parse_gtm_fallback(response)
+            if not gtm:
+                return
             item.name = gtm.get("name")
             item.sku = gtm.get("sku")
             item.description = None
