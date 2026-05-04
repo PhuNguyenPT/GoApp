@@ -651,7 +651,6 @@ templ SearchSuggestions(suggestions []sql.NullString, lang string) {
 			<div
 				class="px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer rounded"
 				data-value={ s.String }
-				onmousedown="(function(el){var inp=document.getElementById('search-input');inp.value=el.dataset.value;document.getElementById('search-dropdown').classList.add('hidden');htmx.trigger(inp,'search')})(this)"
 			>{ s.String }</div>
 		}
 	}
