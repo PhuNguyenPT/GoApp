@@ -653,6 +653,84 @@ func (m *mockDB) GetProductPriceHistory(ctx context.Context, productID uuid.UUID
 	}, nil
 }
 
+func (m *mockDB) SearchProductSummaries(ctx context.Context, arg database.SearchProductSummariesParams) ([]database.SearchProductSummariesRow, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// simple name filter to simulate search
+	var rows []database.SearchProductSummariesRow
+	for _, p := range products {
+		if arg.Query != "" && !strings.Contains(strings.ToLower(p.Name.String), strings.ToLower(arg.Query)) {
+			continue
+		}
+		rows = append(rows, database.SearchProductSummariesRow{
+			ID:              p.ID,
+			Source:          p.Source,
+			Name:            p.Name,
+			Brand:           p.Brand,
+			Category:        p.Category,
+			Subcategory:     p.Subcategory,
+			Price:           p.Price,
+			OriginalPrice:   p.OriginalPrice,
+			DiscountPercent: p.DiscountPercent,
+			Currency:        p.Currency,
+			InStock:         p.InStock,
+			Quantity:        p.Quantity,
+			Rating:          p.Rating,
+			ReviewCount:     p.ReviewCount,
+			Images:          p.Images,
+			Rank:            1.0,
+		})
+	}
+	return rows, nil
+}
+
+func (m *mockDB) CountSearchProducts(ctx context.Context, arg database.CountSearchProductsParams) (int64, error) {
+	results, err := m.SearchProductSummaries(ctx, database.SearchProductSummariesParams{
+		Query:       arg.Query,
+		Source:      arg.Source,
+		Category:    arg.Category,
+		Subcategory: arg.Subcategory,
+		MinPrice:    arg.MinPrice,
+		MaxPrice:    arg.MaxPrice,
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int64(len(results)), nil
+}
+
+func (m *mockDB) SuggestProductNames(ctx context.Context, arg database.SuggestProductNamesParams) ([]sql.NullString, error) {
+	products, err := m.GetProductsBySourceAndCategory(ctx, database.GetProductsBySourceAndCategoryParams{})
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]bool)
+	var results []sql.NullString
+	for _, p := range products {
+		if !p.Name.Valid {
+			continue
+		}
+		if strings.Contains(strings.ToLower(p.Name.String), strings.ToLower(arg.Query)) {
+			if !seen[p.Name.String] {
+				seen[p.Name.String] = true
+				results = append(results, p.Name)
+			}
+		}
+		if int32(len(results)) >= arg.PageLimit {
+			break
+		}
+	}
+	return results, nil
+}
+
 var testHandler http.Handler
 
 func TestMain(m *testing.M) {

@@ -45,6 +45,9 @@ type DB interface {
 	GetProductSummaries(ctx context.Context, arg database.GetProductSummariesParams) ([]database.GetProductSummariesRow, error)
 	GetPricePercentiles(ctx context.Context, arg database.GetPricePercentilesParams) (database.GetPricePercentilesRow, error)
 	GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error)
+	SearchProductSummaries(ctx context.Context, arg database.SearchProductSummariesParams) ([]database.SearchProductSummariesRow, error)
+	CountSearchProducts(ctx context.Context, arg database.CountSearchProductsParams) (int64, error)
+	SuggestProductNames(ctx context.Context, arg database.SuggestProductNamesParams) ([]sql.NullString, error)
 }
 type sqlDB struct {
 	raw     *sql.DB
@@ -149,6 +152,18 @@ func (s *sqlDB) GetPricePercentiles(ctx context.Context, arg database.GetPricePe
 
 func (s *sqlDB) GetProductPriceHistory(ctx context.Context, productID uuid.UUID) ([]database.GetProductPriceHistoryRow, error) {
 	return s.queries.GetProductPriceHistory(ctx, productID)
+}
+
+func (s *sqlDB) SearchProductSummaries(ctx context.Context, arg database.SearchProductSummariesParams) ([]database.SearchProductSummariesRow, error) {
+	return s.queries.SearchProductSummaries(ctx, arg)
+}
+
+func (s *sqlDB) CountSearchProducts(ctx context.Context, arg database.CountSearchProductsParams) (int64, error) {
+	return s.queries.CountSearchProducts(ctx, arg)
+}
+
+func (s *sqlDB) SuggestProductNames(ctx context.Context, arg database.SuggestProductNamesParams) ([]sql.NullString, error) {
+	return s.queries.SuggestProductNames(ctx, arg)
 }
 
 type Server struct {

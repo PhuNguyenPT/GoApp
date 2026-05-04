@@ -94,3 +94,47 @@ SELECT
 FROM products_history
 WHERE product_id = sqlc.arg(product_id)::uuid
 ORDER BY crawled_at ASC;
+
+-- name: SearchProductSummaries :many
+SELECT
+    id, source, name, brand, category, subcategory,
+    price, original_price, discount_percent, currency,
+    in_stock, quantity, rating, review_count, images,
+    (
+        ts_rank(search_vector, plainto_tsquery('vietnamese', sqlc.arg(query)::text)) * 2.0
+        + similarity(name, sqlc.arg(query)::text)
+    )::float4 AS rank
+FROM products
+WHERE
+    (
+        search_vector @@ plainto_tsquery('vietnamese', sqlc.arg(query)::text)
+        OR similarity(name, sqlc.arg(query)::text) > 0.15
+    )
+    AND (sqlc.arg(source)::text      = '' OR lower(source)      = lower(sqlc.arg(source)::text))
+    AND (sqlc.arg(category)::text    = '' OR lower(category)    = lower(sqlc.arg(category)::text))
+    AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
+    AND (sqlc.arg(min_price)::numeric = 0  OR price >= sqlc.arg(min_price)::numeric)
+    AND (sqlc.arg(max_price)::numeric = 0  OR price <= sqlc.arg(max_price)::numeric)
+ORDER BY rank DESC, crawled_at DESC
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- name: CountSearchProducts :one
+SELECT COUNT(*) FROM products
+WHERE
+    (
+        search_vector @@ plainto_tsquery('vietnamese', sqlc.arg(query)::text)
+        OR similarity(name, sqlc.arg(query)::text) > 0.15
+    )
+    AND (sqlc.arg(source)::text      = '' OR lower(source)      = lower(sqlc.arg(source)::text))
+    AND (sqlc.arg(category)::text    = '' OR lower(category)    = lower(sqlc.arg(category)::text))
+    AND (sqlc.arg(subcategory)::text = '' OR lower(subcategory) = lower(sqlc.arg(subcategory)::text))
+    AND (sqlc.arg(min_price)::numeric = 0  OR price >= sqlc.arg(min_price)::numeric)
+    AND (sqlc.arg(max_price)::numeric = 0  OR price <= sqlc.arg(max_price)::numeric);
+
+-- name: SuggestProductNames :many
+SELECT name
+FROM products
+WHERE similarity(name, sqlc.arg(query)::text) > 0.2
+GROUP BY name
+ORDER BY MAX(similarity(name, sqlc.arg(query)::text)) DESC
+LIMIT sqlc.arg(page_limit);

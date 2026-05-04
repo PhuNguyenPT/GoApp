@@ -867,3 +867,197 @@ func TestProductsFragmentCarriesFilterContext(t *testing.T) {
 		t.Error("expected fragment card links to contain category param")
 	}
 }
+
+func TestProductsSearchHandler(t *testing.T) {
+	tests := []struct {
+		name         string
+		url          string
+		wantStatus   int
+		wantContains []string
+		wantAbsent   []string
+	}{
+		{
+			name:         "search iphone returns iphone products",
+			url:          "/products?q=iphone",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"iPhone"},
+			wantAbsent:   []string{"Akko", "Ugreen"},
+		},
+		{
+			name:         "search acer returns acer products",
+			url:          "/products?q=acer",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"Acer"},
+			wantAbsent:   []string{"iPhone"},
+		},
+		{
+			name:         "search with source filter",
+			url:          "/products?q=iphone&source=fptshop",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"iPhone 17 Pro"},
+			wantAbsent:   []string{"iPhone 17 Pro Max 256GB"},
+		},
+		{
+			name:         "search with category filter",
+			url:          "/products?q=acer&category=Laptop",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"Acer"},
+			wantAbsent:   []string{"iPhone"},
+		},
+		{
+			name:         "empty search returns all products",
+			url:          "/products?q=",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"iPhone", "Acer"},
+		},
+		{
+			name:         "search no results shows no products",
+			url:          "/products?q=zzznomatch999",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"No products found"},
+		},
+		{
+			name:       "search returns html content type",
+			url:        "/products?q=iphone",
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, tt.url, nil)
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			rr := httptest.NewRecorder()
+			testHandler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("expected status %v, got %v", tt.wantStatus, rr.Code)
+			}
+			if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+				t.Errorf("expected HTML content type, got %v", ct)
+			}
+			body := rr.Body.String()
+			for _, want := range tt.wantContains {
+				if !strings.Contains(body, want) {
+					t.Errorf("expected body to contain %q", want)
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if strings.Contains(body, absent) {
+					t.Errorf("expected body NOT to contain %q", absent)
+				}
+			}
+		})
+	}
+}
+
+func TestProductsSearchHXRequest(t *testing.T) {
+	tests := []struct {
+		name         string
+		url          string
+		wantContains []string
+	}{
+		{
+			name:         "htmx search returns OOBs and grid",
+			url:          "/products?q=iphone",
+			wantContains: []string{"source-filter", "active-chips", "product-results"},
+		},
+		{
+			name:         "htmx search with source filter",
+			url:          "/products?q=acer&source=fptshop&trigger=source",
+			wantContains: []string{"source-filter", "product-results"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, tt.url, nil)
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			req.Header.Set("HX-Request", "true")
+			rr := httptest.NewRecorder()
+			testHandler.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusOK {
+				t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+			}
+			body := rr.Body.String()
+			for _, want := range tt.wantContains {
+				if !strings.Contains(body, want) {
+					t.Errorf("expected body to contain %q", want)
+				}
+			}
+		})
+	}
+}
+
+func TestProductSuggestHandler(t *testing.T) {
+	tests := []struct {
+		name         string
+		query        string
+		wantStatus   int
+		wantContains []string
+	}{
+		{
+			name:         "suggest iphone returns datalist with options",
+			query:        "iphone",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"data-value", "iPhone"},
+		},
+		{
+			name:         "suggest acer returns datalist with options",
+			query:        "acer",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{"data-value", "Acer"},
+		},
+		{
+			name:         "short query under 2 chars returns empty datalist",
+			query:        "i",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{},
+		},
+		{
+			name:         "empty query returns empty datalist",
+			query:        "",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{},
+		},
+		{
+			name:         "no match returns empty datalist",
+			query:        "zzznomatch999",
+			wantStatus:   http.StatusOK,
+			wantContains: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url := "/products/suggest"
+			if tt.query != "" {
+				url += "?q=" + tt.query
+			}
+			req, err := http.NewRequest(http.MethodGet, url, nil)
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			rr := httptest.NewRecorder()
+			testHandler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Errorf("expected status %v, got %v", tt.wantStatus, rr.Code)
+			}
+			if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+				t.Errorf("expected HTML content type, got %v", ct)
+			}
+			body := rr.Body.String()
+			for _, want := range tt.wantContains {
+				if !strings.Contains(body, want) {
+					t.Errorf("expected body to contain %q", want)
+				}
+			}
+		})
+	}
+}
