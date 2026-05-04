@@ -44,6 +44,43 @@ func (q *Queries) CountProductsBySourceAndCategory(ctx context.Context, arg Coun
 	return count, err
 }
 
+const countSearchProducts = `-- name: CountSearchProducts :one
+SELECT COUNT(*) FROM products
+WHERE
+    (
+        search_vector @@ plainto_tsquery('vietnamese', $1::text)
+        OR similarity(name, $1::text) > 0.15
+    )
+    AND ($2::text      = '' OR lower(source)      = lower($2::text))
+    AND ($3::text    = '' OR lower(category)    = lower($3::text))
+    AND ($4::text = '' OR lower(subcategory) = lower($4::text))
+    AND ($5::numeric = 0  OR price >= $5::numeric)
+    AND ($6::numeric = 0  OR price <= $6::numeric)
+`
+
+type CountSearchProductsParams struct {
+	Query       string
+	Source      string
+	Category    string
+	Subcategory string
+	MinPrice    string
+	MaxPrice    string
+}
+
+func (q *Queries) CountSearchProducts(ctx context.Context, arg CountSearchProductsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSearchProducts,
+		arg.Query,
+		arg.Source,
+		arg.Category,
+		arg.Subcategory,
+		arg.MinPrice,
+		arg.MaxPrice,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getCategoriesBySource = `-- name: GetCategoriesBySource :many
 SELECT DISTINCT category FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
@@ -148,7 +185,7 @@ func (q *Queries) GetPricePercentiles(ctx context.Context, arg GetPricePercentil
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at, search_vector FROM products
 WHERE id = $1
 `
 
@@ -178,6 +215,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.CrawledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SearchVector,
 	)
 	return i, err
 }
@@ -352,7 +390,7 @@ func (q *Queries) GetProductSummaries(ctx context.Context, arg GetProductSummari
 }
 
 const getProductsBySourceAndCategory = `-- name: GetProductsBySourceAndCategory :many
-SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at FROM products
+SELECT id, url, source, sku, name, brand, category, subcategory, description, price, original_price, discount_percent, currency, in_stock, quantity, rating, review_count, images, specs, crawled_at, created_at, updated_at, search_vector FROM products
 WHERE ($1::text = '' OR lower(source) = lower($1::text))
 AND ($2::text = '' OR lower(category) = lower($2::text))
 AND ($3::text = '' OR lower(subcategory) = lower($3::text))
@@ -406,6 +444,7 @@ func (q *Queries) GetProductsBySourceAndCategory(ctx context.Context, arg GetPro
 			&i.CrawledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SearchVector,
 		); err != nil {
 			return nil, err
 		}
@@ -446,6 +485,145 @@ func (q *Queries) GetSubcategoriesBySourceAndCategory(ctx context.Context, arg G
 			return nil, err
 		}
 		items = append(items, subcategory)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchProductSummaries = `-- name: SearchProductSummaries :many
+SELECT
+    id, source, name, brand, category, subcategory,
+    price, original_price, discount_percent, currency,
+    in_stock, quantity, rating, review_count, images,
+    (
+        ts_rank(search_vector, plainto_tsquery('vietnamese', $1::text)) * 2.0
+        + similarity(name, $1::text)
+    )::float4 AS rank
+FROM products
+WHERE
+    (
+        search_vector @@ plainto_tsquery('vietnamese', $1::text)
+        OR similarity(name, $1::text) > 0.15
+    )
+    AND ($2::text      = '' OR lower(source)      = lower($2::text))
+    AND ($3::text    = '' OR lower(category)    = lower($3::text))
+    AND ($4::text = '' OR lower(subcategory) = lower($4::text))
+    AND ($5::numeric = 0  OR price >= $5::numeric)
+    AND ($6::numeric = 0  OR price <= $6::numeric)
+ORDER BY rank DESC, crawled_at DESC
+LIMIT $8 OFFSET $7
+`
+
+type SearchProductSummariesParams struct {
+	Query       string
+	Source      string
+	Category    string
+	Subcategory string
+	MinPrice    string
+	MaxPrice    string
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type SearchProductSummariesRow struct {
+	ID              uuid.UUID
+	Source          sql.NullString
+	Name            sql.NullString
+	Brand           sql.NullString
+	Category        sql.NullString
+	Subcategory     sql.NullString
+	Price           sql.NullString
+	OriginalPrice   sql.NullString
+	DiscountPercent sql.NullInt32
+	Currency        sql.NullString
+	InStock         sql.NullBool
+	Quantity        sql.NullInt32
+	Rating          sql.NullString
+	ReviewCount     sql.NullInt32
+	Images          pqtype.NullRawMessage
+	Rank            float32
+}
+
+func (q *Queries) SearchProductSummaries(ctx context.Context, arg SearchProductSummariesParams) ([]SearchProductSummariesRow, error) {
+	rows, err := q.db.QueryContext(ctx, searchProductSummaries,
+		arg.Query,
+		arg.Source,
+		arg.Category,
+		arg.Subcategory,
+		arg.MinPrice,
+		arg.MaxPrice,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchProductSummariesRow
+	for rows.Next() {
+		var i SearchProductSummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.Name,
+			&i.Brand,
+			&i.Category,
+			&i.Subcategory,
+			&i.Price,
+			&i.OriginalPrice,
+			&i.DiscountPercent,
+			&i.Currency,
+			&i.InStock,
+			&i.Quantity,
+			&i.Rating,
+			&i.ReviewCount,
+			&i.Images,
+			&i.Rank,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const suggestProductNames = `-- name: SuggestProductNames :many
+SELECT DISTINCT name
+FROM products
+WHERE similarity(name, $1::text) > 0.2
+ORDER BY similarity(name, $1::text) DESC
+LIMIT $2
+`
+
+type SuggestProductNamesParams struct {
+	Query     string
+	PageLimit int32
+}
+
+func (q *Queries) SuggestProductNames(ctx context.Context, arg SuggestProductNamesParams) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, suggestProductNames, arg.Query, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var name sql.NullString
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

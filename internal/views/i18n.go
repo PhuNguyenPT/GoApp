@@ -42,6 +42,7 @@ type Translations struct {
 	PlaceholderSubject  string
 	PlaceholderMessage  string
 	PlaceholderPassword string
+	SearchPlaceholder   string
 	// Products
 	ProductsTitle       string
 	ProductsDescription string
@@ -184,6 +185,7 @@ func T(lang string) Translations {
 			PlaceholderSubject:  "Chúng tôi có thể giúp gì cho bạn?",
 			PlaceholderMessage:  "Nhập nội dung tin nhắn...",
 			PlaceholderPassword: "••••••••",
+			SearchPlaceholder:   "Tìm kiếm sản phẩm...",
 			// Products
 			ProductsTitle:       "Sản phẩm",
 			ProductsDescription: "Khám phá sản phẩm",
@@ -319,6 +321,7 @@ func T(lang string) Translations {
 		PlaceholderSubject:  "How can we help you?",
 		PlaceholderMessage:  "Write your message here...",
 		PlaceholderPassword: "••••••••",
+		SearchPlaceholder:   "Search products...",
 		// Products
 		ProductsTitle:       "Products",
 		ProductsDescription: "Browse products",

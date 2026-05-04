@@ -86,30 +86,79 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		log.Printf("error getting subcategories: %v", err)
 	}
 
-	total, err := s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
-		Source:      selectedSource,
-		Category:    selectedCategory,
-		Subcategory: selectedSubcategory,
-		MinPrice:    minPriceParam,
-		MaxPrice:    maxPriceParam,
-	})
-	if err != nil {
-		log.Printf("error counting products: %v", err)
-	}
+	searchQuery := c.DefaultQuery("q", "")
 
-	products, err := s.db.GetProductSummaries(ctx, database.GetProductSummariesParams{
-		Source:      selectedSource,
-		Category:    selectedCategory,
-		Subcategory: selectedSubcategory,
-		MinPrice:    minPriceParam,
-		MaxPrice:    maxPriceParam,
-		SortField:   sortExpr,
-		SortDir:     string(pageable.Sort.Direction),
-		PageLimit:   int32(pageable.Size),
-		PageOffset:  int32(pageable.Offset()),
-	})
-	if err != nil {
-		log.Printf("error getting products: %v", err)
+	var products []database.GetProductSummariesRow
+	var total int64
+
+	if searchQuery != "" {
+		results, err := s.db.SearchProductSummaries(ctx, database.SearchProductSummariesParams{
+			Query:       searchQuery,
+			Source:      selectedSource,
+			Category:    selectedCategory,
+			Subcategory: selectedSubcategory,
+			MinPrice:    minPriceParam,
+			MaxPrice:    maxPriceParam,
+			PageLimit:   int32(pageable.Size),
+			PageOffset:  int32(pageable.Offset()),
+		})
+		if err != nil {
+			log.Printf("error searching products: %v", err)
+		}
+		for _, r := range results {
+			products = append(products, database.GetProductSummariesRow{
+				ID:              r.ID,
+				Source:          r.Source,
+				Name:            r.Name,
+				Brand:           r.Brand,
+				Category:        r.Category,
+				Price:           r.Price,
+				OriginalPrice:   r.OriginalPrice,
+				DiscountPercent: r.DiscountPercent,
+				Currency:        r.Currency,
+				InStock:         r.InStock,
+				Quantity:        r.Quantity,
+				Rating:          r.Rating,
+				ReviewCount:     r.ReviewCount,
+				Images:          r.Images,
+			})
+		}
+		total, err = s.db.CountSearchProducts(ctx, database.CountSearchProductsParams{
+			Query:       searchQuery,
+			Source:      selectedSource,
+			Category:    selectedCategory,
+			Subcategory: selectedSubcategory,
+			MinPrice:    minPriceParam,
+			MaxPrice:    maxPriceParam,
+		})
+		if err != nil {
+			log.Printf("error counting search products: %v", err)
+		}
+	} else {
+		total, err = s.db.CountProductsBySourceAndCategory(ctx, database.CountProductsBySourceAndCategoryParams{
+			Source:      selectedSource,
+			Category:    selectedCategory,
+			Subcategory: selectedSubcategory,
+			MinPrice:    minPriceParam,
+			MaxPrice:    maxPriceParam,
+		})
+		if err != nil {
+			log.Printf("error counting products: %v", err)
+		}
+		products, err = s.db.GetProductSummaries(ctx, database.GetProductSummariesParams{
+			Source:      selectedSource,
+			Category:    selectedCategory,
+			Subcategory: selectedSubcategory,
+			MinPrice:    minPriceParam,
+			MaxPrice:    maxPriceParam,
+			SortField:   sortExpr,
+			SortDir:     string(pageable.Sort.Direction),
+			PageLimit:   int32(pageable.Size),
+			PageOffset:  int32(pageable.Offset()),
+		})
+		if err != nil {
+			log.Printf("error getting products: %v", err)
+		}
 	}
 
 	page := paging.NewPage(products, total, pageable)
@@ -149,6 +198,7 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 		SelectedCategory:    selectedCategory,
 		SelectedSubcategory: selectedSubcategory,
 		SelectedSort:        selectedSort,
+		SearchQuery:         searchQuery,
 		Page:                page.Pageable.Page,
 		TotalPages:          page.TotalPages,
 		TotalCount:          page.TotalElements,
@@ -299,5 +349,31 @@ func (s *Server) productPriceHistoryHandler(c *gin.Context) {
 	c.Header("Content-Type", "text/html")
 	if err := views.PriceHistoryPanel(history, lang).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Printf("error rendering PriceHistoryPanel: %v", err)
+	}
+}
+
+func (s *Server) productSuggestHandler(c *gin.Context) {
+	q := c.DefaultQuery("q", "")
+	if len([]rune(q)) < 2 {
+		c.Header("Content-Type", "text/html")
+		if err := views.SearchSuggestions(nil, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Printf("error rendering SearchSuggestions: %v", err)
+		}
+		return
+	}
+
+	suggestions, err := s.db.SuggestProductNames(c.Request.Context(), database.SuggestProductNamesParams{
+		Query:     q,
+		PageLimit: 8,
+	})
+	if err != nil {
+		log.Printf("error getting suggestions: %v", err)
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	c.Header("Content-Type", "text/html")
+	if err := views.SearchSuggestions(suggestions, getLangStr(c)).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Printf("error rendering SearchSuggestions: %v", err)
 	}
 }

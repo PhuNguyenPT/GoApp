@@ -19,6 +19,7 @@ type ProductsPageData struct {
 	SelectedCategory    string
 	SelectedSubcategory string
 	SelectedSort        string
+	SearchQuery         string
 	Page                int
 	TotalPages          int
 	TotalCount          int64
@@ -89,6 +90,30 @@ templ ProductsPage(userName string, data ProductsPageData, lang string) {
 									<a href="/products" class="text-xs text-gray-500 hover:text-gray-700 underline self-center">{ T(lang).ClearAll }</a>
 								</div>
 							}
+						</div>
+						<!-- Search -->
+						<div class="mb-4">
+							<input
+								type="search"
+								name="q"
+								value={ data.SearchQuery }
+								list="search-suggestions"
+								placeholder={ T(lang).SearchPlaceholder }
+								hx-get="/products"
+								hx-trigger="input changed delay:400ms, search"
+								hx-target="#product-results"
+								hx-push-url="true"
+								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`,
+									data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory) }
+								class="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+							<datalist
+								id="search-suggestions"
+								hx-get="/products/suggest"
+								hx-trigger="input from:previous changed delay:300ms"
+								hx-target="#search-suggestions"
+								hx-swap="outerHTML"
+							></datalist>
 						</div>
 						<div id="product-results">
 							@ProductGrid(data, lang)
@@ -622,4 +647,14 @@ templ FilterHeaderOOB(data ProductsPageData, lang string) {
 			<a href="/products" class="text-xs text-blue-600 hover:text-blue-800">{ T(lang).ClearAll }</a>
 		}
 	</div>
+}
+
+templ SearchSuggestions(suggestions []sql.NullString, lang string) {
+	<datalist id="search-suggestions">
+		for _, s := range suggestions {
+			if s.Valid {
+				<option value={ s.String }></option>
+			}
+		}
+	</datalist>
 }

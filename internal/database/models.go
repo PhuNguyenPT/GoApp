@@ -45,6 +45,7 @@ type Product struct {
 	CrawledAt       sql.NullTime
 	CreatedAt       sql.NullTime
 	UpdatedAt       sql.NullTime
+	SearchVector    interface{}
 }
 
 type ProductsHistory struct {
