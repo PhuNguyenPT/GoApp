@@ -599,10 +599,11 @@ func (q *Queries) SearchProductSummaries(ctx context.Context, arg SearchProductS
 }
 
 const suggestProductNames = `-- name: SuggestProductNames :many
-SELECT DISTINCT name
+SELECT name
 FROM products
 WHERE similarity(name, $1::text) > 0.2
-ORDER BY similarity(name, $1::text) DESC
+GROUP BY name
+ORDER BY MAX(similarity(name, $1::text)) DESC
 LIMIT $2
 `
 

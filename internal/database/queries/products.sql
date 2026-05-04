@@ -132,8 +132,9 @@ WHERE
     AND (sqlc.arg(max_price)::numeric = 0  OR price <= sqlc.arg(max_price)::numeric);
 
 -- name: SuggestProductNames :many
-SELECT DISTINCT name
+SELECT name
 FROM products
 WHERE similarity(name, sqlc.arg(query)::text) > 0.2
-ORDER BY similarity(name, sqlc.arg(query)::text) DESC
+GROUP BY name
+ORDER BY MAX(similarity(name, sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(page_limit);
