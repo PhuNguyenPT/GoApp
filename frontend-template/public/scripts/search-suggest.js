@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
     input.addEventListener('keydown', function (e) {
         // Always allow Escape, even when dropdown is hidden.
         if (e.key === 'Escape') {
+            e.preventDefault(); // stop browser clearing the search input
             drop.classList.add('hidden');
             return;
         }
