@@ -9,11 +9,12 @@ from items import ProductItem
 from utils.helpers import parse_price, parse_rating
 
 CDN = "https://cdn11.dienmaycholon.vn/filewebdmclnew/DMCL21/Picture"
+BASE_URL = "https://dienmaycholon.com"
 
 API_HEADERS = {
     "Accept": "application/json, text/plain, */*",
     "X-Requested-With": "XMLHttpRequest",
-    "Referer": "https://dienmaycholon.com/",
+    "Referer": f"{BASE_URL}/",
 }
 PAGE_SIZE = 15
 
@@ -67,7 +68,7 @@ class DienmaycholonSpider(scrapy.Spider):
             )
         else:
             yield scrapy.Request(
-                "https://dienmaycholon.com",
+                BASE_URL,
                 callback=self.parse_categories,
                 errback=self.handle_error,
             )
@@ -82,7 +83,7 @@ class DienmaycholonSpider(scrapy.Spider):
                 or href.startswith("javascript:")
             ):
                 continue
-            path = href.replace("https://dienmaycholon.com", "").strip("/")
+            path = href.replace(BASE_URL, "").strip("/")
             if not path or "/" in path or "?" in path or "#" in path:
                 continue
             if any(path.startswith(ex) for ex in EXCLUDED_SLUGS):
@@ -114,7 +115,7 @@ class DienmaycholonSpider(scrapy.Spider):
         self.logger.debug("Discovered cate_id=%s alias=%s series=%s", cate_id, alias, series)
 
         yield scrapy.Request(
-            f"https://dienmaycholon.com/api/product/cate?page=1&offset=0&id={cate_id}{brand_filter}",
+            f"{BASE_URL}/api/product/cate?page=1&offset=0&id={cate_id}{brand_filter}",
             headers={**API_HEADERS, "Referer": response.url},
             callback=self.parse_listing,
             errback=self.handle_error,
@@ -133,7 +134,7 @@ class DienmaycholonSpider(scrapy.Spider):
         alias = response.meta["alias"]
         cate_id = response.meta["cate_id"]
         brand_filter = response.meta.get("brand_filter", "")
-        cate_url = response.meta.get("cate_url", f"https://dienmaycholon.com/{alias}")
+        cate_url = response.meta.get("cate_url", f"{BASE_URL}/{alias}")
 
         for product in data.get("data") or []:
             if not isinstance(product, dict):
@@ -146,7 +147,7 @@ class DienmaycholonSpider(scrapy.Spider):
             if not alias_val:
                 continue
             yield scrapy.Request(
-                f"https://dienmaycholon.com/{alias}/{alias_val}",
+                f"{BASE_URL}/{alias}/{alias_val}",
                 callback=self.parse_product,
                 errback=self.handle_error,
                 meta={"api_data": product},
@@ -157,7 +158,7 @@ class DienmaycholonSpider(scrapy.Spider):
             for page in range(2, total_pages + 1):
                 offset = (page - 1) * PAGE_SIZE
                 yield scrapy.Request(
-                    f"https://dienmaycholon.com/api/product/cate"
+                    f"{BASE_URL}/api/product/cate"
                     f"?page={page}&offset={offset}&id={cate_id}{brand_filter}",
                     headers={**API_HEADERS, "Referer": cate_url},
                     callback=self.parse_listing,
