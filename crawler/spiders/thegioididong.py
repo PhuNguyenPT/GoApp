@@ -282,6 +282,15 @@ class ThegioididongSpider(scrapy.Spider):
         return specs
 
     def parse_product(self, response):
+        path_parts = [
+            p
+            for p in response.url.replace("https://www.thegioididong.com", "")
+            .rstrip("/")
+            .split("/")
+            if p
+        ]
+        if len(path_parts) < 2:
+            return
         ld_product = {}
         ld_breadcrumbs = []
         for script in response.css("script[type='application/ld+json']::text").getall():
