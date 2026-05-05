@@ -79,6 +79,7 @@ FALLBACK_URLS = [
 ]
 
 PAGE_SIZE = 20
+BASE_URL = "https://www.dienmayxanh.com"
 
 API_HEADERS = {
     "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -108,7 +109,7 @@ class DienmayxanhSpider(scrapy.Spider):
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/122.0.0.0 Safari/537.36"
             ),
-            "Referer": "https://www.dienmayxanh.com/",
+            "Referer": f"{BASE_URL}/",
         },
     }
 
@@ -116,7 +117,7 @@ class DienmayxanhSpider(scrapy.Spider):
         start_url = getattr(self, "start_url", None)
         if start_url:
             # Product URLs have two path segments: /category/product-slug
-            path = start_url.rstrip("/").replace("https://www.dienmayxanh.com", "")
+            path = start_url.rstrip("/").replace(BASE_URL, "")
             parts = [p for p in path.split("/") if p]
             if len(parts) >= 2:
                 # Looks like a product page — go direct
@@ -134,7 +135,7 @@ class DienmayxanhSpider(scrapy.Spider):
                 )
         else:
             yield scrapy.Request(
-                "https://www.dienmayxanh.com",
+                BASE_URL,
                 callback=self.parse_categories,
                 errback=self.handle_error,
             )
@@ -187,7 +188,7 @@ class DienmayxanhSpider(scrapy.Spider):
         self.logger.debug("Discovered cate_id=%s for %s", cate_id, response.url)
 
         yield scrapy.Request(
-            f"https://www.dienmayxanh.com/Category/FilterProductBox?c={cate_id}&o=13&pi=1",
+            f"{BASE_URL}/Category/FilterProductBox?c={cate_id}&o=13&pi=1",
             method="POST",
             body="IsParentCate=false&prevent=true",
             headers={**API_HEADERS, "Referer": response.url},
@@ -220,7 +221,7 @@ class DienmayxanhSpider(scrapy.Spider):
         if page * PAGE_SIZE < total:
             next_page = page + 1
             yield scrapy.Request(
-                f"https://www.dienmayxanh.com/Category/FilterProductBox?c={cate_id}&o=13&pi={next_page}",
+                f"{BASE_URL}/Category/FilterProductBox?c={cate_id}&o=13&pi={next_page}",
                 method="POST",
                 body="IsParentCate=false&prevent=true",
                 headers={**API_HEADERS, "Referer": referer},
@@ -230,11 +231,7 @@ class DienmayxanhSpider(scrapy.Spider):
             )
 
     def parse_product(self, response):
-        path_parts = [
-            p
-            for p in response.url.replace("https://www.dienmayxanh.com", "").rstrip("/").split("/")
-            if p
-        ]
+        path_parts = [p for p in response.url.replace(BASE_URL, "").rstrip("/").split("/") if p]
         if len(path_parts) < 2:
             return
         ld_product = {}
