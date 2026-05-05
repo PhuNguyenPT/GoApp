@@ -61,17 +61,18 @@ class DienmaycholonSpider(scrapy.Spider):
     async def start(self):
         start_url = getattr(self, "start_url", None)
         if start_url:
-            yield scrapy.Request(
-                start_url,
-                callback=self.parse_category_page,
-                errback=self.handle_error,
-            )
-        else:
-            yield scrapy.Request(
-                BASE_URL,
-                callback=self.parse_categories,
-                errback=self.handle_error,
-            )
+            path = start_url.rstrip("/").replace(BASE_URL, "")
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                yield scrapy.Request(
+                    start_url, callback=self.parse_product, errback=self.handle_error
+                )
+            else:
+                yield scrapy.Request(
+                    start_url, callback=self.parse_category_page, errback=self.handle_error
+                )
+            return
+        yield scrapy.Request(BASE_URL, callback=self.parse_categories, errback=self.handle_error)
 
     def parse_categories(self, response):
         seen = set()
