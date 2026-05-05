@@ -60,6 +60,7 @@ FALLBACK_URLS = [
 ]
 
 PAGE_SIZE = 20
+BASE_URL = "https://www.thegioididong.com"
 
 
 def strip_html(text):
@@ -87,10 +88,19 @@ class ThegioididongSpider(scrapy.Spider):
 
     async def start(self):
         if hasattr(self, "start_url"):
-            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            path = self.start_url.rstrip("/").replace(BASE_URL, "")
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                yield scrapy.Request(
+                    self.start_url, callback=self.parse_product, errback=self.handle_error
+                )
+            else:
+                yield scrapy.Request(
+                    self.start_url, callback=self.parse_category_page, errback=self.handle_error
+                )
             return
         yield scrapy.Request(
-            "https://www.thegioididong.com",
+            BASE_URL,
             callback=self.parse_categories,
             errback=self.handle_error,
         )
@@ -169,7 +179,7 @@ class ThegioididongSpider(scrapy.Spider):
             return
 
         yield scrapy.Request(
-            f"https://www.thegioididong.com/Category/FilterProductBox?c={cate_id}&o=13&pi=1",
+            f"{BASE_URL}/Category/FilterProductBox?c={cate_id}&o=13&pi=1",
             method="POST",
             body="IsParentCate=False&IsShowCompare=True&prevent=true",
             headers={
@@ -202,7 +212,7 @@ class ThegioididongSpider(scrapy.Spider):
         if page * PAGE_SIZE < total:
             next_page = page + 1
             yield scrapy.Request(
-                f"https://www.thegioididong.com/Category/FilterProductBox?c={cate_id}&o=13&pi={next_page}",
+                f"{BASE_URL}/Category/FilterProductBox?c={cate_id}&o=13&pi={next_page}",
                 method="POST",
                 body="IsParentCate=False&IsShowCompare=True&prevent=true",
                 headers={
@@ -282,13 +292,7 @@ class ThegioididongSpider(scrapy.Spider):
         return specs
 
     def parse_product(self, response):
-        path_parts = [
-            p
-            for p in response.url.replace("https://www.thegioididong.com", "")
-            .rstrip("/")
-            .split("/")
-            if p
-        ]
+        path_parts = [p for p in response.url.replace(BASE_URL, "").rstrip("/").split("/") if p]
         if len(path_parts) < 2:
             return
         ld_product = {}
