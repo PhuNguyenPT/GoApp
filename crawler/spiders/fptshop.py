@@ -2,7 +2,6 @@ import json
 import re
 from datetime import datetime, timezone
 
-import psycopg2
 import scrapy
 from scrapy.spidermiddlewares.httperror import HttpError
 
@@ -10,14 +9,14 @@ from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
 
 PAGE_SIZE = 24
-
+BASE_URL = "https://fptshop.com.vn"
 API_URL = "https://papi.fptshop.com.vn/gw/v1/public/fulltext-search-service/category"
 API_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
     "order-channel": "1",
-    "Origin": "https://fptshop.com.vn",
-    "Referer": "https://fptshop.com.vn/",
+    "Origin": BASE_URL,
+    "Referer": f"{BASE_URL}/",
 }
 
 EXCLUDE_PATHS = {
@@ -60,33 +59,37 @@ class FptSpider(scrapy.Spider):
 
     async def start(self):
         if hasattr(self, "start_url"):
-            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            path = self.start_url.rstrip("/").replace(BASE_URL, "")
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                yield scrapy.Request(
+                    self.start_url, callback=self.parse_product, errback=self.handle_error
+                )
+            else:
+                yield scrapy.Request(
+                    API_URL,
+                    method="POST",
+                    body=json.dumps(
+                        {
+                            "skipCount": 0,
+                            "maxResultCount": PAGE_SIZE,
+                            "sortMethod": "noi-bat",
+                            "slug": parts[0],
+                            "categoryType": "category",
+                        }
+                    ),
+                    headers=API_HEADERS,
+                    callback=self.parse_listing,
+                    errback=self.handle_error,
+                    meta={"slug": parts[0], "skip": 0},
+                )
             return
 
         yield scrapy.Request(
-            "https://fptshop.com.vn",
+            BASE_URL,
             callback=self.parse_categories,
             errback=self.handle_error,
         )
-
-        db_url = self.settings.get("DATABASE_URL")
-        if db_url:
-            try:
-                conn = psycopg2.connect(db_url)
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT url FROM products WHERE source = 'fptshop' AND (price IS NULL OR in_stock = false)"
-                )
-                for (url,) in cur.fetchall():
-                    yield scrapy.Request(
-                        url,
-                        callback=self.parse_product,
-                        errback=self.handle_error,
-                    )
-                cur.close()
-                conn.close()
-            except Exception as e:
-                self.logger.error("Failed to fetch stale URLs from DB: %s", e)
 
     def parse_categories(self, response):
         seen = set()
@@ -158,7 +161,7 @@ class FptSpider(scrapy.Spider):
             if not product_slug:
                 continue
             yield scrapy.Request(
-                f"https://fptshop.com.vn/{product_slug}",
+                f"{BASE_URL}/{product_slug}",
                 callback=self.parse_product,
                 errback=self.handle_error,
                 meta={"listing": item},
