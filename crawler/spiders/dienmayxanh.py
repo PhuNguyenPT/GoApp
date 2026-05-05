@@ -230,6 +230,13 @@ class DienmayxanhSpider(scrapy.Spider):
             )
 
     def parse_product(self, response):
+        path_parts = [
+            p
+            for p in response.url.replace("https://www.dienmayxanh.com", "").rstrip("/").split("/")
+            if p
+        ]
+        if len(path_parts) < 2:
+            return
         ld_product = {}
         ld_breadcrumbs = []
         for script in response.css("script[type='application/ld+json']::text").getall():
@@ -350,7 +357,7 @@ class DienmayxanhSpider(scrapy.Spider):
         ) and "InStock" in offers.get("availability", "")
 
         yield ProductItem(
-            url=ld_product.get("url") or response.url.split("?")[0],
+            url=response.url.split("?")[0],
             source="dienmayxanh",
             crawled_at=datetime.now(timezone.utc),
             currency=offers.get("priceCurrency", "VND"),
