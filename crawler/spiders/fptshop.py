@@ -2,7 +2,6 @@ import json
 import re
 from datetime import datetime, timezone
 
-import psycopg2
 import scrapy
 from scrapy.spidermiddlewares.httperror import HttpError
 
@@ -91,25 +90,6 @@ class FptSpider(scrapy.Spider):
             callback=self.parse_categories,
             errback=self.handle_error,
         )
-
-        db_url = self.settings.get("DATABASE_URL")
-        if db_url:
-            try:
-                conn = psycopg2.connect(db_url)
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT url FROM products WHERE source = 'fptshop' AND (price IS NULL OR in_stock = false)"
-                )
-                for (url,) in cur.fetchall():
-                    yield scrapy.Request(
-                        url,
-                        callback=self.parse_product,
-                        errback=self.handle_error,
-                    )
-                cur.close()
-                conn.close()
-            except Exception as e:
-                self.logger.error("Failed to fetch stale URLs from DB: %s", e)
 
     def parse_categories(self, response):
         seen = set()
