@@ -10,14 +10,14 @@ from items import ProductItem
 from utils.helpers import clean_text, parse_discount, parse_price
 
 PAGE_SIZE = 24
-
+BASE_URL = "https://fptshop.com.vn"
 API_URL = "https://papi.fptshop.com.vn/gw/v1/public/fulltext-search-service/category"
 API_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
     "order-channel": "1",
-    "Origin": "https://fptshop.com.vn",
-    "Referer": "https://fptshop.com.vn/",
+    "Origin": BASE_URL,
+    "Referer": f"{BASE_URL}/",
 }
 
 EXCLUDE_PATHS = {
@@ -64,7 +64,7 @@ class FptSpider(scrapy.Spider):
             return
 
         yield scrapy.Request(
-            "https://fptshop.com.vn",
+            BASE_URL,
             callback=self.parse_categories,
             errback=self.handle_error,
         )
@@ -158,7 +158,7 @@ class FptSpider(scrapy.Spider):
             if not product_slug:
                 continue
             yield scrapy.Request(
-                f"https://fptshop.com.vn/{product_slug}",
+                f"{BASE_URL}/{product_slug}",
                 callback=self.parse_product,
                 errback=self.handle_error,
                 meta={"listing": item},
