@@ -60,7 +60,30 @@ class FptSpider(scrapy.Spider):
 
     async def start(self):
         if hasattr(self, "start_url"):
-            yield scrapy.Request(self.start_url, callback=self.parse_product)
+            path = self.start_url.rstrip("/").replace(BASE_URL, "")
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2:
+                yield scrapy.Request(
+                    self.start_url, callback=self.parse_product, errback=self.handle_error
+                )
+            else:
+                yield scrapy.Request(
+                    API_URL,
+                    method="POST",
+                    body=json.dumps(
+                        {
+                            "skipCount": 0,
+                            "maxResultCount": PAGE_SIZE,
+                            "sortMethod": "noi-bat",
+                            "slug": parts[0],
+                            "categoryType": "category",
+                        }
+                    ),
+                    headers=API_HEADERS,
+                    callback=self.parse_listing,
+                    errback=self.handle_error,
+                    meta={"slug": parts[0], "skip": 0},
+                )
             return
 
         yield scrapy.Request(
