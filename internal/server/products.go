@@ -210,34 +210,49 @@ func (s *Server) productsPageHandler(c *gin.Context) {
 
 	if c.GetHeader("HX-Request") == "true" {
 		c.Header("Content-Type", "text/html")
+		trigger := c.Query("trigger")
 
-		if err := views.SourceFilterOOB(sources, selectedSource, lang).Render(ctx, c.Writer); err != nil {
-			log.Printf("error rendering SourceFilterOOB: %v", err)
-		}
+		// Always needed
 		if err := views.ActiveChipsOOB(data, lang).Render(ctx, c.Writer); err != nil {
 			log.Printf("error rendering ActiveChipsOOB: %v", err)
-		}
-		if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(ctx, c.Writer); err != nil {
-			log.Printf("error rendering CategoryFilterOOB: %v", err)
-		}
-		if err := views.PriceFilterOOB(data, lang).Render(ctx, c.Writer); err != nil {
-			log.Printf("error rendering PriceFilterOOB: %v", err)
 		}
 		if err := views.FilterHeaderOOB(data, lang).Render(ctx, c.Writer); err != nil {
 			log.Printf("error rendering FilterHeaderOOB: %v", err)
 		}
-		if c.Query("trigger") == "source" {
-			if err := views.SubcategoryFilterOOB(nil, selectedSource, "", "", lang).Render(ctx, c.Writer); err != nil {
-				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
-			}
-		} else {
-			if err := views.SubcategoryFilterOOB(subcategories, selectedSource, selectedCategory, selectedSubcategory, lang).Render(ctx, c.Writer); err != nil {
-				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
-			}
+		if err := views.PriceFilterOOB(data, lang).Render(ctx, c.Writer); err != nil {
+			log.Printf("error rendering PriceFilterOOB: %v", err)
 		}
 		if err := views.ProductGrid(data, lang).Render(ctx, c.Writer); err != nil {
 			log.Printf("error rendering ProductGrid: %v", err)
 		}
+
+		if trigger == "source" {
+			if err := views.SourceFilterOOB(sources, selectedSource, lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering SourceFilterOOB: %v", err)
+			}
+			if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering CategoryFilterOOB: %v", err)
+			}
+			if err := views.SubcategoryFilterOOB(nil, selectedSource, "", "", lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
+			}
+		}
+
+		if trigger == "category" {
+			if err := views.CategoryFilterOOB(categories, selectedSource, selectedCategory, lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering CategoryFilterOOB: %v", err)
+			}
+			if err := views.SubcategoryFilterOOB(subcategories, selectedSource, selectedCategory, selectedSubcategory, lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
+			}
+		}
+
+		if trigger == "subcategory" {
+			if err := views.SubcategoryFilterOOB(subcategories, selectedSource, selectedCategory, selectedSubcategory, lang).Render(ctx, c.Writer); err != nil {
+				log.Printf("error rendering SubcategoryFilterOOB: %v", err)
+			}
+		}
+
 		return
 	}
 

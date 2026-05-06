@@ -219,7 +219,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 							href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", data.SelectedSource, data.SelectedCategory)) }
 							hx-get="/products"
 							hx-target="#product-results"
-							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": ""}`, data.SelectedSource, data.SelectedCategory) }
+							hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "", "trigger": "subcategory"}`, data.SelectedSource, data.SelectedCategory) }
 							hx-push-url="true"
 							class={ filterItemClass("", data.SelectedSubcategory) }
 						>
@@ -233,7 +233,7 @@ templ FilterPanel(data ProductsPageData, lang string) {
 									href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", data.SelectedSource, data.SelectedCategory, sub.String)) }
 									hx-get="/products"
 									hx-target="#product-results"
-									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, data.SelectedSource, data.SelectedCategory, sub.String) }
+									hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "trigger": "subcategory"}`, data.SelectedSource, data.SelectedCategory, sub.String) }
 									hx-push-url="true"
 									class={ filterItemClass(sub.String, data.SelectedSubcategory) }
 								>
@@ -336,7 +336,7 @@ templ SubcategoryFilterOOB(subcategories []sql.NullString, selectedSource string
 						href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s", selectedSource, selectedCategory)) }
 						hx-get="/products"
 						hx-target="#product-results"
-						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": ""}`, selectedSource, selectedCategory) }
+						hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "", "trigger": "subcategory"}`, selectedSource, selectedCategory) }
 						hx-push-url="true"
 						class={ filterItemClass("", selectedSubcategory) }
 					>
@@ -350,7 +350,7 @@ templ SubcategoryFilterOOB(subcategories []sql.NullString, selectedSource string
 								href={ templ.SafeURL(fmt.Sprintf("/products?source=%s&category=%s&subcategory=%s", selectedSource, selectedCategory, sub.String)) }
 								hx-get="/products"
 								hx-target="#product-results"
-								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s"}`, selectedSource, selectedCategory, sub.String) }
+								hx-vals={ fmt.Sprintf(`{"source": "%s", "category": "%s", "subcategory": "%s", "trigger": "subcategory"}`, selectedSource, selectedCategory, sub.String) }
 								hx-push-url="true"
 								class={ filterItemClass(sub.String, selectedSubcategory) }
 							>
