@@ -19,4 +19,27 @@ document.addEventListener('DOMContentLoaded', function () {
     if (openBtn) openBtn.addEventListener('click', openDrawer);
     if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
     if (overlay) overlay.addEventListener('click', closeDrawer);
+
+    function scrollActiveFilterIntoView() {
+        setTimeout(function () {
+            document
+                .querySelectorAll('#category-filter ul, #subcategory-filter ul')
+                .forEach(function (list) {
+                    const active = list.querySelector('[class*="bg-blue"]');
+                    if (active)
+                        list.scrollTop = active.offsetTop - list.offsetTop;
+                });
+        }, 50);
+    }
+
+    scrollActiveFilterIntoView();
+    document.addEventListener('htmx:afterSettle', scrollActiveFilterIntoView);
+
+    document.addEventListener('htmx:afterSettle', function () {
+        document.querySelectorAll('img').forEach(function (img) {
+            img.addEventListener('error', function () {
+                this.style.display = 'none';
+            });
+        });
+    });
 });

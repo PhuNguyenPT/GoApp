@@ -242,7 +242,7 @@ func TestProductsHXRequest(t *testing.T) {
 		{
 			name:         "no trigger returns grid only with OOBs",
 			url:          "/products?source=fptshop&category=Laptop",
-			wantContains: []string{"source-filter", "active-chips"},
+			wantContains: []string{"active-chips", "price-filter", "filter-header", "product-results"},
 		},
 		{
 			name:    "source trigger resets category filter",
@@ -525,13 +525,13 @@ func TestProductsHXRequestWithPriceAndSort(t *testing.T) {
 			name:         "htmx with price range returns OOBs and grid",
 			url:          "/products?min_price=1000000&max_price=50000000",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"source-filter", "active-chips", "product-results"},
+			wantContains: []string{"active-chips", "price-filter", "product-results"},
 		},
 		{
 			name:         "htmx with sort returns grid",
 			url:          "/products?sort=price,asc",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"source-filter", "product-results"},
+			wantContains: []string{"active-chips", "product-results"},
 		},
 		{
 			name:         "htmx source + price filter",
@@ -845,6 +845,54 @@ func TestProductDetailBackURL(t *testing.T) {
 			t.Error("expected back link to be plain /products")
 		}
 	})
+
+	t.Run("back link preserves sort and price params", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet,
+			"/products/"+validID.String()+"?source=fptshop&category=Laptop&subcategory=Acer&sort=price,asc&min_price=100000&max_price=5000000", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		body := rr.Body.String()
+		if !strings.Contains(body, "sort=price") {
+			t.Error("expected back link to preserve sort param")
+		}
+		if !strings.Contains(body, "min_price=100000") {
+			t.Error("expected back link to preserve min_price param")
+		}
+		if !strings.Contains(body, "max_price=5000000") {
+			t.Error("expected back link to preserve max_price param")
+		}
+	})
+
+	t.Run("back link omits zero price params", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet,
+			"/products/"+validID.String()+"?source=fptshop&sort=rating,desc&min_price=0&max_price=0", nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		rr := httptest.NewRecorder()
+		testHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+		}
+		body := rr.Body.String()
+		if !strings.Contains(body, "sort=rating") {
+			t.Error("expected back link to preserve sort param")
+		}
+		if strings.Contains(body, "min_price=0") {
+			t.Error("expected back link to omit zero min_price")
+		}
+		if strings.Contains(body, "max_price=0") {
+			t.Error("expected back link to omit zero max_price")
+		}
+	})
 }
 
 func TestProductsFragmentCarriesFilterContext(t *testing.T) {
@@ -962,7 +1010,7 @@ func TestProductsSearchHXRequest(t *testing.T) {
 		{
 			name:         "htmx search returns OOBs and grid",
 			url:          "/products?q=iphone",
-			wantContains: []string{"source-filter", "active-chips", "product-results"},
+			wantContains: []string{"active-chips", "price-filter", "product-results"},
 		},
 		{
 			name:         "htmx search with source filter",
@@ -1059,5 +1107,23 @@ func TestProductSuggestHandler(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestProductCardLinksCarrySortParam(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet,
+		"/products?source=fptshop&category=Laptop&sort=price,asc", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	rr := httptest.NewRecorder()
+	testHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %v, got %v", http.StatusOK, rr.Code)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "sort=price") {
+		t.Error("expected product card links to contain sort param")
 	}
 }
