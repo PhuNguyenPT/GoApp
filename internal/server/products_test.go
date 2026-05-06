@@ -242,7 +242,7 @@ func TestProductsHXRequest(t *testing.T) {
 		{
 			name:         "no trigger returns grid only with OOBs",
 			url:          "/products?source=fptshop&category=Laptop",
-			wantContains: []string{"source-filter", "active-chips"},
+			wantContains: []string{"active-chips", "price-filter", "filter-header", "product-results"},
 		},
 		{
 			name:    "source trigger resets category filter",
@@ -525,13 +525,13 @@ func TestProductsHXRequestWithPriceAndSort(t *testing.T) {
 			name:         "htmx with price range returns OOBs and grid",
 			url:          "/products?min_price=1000000&max_price=50000000",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"source-filter", "active-chips", "product-results"},
+			wantContains: []string{"active-chips", "price-filter", "product-results"},
 		},
 		{
 			name:         "htmx with sort returns grid",
 			url:          "/products?sort=price,asc",
 			wantStatus:   http.StatusOK,
-			wantContains: []string{"source-filter", "product-results"},
+			wantContains: []string{"active-chips", "product-results"},
 		},
 		{
 			name:         "htmx source + price filter",
@@ -962,7 +962,7 @@ func TestProductsSearchHXRequest(t *testing.T) {
 		{
 			name:         "htmx search returns OOBs and grid",
 			url:          "/products?q=iphone",
-			wantContains: []string{"source-filter", "active-chips", "product-results"},
+			wantContains: []string{"active-chips", "price-filter", "product-results"},
 		},
 		{
 			name:         "htmx search with source filter",
