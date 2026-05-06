@@ -456,8 +456,8 @@ templ ProductGrid(data ProductsPageData, lang string) {
 
 templ ProductCard(p database.GetProductSummariesRow, data ProductsPageData) {
 	<a
-		href={ templ.SafeURL(fmt.Sprintf("/products/%s?source=%s&category=%s&subcategory=%s",
-			p.ID.String(), data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory)) }
+		href={ templ.SafeURL(fmt.Sprintf("/products/%s?source=%s&category=%s&subcategory=%s&sort=%s&min_price=%.0f&max_price=%.0f",
+			p.ID.String(), data.SelectedSource, data.SelectedCategory, data.SelectedSubcategory, data.SelectedSort, data.MinPrice, data.MaxPrice)) }
 		class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
 	>
 		<!-- Image -->

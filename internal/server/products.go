@@ -330,6 +330,15 @@ func (s *Server) productDetailPageHandler(c *gin.Context) {
 	if sub := c.Query("subcategory"); sub != "" {
 		params.Set("subcategory", sub)
 	}
+	if sort := c.Query("sort"); sort != "" {
+		params.Set("sort", sort)
+	}
+	if minPrice := c.Query("min_price"); minPrice != "" && minPrice != "0" {
+		params.Set("min_price", minPrice)
+	}
+	if maxPrice := c.Query("max_price"); maxPrice != "" && maxPrice != "0" {
+		params.Set("max_price", maxPrice)
+	}
 	if len(params) > 0 {
 		backURL = "/products?" + params.Encode()
 	}
